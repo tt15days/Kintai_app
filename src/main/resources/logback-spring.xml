@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Spring Boot の共通デフォルト設定をインクルード（コンソール出力用などの基本設定） -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- プロパティ定義（Spring の application.yml/properties から値をロード、デフォルト値も設定可能） -->
+    <springProperty scope="context" name="LOG_DIR" source="logging.file.path" defaultValue="logs" />
+    <springProperty scope="context" name="APP_LOG_LEVEL" source="logging.level.com.attendance.app" defaultValue="INFO" />
+
+    <!-- 1. コンソールアペンダー設定 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 2. アプリケーションログ ファイルアペンダー設定 (日次+サイズ制限でのローリング) -->
+    <appender name="APPLICATION_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/application.log</file>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- ローリング後の保存ファイル名パターン（GZIP圧縮保存） -->
+            <fileNamePattern>${LOG_DIR}/gzip/application.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <!-- 1ファイルあたりの最大サイズ -->
+            <maxFileSize>10MB</maxFileSize>
+            <!-- アーカイブの最大保持日数（30日間） -->
+            <maxHistory>30</maxHistory>
+            <!-- アーカイブファイルの総容量制限（最大 3GB まで） -->
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- 3. 操作監査ログ専用 ファイルアペンダー設定 (CSV形式で出力、日次+サイズ制限ローリング) -->
+    <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/audit.csv</file>
+        <!-- 監査ログはCSVとしてパースしやすくするため、プレフィックスやスレッド名等を付与せず、メッセージ（CSV文字列）と改行のみを出力する -->
+        <encoder>
+            <pattern>%msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- ローリング後の保存ファイル名パターン（GZIP圧縮保存） -->
+            <fileNamePattern>${LOG_DIR}/gzip/audit.%d{yyyy-MM-dd}.%i.csv.gz</fileNamePattern>
+            <!-- 1ファイルあたりの最大サイズ -->
+            <maxFileSize>10MB</maxFileSize>
+            <!-- アーカイブの最大保持日数（90日間保管など長期保存を想定） -->
+            <maxHistory>90</maxHistory>
+            <!-- アーカイブファイルの総容量制限（最大 1GB まで） -->
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+
+    <!-- ========================================== -->
+    <!-- ロガーレベルとアペンダーのマッピング -->
+    <!-- ========================================== -->
+
+    <!-- 操作監査ログ専用ロガー (additivity="false" により親ロガー（root）への伝播を防ぎ、コンソールやapplication.logへの重複出力を防ぐ) -->
+    <logger name="com.attendance.app.audit" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT_FILE" />
+    </logger>
+
+    <!-- 自社アプリ全体の個別ロガー設定 -->
+    <logger name="com.attendance.app" level="${APP_LOG_LEVEL}" />
+
+    <!-- 開発環境・テスト環境 (local, test, default プロファイル) 向けのアクティブ設定 -->
+    <springProfile name="local, test, default">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+            <appender-ref ref="APPLICATION_FILE" />
+        </root>
+    </springProfile>
+
+    <!-- リリース環境 (release プロファイル) 向けのアクティブ設定 -->
+    <springProfile name="release">
+        <root level="WARN">
+            <appender-ref ref="CONSOLE" />
+            <appender-ref ref="APPLICATION_FILE" />
+        </root>
+    </springProfile>
+
+</configuration>

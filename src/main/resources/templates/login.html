@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}"
+      th:with="hideSidebar=true">
+<head>
+    <title>ログイン</title>
+</head>
+<body>
+    <div layout:fragment="content" class="flex min-h-[80vh] items-center justify-center">
+        <div class="card-heavy w-full max-w-md p-8 text-center animate-fade-in">
+            <i class="fa-solid fa-fingerprint text-5xl text-primary mb-4"></i>
+            <h1 class="text-xl font-bold text-txt-primary mb-8" th:text="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</h1>
+
+            <div th:if="${error}"   class="alert alert-danger mb-6 p-3 justify-center" th:text="${error}"></div>
+            <div th:if="${warning}" class="alert alert-warning mb-6 p-3 justify-center" th:text="${warning}"></div>
+            <div th:if="${message}" class="alert alert-success mb-6 p-3 justify-center" th:text="${message}"></div>
+
+            <form th:action="@{/login}" method="post" class="space-y-4">
+                <div class="form-group text-left">
+                    <label class="form-label" for="email">ユーザー名 / メールアドレス</label>
+                    <div class="relative flex items-center">
+                        <i class="fa-solid fa-user absolute left-4 text-txt-secondary/60"></i>
+                        <input type="text" id="email" name="email" class="form-input pl-11" placeholder="メールアドレスを入力" required>
+                    </div>
+                </div>
+                <div class="form-group text-left">
+                    <label class="form-label" for="password">パスワード</label>
+                    <div class="relative flex items-center">
+                        <i class="fa-solid fa-lock absolute left-4 text-txt-secondary/60"></i>
+                        <input type="password" id="password" name="password" class="form-input pl-11" placeholder="パスワードを入力" required>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center mb-6 text-sm">
+                    <label class="flex items-center gap-2 text-txt-secondary select-none">
+                        <input type="checkbox" name="remember-me" class="rounded border-glass-border text-primary focus:ring-primary/20"> ログイン状態を保持する
+                    </label>
+                    <a href="#" class="text-primary hover:underline font-semibold">パスワードをお忘れですか？</a>
+                </div>
+                <button type="submit" class="btn btn-primary w-full py-3 text-sm font-bold gap-2">
+                    ログイン <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

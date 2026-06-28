@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: attendance-app
+  profiles:
+    active: local
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-init-sql: "SET lock_timeout = '3s';"
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  thymeleaf:
+    mode: HTML
+    encoding: UTF-8
+    prefix: classpath:/templates/
+    suffix: .html
+
+mybatis:
+  mapper-locations: classpath:mybatis/mapper/*.xml
+  type-aliases-package: com.attendance.app.entity
+  type-handlers-package: com.attendance.app.config.typehandler
+  configuration:
+    map-underscore-to-camel-case: true
+    default-statement-timeout: 30
+    default-fetch-size: 100
+
+server:
+  port: 8080
+
+logging:
+  level:
+    root: INFO
+    com.attendance.app: DEBUG
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.mybatis: DEBUG
+    java.sql: DEBUG

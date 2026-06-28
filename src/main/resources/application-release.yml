@@ -1,0 +1,26 @@
+# リリース環境用設定（本番・ステージング共通）
+# 環境変数で接続先を制御する。ハードコード禁止。
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  flyway:
+    enabled: true
+    clean-disabled: true
+    # リリース環境ではマイグレーションのみ適用（サンプルデータ除外）
+    locations:
+      - classpath:db/migration
+  thymeleaf:
+    cache: true
+
+logging:
+  file:
+    path: ${LOG_PATH:logs}
+  level:
+    root: WARN
+    com.attendance.app: INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.mybatis: WARN
+    java.sql: WARN

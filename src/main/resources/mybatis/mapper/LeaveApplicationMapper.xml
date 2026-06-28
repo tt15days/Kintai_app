@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.LeaveApplicationMapper">
+
+    <resultMap id="leaveApplicationResultMap" type="com.attendance.app.entity.LeaveApplication">
+        <id column="application_id" property="applicationId"/>
+        <result column="user_id" property="userId"/>
+        <result column="leave_start_date" property="leaveStartDate" typeHandler="com.attendance.app.config.typehandler.LocalDateTypeHandler"/>
+        <result column="leave_end_date" property="leaveEndDate" typeHandler="com.attendance.app.config.typehandler.LocalDateTypeHandler"/>
+        <result column="leave_duration_type" property="leaveDurationType"/>
+        <result column="leave_type" property="leaveType" typeHandler="com.attendance.app.config.typehandler.LeaveTypeTypeHandler"/>
+        <result column="reason" property="reason"/>
+        <result column="status" property="status" typeHandler="com.attendance.app.config.typehandler.LeaveStatusTypeHandler"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+        <result column="approved_at" property="approvedAt" jdbcType="TIMESTAMP"/>
+        <result column="approved_by" property="approvedBy"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectById" resultMap="leaveApplicationResultMap">
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        FROM leave_applications WHERE application_id = #{applicationId} AND is_deleted = false
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="leaveApplicationResultMap">
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        FROM leave_applications WHERE application_id = #{applicationId} AND is_deleted = false FOR UPDATE
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectByUserId" resultMap="leaveApplicationResultMap">
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        FROM leave_applications WHERE user_id = #{userId} AND is_deleted = false ORDER BY created_at DESC
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectByUserIdAndStatus" resultMap="leaveApplicationResultMap">
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        FROM leave_applications WHERE user_id = #{userId} AND status = #{status} AND is_deleted = false ORDER BY created_at DESC
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectPendingApplications" resultMap="leaveApplicationResultMap">
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        FROM leave_applications WHERE status = 'PENDING' AND is_deleted = false ORDER BY created_at ASC
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectByUserAndDateRange" resultMap="leaveApplicationResultMap">
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        FROM leave_applications 
+        WHERE user_id = #{userId} 
+        AND leave_start_date BETWEEN #{startDate} AND #{endDate}
+        AND is_deleted = false
+        ORDER BY leave_start_date ASC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="applicationId">
+        INSERT INTO leave_applications (user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, is_deleted)
+        VALUES (#{userId}, #{leaveStartDate}, #{leaveEndDate}, #{leaveDurationType}, #{leaveType,typeHandler=com.attendance.app.config.typehandler.LeaveTypeTypeHandler}, #{reason}, #{status,typeHandler=com.attendance.app.config.typehandler.LeaveStatusTypeHandler}, NOW(), NOW(), COALESCE(#{isDeleted}, false))
+    </insert>
+
+    <update id="update">
+        UPDATE leave_applications 
+        SET user_id = #{userId}, 
+            leave_start_date = #{leaveStartDate}, 
+            leave_end_date = #{leaveEndDate}, 
+            leave_duration_type = #{leaveDurationType},
+            leave_type = #{leaveType,typeHandler=com.attendance.app.config.typehandler.LeaveTypeTypeHandler}, 
+            reason = #{reason}, 
+            status = #{status,typeHandler=com.attendance.app.config.typehandler.LeaveStatusTypeHandler},
+            is_deleted = #{isDeleted},
+            updated_at = NOW()
+        WHERE application_id = #{applicationId}
+    </update>
+
+    <update id="deleteById">
+        UPDATE leave_applications SET is_deleted = true, updated_at = NOW() WHERE application_id = #{applicationId}
+    </update>
+
+    <update id="approve">
+        UPDATE leave_applications SET status = 'APPROVED', approved_by = #{approvedBy}, approved_at = NOW(), updated_at = NOW()
+        WHERE application_id = #{applicationId}
+    </update>
+
+    <update id="reject">
+        UPDATE leave_applications SET status = 'REJECTED', updated_at = NOW()
+        WHERE application_id = #{applicationId}
+    </update>
+
+    <!-- クエリ最適化: EXTRACT関数によるフルスキャンを回避し、範囲検索でインデックスを利用 -->
+    <select id="countApprovedPaidLeaveDays" resultType="long">
+        SELECT COALESCE(SUM(leave_end_date - leave_start_date + 1), 0)
+        FROM leave_applications
+        WHERE user_id = #{userId}
+          AND leave_type = 'PAID_LEAVE'
+          AND status = 'APPROVED'
+          AND leave_start_date >= MAKE_DATE(#{year}, 1, 1)
+          AND leave_start_date &lt; MAKE_DATE(#{year} + 1, 1, 1)
+          AND is_deleted = false
+    </select>
+
+</mapper>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" layout:decorate="~{layout/base}" th:with="activePage='manage'">
+<head>
+    <title>勤怠管理</title>
+</head>
+<body>
+    <h2 layout:fragment="page-title">勤怠管理</h2>
+
+    <div layout:fragment="content">
+        <div class="card mb-6">
+            <form class="flex flex-wrap items-end gap-4" method="get" th:action="@{/admin/attendance}">
+                <div class="flex flex-col min-w-[150px]">
+                    <label class="form-label">対象月</label>
+                    <input type="month" class="form-input text-sm font-mono h-11" name="yearMonth" th:value="${yearMonth}">
+                </div>
+                <div class="flex flex-col min-w-[180px]">
+                    <label class="form-label">部署 / クラス</label>
+                    <select class="form-select h-11" name="department">
+                        <option value="All Departments" th:selected="${department == 'All Departments' or department == null}">全部署</option>
+                        <option th:each="dept : ${departments}" th:value="${dept}" th:text="${dept}" th:selected="${department == dept}"></option>
+                    </select>
+                </div>
+                <div class="flex flex-col flex-1 min-w-[200px]">
+                    <label class="form-label">社員検索</label>
+                    <input type="text" class="form-input h-11" name="keyword" placeholder="名前またはID" th:value="${keyword}">
+                </div>
+                <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
+                    <i class="fa-solid fa-filter"></i> 表示
+                </button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="flex justify-between items-center pb-4 mb-6 border-b border-glass-border/30">
+                <h3 class="text-base font-bold text-txt-primary">勤怠一覧</h3>
+                <a th:href="@{/admin/attendance/export/zip(yearMonth=${yearMonth})}" class="btn btn-success gap-2 text-sm px-4 py-2"><i class="fa-solid fa-file-export"></i> ZIP出力</a>
+            </div>
+            <div class="table-container">
+                <table class="table-custom">
+                    <thead class="bg-black/10 text-txt-primary">
+                        <tr>
+                            <th>社員ID</th>
+                            <th>氏名</th>
+                            <th>総労働時間</th>
+                            <th>残業時間</th>
+                            <th>深夜労働</th>
+                            <th>ステータス</th>
+                            <th>アクション</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-glass-border/10">
+                        <tr th:each="user : ${users}" th:classappend="${submissionByUserMap[user.userId] != null and submissionByUserMap[user.userId].status == submissionStatusPending ? 'bg-warning/5 font-medium' : ''}">
+                            <td><a th:href="@{/admin/attendance/{userId}(userId=${user.userId}, yearMonth=${yearMonth})}" th:text="${'EMP-' + user.userId}" class="text-primary hover:underline font-mono">EMP-001</a></td>
+                             <td>
+                                 <a th:href="@{/admin/attendance/{userId}(userId=${user.userId}, yearMonth=${yearMonth})}" class="text-primary hover:underline font-semibold">
+                                     <span th:text="${user.fullName}">John Doe</span>
+                                 </a>
+                                 <span th:unless="${user.isActive}" class="text-xs text-red-500 font-normal ml-1">(無効)</span>
+                             </td>
+                            <td class="font-mono" th:with="wh=${workingSumByUserMap[user.userId]}" th:text="${wh != null ? #numbers.formatDecimal(wh, 1, 1) + 'h' : '0.0h'}">160h 00m</td>
+                            <td class="font-mono" th:with="ot=${overtimeSumByUserMap[user.userId]}" th:text="${ot != null ? #numbers.formatDecimal(ot, 1, 1) + 'h' : '0.0h'}">12h 30m</td>
+                            <td class="font-mono" th:with="ns=${nightShiftSumByUserMap[user.userId]}" th:text="${ns != null ? #numbers.formatDecimal(ns, 1, 1) + 'h' : '0.0h'}">0.0h</td>
+                            <td>
+                                <span th:if="${submissionByUserMap[user.userId] == null}" class="badge bg-black/5 text-txt-secondary border-glass-border">未提出</span>
+                                <span th:if="${submissionByUserMap[user.userId] != null and submissionByUserMap[user.userId].status == submissionStatusPending}" class="badge badge-warning animate-pulse">承認待ち</span>
+                                <span th:if="${submissionByUserMap[user.userId] != null and submissionByUserMap[user.userId].status == submissionStatusApproved}" class="badge badge-success">承認済</span>
+                                <span th:if="${submissionByUserMap[user.userId] != null and submissionByUserMap[user.userId].status == submissionStatusReturned}" class="badge badge-danger">差戻し</span>
+                            </td>
+                            <td>
+                                <a th:href="@{/admin/attendance/export/csv(userId=${user.userId}, yearMonth=${yearMonth})}" class="btn bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-lg text-xs" title="CSV出力"><i class="fa-solid fa-download"></i></a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

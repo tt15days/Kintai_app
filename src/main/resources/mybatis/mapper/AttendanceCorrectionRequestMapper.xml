@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.AttendanceCorrectionRequestMapper">
+
+    <resultMap id="correctionRequestResultMap" type="com.attendance.app.entity.AttendanceCorrectionRequest">
+        <id column="request_id" property="requestId"/>
+        <result column="user_id" property="userId"/>
+        <result column="attendance_date" property="attendanceDate" typeHandler="com.attendance.app.config.typehandler.LocalDateTypeHandler"/>
+        <result column="target_year_month" property="targetYearMonth"/>
+        <result column="requested_start_time" property="requestedStartTime" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="requested_end_time" property="requestedEndTime" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="requested_break_time_minutes" property="requestedBreakTimeMinutes"/>
+        <result column="requested_night_shift_hours" property="requestedNightShiftHours"/>
+        <result column="requested_remarks" property="requestedRemarks"/>
+        <result column="reason" property="reason"/>
+        <result column="current_start_time" property="currentStartTime" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="current_end_time" property="currentEndTime" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="current_break_time_minutes" property="currentBreakTimeMinutes"/>
+        <result column="current_night_shift_hours" property="currentNightShiftHours"/>
+        <result column="current_remarks" property="currentRemarks"/>
+        <result column="status" property="status"/>
+        <result column="submitted_at" property="submittedAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="action_by" property="actionBy"/>
+        <result column="action_comment" property="actionComment"/>
+        <result column="action_at" property="actionAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="created_at" property="createdAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="updated_at" property="updatedAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="correctionRequestResultMap">
+        SELECT *
+        FROM attendance_correction_requests
+        WHERE request_id = #{requestId}
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="correctionRequestResultMap">
+        SELECT *
+        FROM attendance_correction_requests
+        WHERE request_id = #{requestId}
+        FOR UPDATE
+    </select>
+
+    <select id="selectByUserId" resultMap="correctionRequestResultMap">
+        SELECT *
+        FROM attendance_correction_requests
+        WHERE user_id = #{userId}
+        ORDER BY attendance_date DESC, request_id DESC
+    </select>
+
+    <select id="selectByUserAndMonth" resultMap="correctionRequestResultMap">
+        SELECT *
+        FROM attendance_correction_requests
+        WHERE user_id = #{userId}
+          AND target_year_month = #{targetYearMonth}
+        ORDER BY attendance_date ASC
+    </select>
+
+    <select id="selectByStatus" resultMap="correctionRequestResultMap">
+        SELECT *
+        FROM attendance_correction_requests
+        WHERE status = #{status}
+        ORDER BY submitted_at ASC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="requestId">
+        INSERT INTO attendance_correction_requests (
+            user_id,
+            attendance_date,
+            target_year_month,
+            requested_start_time,
+            requested_end_time,
+            requested_break_time_minutes,
+            requested_night_shift_hours,
+            requested_remarks,
+            reason,
+            current_start_time,
+            current_end_time,
+            current_break_time_minutes,
+            current_night_shift_hours,
+            current_remarks,
+            status,
+            submitted_at,
+            action_by,
+            action_comment,
+            action_at,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{userId},
+            #{attendanceDate, typeHandler=com.attendance.app.config.typehandler.LocalDateTypeHandler},
+            #{targetYearMonth},
+            #{requestedStartTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{requestedEndTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{requestedBreakTimeMinutes},
+            #{requestedNightShiftHours},
+            #{requestedRemarks},
+            #{reason},
+            #{currentStartTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{currentEndTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{currentBreakTimeMinutes},
+            #{currentNightShiftHours},
+            #{currentRemarks},
+            #{status},
+            #{submittedAt},
+            #{actionBy},
+            #{actionComment},
+            #{actionAt},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE attendance_correction_requests
+        SET status         = #{status},
+            action_by      = #{actionBy},
+            action_comment = #{actionComment},
+            action_at      = #{actionAt},
+            updated_at     = NOW()
+        WHERE request_id = #{requestId}
+    </update>
+
+</mapper>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.HolidayMapper">
+
+    <resultMap id="holidayResultMap" type="com.attendance.app.entity.Holiday">
+        <id column="holiday_date" property="holidayDate"/>
+        <result column="name" property="name"/>
+        <result column="created_at" property="createdAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <insert id="insert">
+        INSERT INTO holidays (holiday_date, name, created_at)
+        VALUES (#{holiday.holidayDate}, #{holiday.name}, #{holiday.createdAt})
+    </insert>
+
+    <select id="selectAll" resultMap="holidayResultMap">
+        SELECT holiday_date, name, created_at FROM holidays ORDER BY holiday_date ASC
+    </select>
+
+    <delete id="deleteAll">
+        DELETE FROM holidays
+    </delete>
+
+</mapper>

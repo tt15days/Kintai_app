@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.UserNotificationMapper">
+
+    <resultMap id="notificationResultMap" type="com.attendance.app.entity.UserNotification">
+        <id column="notification_id" property="notificationId"/>
+        <result column="user_id" property="userId"/>
+        <result column="message" property="message"/>
+        <result column="is_read" property="isRead"/>
+        <result column="notification_type" property="notificationType"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"
+                typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+    </resultMap>
+
+    <select id="selectUnreadByUserId" resultMap="notificationResultMap">
+        SELECT notification_id,
+               user_id,
+               message,
+               is_read,
+               notification_type,
+               created_at
+          FROM user_notifications
+         WHERE user_id = #{userId}
+           AND is_read = false
+         ORDER BY created_at DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="notificationId">
+        INSERT INTO user_notifications (user_id, message, notification_type, is_read, created_at)
+        VALUES (
+            #{userId},
+            #{message},
+            COALESCE(#{notificationType}, 'REMINDER'),
+            false,
+            NOW()
+        )
+    </insert>
+
+    <update id="markAsRead">
+        UPDATE user_notifications
+           SET is_read = true
+         WHERE notification_id = #{notificationId}
+           AND user_id          = #{userId}
+    </update>
+
+    <update id="markAllAsRead">
+        UPDATE user_notifications
+           SET is_read = true
+         WHERE user_id = #{userId}
+           AND is_read = false
+    </update>
+
+</mapper>

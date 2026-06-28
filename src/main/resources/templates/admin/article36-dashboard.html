@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" layout:decorate="~{layout/base}" th:with="activePage='article36'">
+<head>
+    <title>36協定管理</title>
+</head>
+<body>
+    <h2 layout:fragment="page-title">36協定管理・監視</h2>
+
+    <div layout:fragment="content">
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="card flex items-center gap-4 border-l-[4px] border-l-danger">
+                <div class="text-danger bg-danger/10 w-[60px] h-[60px] rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="m-0 text-txt-secondary text-xs opacity-80 mb-1">超過警告（45時間超）</p>
+                    <h3 class="m-0 text-2xl font-bold text-txt-primary"><span class="font-mono" th:text="${alertCount}">3</span> 名</h3>
+                </div>
+            </div>
+            <div class="card flex items-center gap-4 border-l-[4px] border-l-warning">
+                <div class="text-warning bg-warning/10 w-[60px] h-[60px] rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-bell"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="m-0 text-txt-secondary text-xs opacity-80 mb-1">超過注意（40時間超）</p>
+                    <h3 class="m-0 text-2xl font-bold text-txt-primary"><span class="font-mono" th:text="${warningCount}">12</span> 名</h3>
+                </div>
+            </div>
+            <div class="card flex items-center gap-4 border-l-[4px] border-l-success">
+                <div class="text-success bg-success/10 w-[60px] h-[60px] rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="m-0 text-txt-secondary text-xs opacity-80 mb-1">安全ゾーン</p>
+                    <h3 class="m-0 text-2xl font-bold text-txt-primary"><span class="font-mono" th:text="${normalCount}">145</span> 名</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 mb-6 border-b border-glass-border/30 gap-4">
+                <h3 class="text-base font-bold text-txt-primary flex items-center gap-1.5"><i class="fa-solid fa-list-check text-primary"></i> 注意対象従業員一覧</h3>
+                <div>
+                    <form method="get" th:action="@{/admin/article36}" class="flex flex-wrap items-center gap-3">
+                        <label for="yearMonth" class="text-sm font-semibold text-txt-secondary">対象月:</label>
+                        <input type="month" name="yearMonth" id="yearMonth" class="form-input w-auto text-sm font-mono h-10"
+                               th:value="${baseMonthKey}">
+                        <button type="submit" class="btn btn-primary gap-2 text-sm h-10 px-4 py-2">
+                            <i class="fas fa-search"></i> 表示
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="table-custom">
+                    <thead class="bg-black/10 text-txt-primary">
+                        <tr>
+                            <th>従業員名</th>
+                            <th>権限 / 部署</th>
+                            <th>時間外労働時間</th>
+                            <th>36協定上限</th>
+                            <th>ステータス</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-glass-border/10">
+                        <tr th:each="user : ${users}">
+                            <td>
+                                <a th:href="@{/admin/attendance/{userId}(userId=${user.userId}, yearMonth=${baseMonthKey})}" th:text="${user.fullName}" class="text-primary hover:underline font-semibold">Alice Johnson</a>
+                            </td>
+                            <td th:text="${user.userRole?.name() == 'ADMIN' ? '管理者' : '一般ユーザー'}">一般ユーザー</td>
+                            <td class="font-mono" th:with="ot=${overtimeCellMap[baseMonthKey + '_' + user.userId]}" 
+                                th:text="${ot != null ? #numbers.formatDecimal(ot, 1, 1) + 'h' : '0.0h'}"
+                                th:classappend="${article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'ALERT' ? 'text-danger font-bold' : (article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'WARNING' ? 'text-warning font-bold' : 'text-txt-primary')}">
+                                46h 30m
+                            </td>
+                            <td class="font-mono" th:text="${article36MonthlyLimit + '時間'}">45時間</td>
+                            <td>
+                                <span th:if="${article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'ALERT'}" class="badge badge-danger">基準超過</span>
+                                <span th:if="${article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'WARNING'}" class="badge badge-warning">注意水準</span>
+                                <span th:if="${article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'NORMAL'}" class="badge badge-success">正常範囲</span>
+                            </td>
+                            <td>
+                                <form th:action="@{/admin/article36/notify/{userId}(userId=${user.userId})}" method="post" class="margin: 0;">
+                                    <input type="hidden" name="yearMonth" th:value="${baseMonthKey}" />
+                                    <button type="submit" class="btn gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                                            th:disabled="${article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'NORMAL'}"
+                                            th:classappend="${article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'NORMAL' ? 'bg-black/5 text-txt-secondary cursor-not-allowed border border-glass-border' : 'btn-primary'}">
+                                        <i class="fa-solid fa-paper-plane"></i> 警告メール送信
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mt-8">
+            <h3 class="text-base font-bold text-txt-primary mb-6 flex items-center gap-1.5"><i class="fa-solid fa-chart-line text-primary"></i> 月別時間外労働の平均推移</h3>
+            
+            <div class="flex flex-col gap-4">
+                <div>
+                    <div class="flex justify-between items-center text-sm mb-1.5">
+                        <span class="font-semibold text-txt-primary">4月 (Apr)</span>
+                        <span class="text-txt-secondary font-mono text-xs opacity-80">平均残業時間: 18.5 時間</span>
+                    </div>
+                    <div class="h-3 bg-black/5 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-primary to-accent rounded-full" style="width: 41%;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center text-sm mb-1.5">
+                        <span class="font-semibold text-txt-primary">5月 (May)</span>
+                        <span class="text-txt-secondary font-mono text-xs opacity-80">平均残業時間: 24.2 時間</span>
+                    </div>
+                    <div class="h-3 bg-black/5 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-primary to-accent rounded-full" style="width: 53%;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center text-sm mb-1.5">
+                        <span class="font-semibold text-txt-primary">6月 (Jun - 現在)</span>
+                        <span class="text-warning font-bold text-xs"><span class="font-mono">平均残業時間: 29.8 時間</span> (繁忙期)</span>
+                    </div>
+                    <div class="h-3 bg-black/5 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-warning to-danger rounded-full" style="width: 66%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

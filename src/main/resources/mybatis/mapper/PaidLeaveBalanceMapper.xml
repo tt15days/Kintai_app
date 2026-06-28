@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.PaidLeaveBalanceMapper">
+
+    <resultMap id="paidLeaveBalanceResultMap" type="com.attendance.app.entity.PaidLeaveBalance">
+        <id     column="balance_id"         property="balanceId"/>
+        <result column="user_id"            property="userId"/>
+        <result column="grant_year"         property="grantYear"/>
+        <result column="granted_days"       property="grantedDays"/>
+        <result column="grant_date"         property="grantDate"/>
+        <result column="expiry_date"        property="expiryDate"/>
+        <result column="carried_over_days"  property="carriedOverDays"/>
+        <result column="used_days"          property="usedDays"/>
+        <result column="created_at"         property="createdAt"  jdbcType="TIMESTAMP"
+                typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="updated_at"         property="updatedAt"  jdbcType="TIMESTAMP"
+                typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+    </resultMap>
+
+    <!-- ユーザーの全有給残高を付与年度降順で取得 -->
+    <select id="selectByUserId" resultMap="paidLeaveBalanceResultMap">
+        SELECT balance_id,
+               user_id,
+               grant_year,
+               granted_days,
+               grant_date,
+               expiry_date,
+               carried_over_days,
+               used_days,
+               created_at,
+               updated_at
+          FROM paid_leave_balance
+         WHERE user_id = #{userId}
+         ORDER BY grant_year DESC
+    </select>
+
+    <!-- 有効な有給残高（失効日が今日以降かつ残日数あり）を失効日昇順で取得 -->
+    <select id="selectActiveByUserId" resultMap="paidLeaveBalanceResultMap">
+        SELECT balance_id,
+               user_id,
+               grant_year,
+               granted_days,
+               grant_date,
+               expiry_date,
+               carried_over_days,
+               used_days,
+               created_at,
+               updated_at
+          FROM paid_leave_balance
+         WHERE user_id     = #{userId}
+           AND expiry_date >= #{today}
+           AND (granted_days + carried_over_days - used_days) > 0
+         ORDER BY expiry_date ASC
+    </select>
+
+    <!-- 有効な有給残高（失効日が今日以降かつ残日数あり）を失効日昇順で取得（排他ロック） -->
+    <select id="selectActiveByUserIdForUpdate" resultMap="paidLeaveBalanceResultMap">
+        SELECT balance_id,
+               user_id,
+               grant_year,
+               granted_days,
+               grant_date,
+               expiry_date,
+               carried_over_days,
+               used_days,
+               created_at,
+               updated_at
+          FROM paid_leave_balance
+         WHERE user_id     = #{userId}
+           AND expiry_date >= #{today}
+           AND (granted_days + carried_over_days - used_days) > 0
+         ORDER BY expiry_date ASC
+         FOR UPDATE
+    </select>
+
+    <!-- ユーザーIDと付与年度で有給残高を取得 -->
+    <select id="selectByUserAndYear" resultMap="paidLeaveBalanceResultMap">
+        SELECT balance_id,
+               user_id,
+               grant_year,
+               granted_days,
+               grant_date,
+               expiry_date,
+               carried_over_days,
+               used_days,
+               created_at,
+               updated_at
+          FROM paid_leave_balance
+         WHERE user_id   = #{userId}
+           AND grant_year = #{grantYear}
+         LIMIT 1
+    </select>
+
+    <!-- 有給残高を挿入 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="balanceId">
+        INSERT INTO paid_leave_balance (
+            user_id,
+            grant_year,
+            granted_days,
+            grant_date,
+            expiry_date,
+            carried_over_days,
+            used_days,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{userId},
+            #{grantYear},
+            #{grantedDays},
+            #{grantDate},
+            #{expiryDate},
+            COALESCE(#{carriedOverDays}, 0.0),
+            COALESCE(#{usedDays}, 0.0),
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <!-- 有給残高を更新 -->
+    <update id="update">
+        UPDATE paid_leave_balance
+           SET used_days          = #{usedDays},
+               carried_over_days  = #{carriedOverDays},
+               granted_days       = #{grantedDays},
+               grant_date         = #{grantDate},
+               expiry_date        = #{expiryDate},
+               updated_at         = NOW()
+         WHERE balance_id = #{balanceId}
+    </update>
+
+</mapper>

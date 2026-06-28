@@ -1,0 +1,21 @@
+# ローカル開発環境用設定
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/attendance_db
+    username: postgres
+    password: test999
+  flyway:
+    enabled: true
+    clean-disabled: false
+    # ローカル開発ではサンプルデータも適用
+    locations:
+      - classpath:db/migration
+      - classpath:db/sample
+  thymeleaf:
+    cache: false
+
+logging:
+  file:
+    path: logs
+  level:
+    com.attendance.app: TRACE

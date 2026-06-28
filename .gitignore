@@ -1,0 +1,33 @@
+# Target directory (Maven build output)
+target/
+
+# Log files
+*.log
+*.class
+*.gz
+*.zip
+*.jar
+*.war
+
+# IDE specific files
+.classpath
+.project
+.settings/
+.idea/
+*.iml
+.vscode/
+.agents/
+logs/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Help / temp files
+*.tmp
+*.bak
+
+# Environment
+.env
+.env.local
+*.properties.local

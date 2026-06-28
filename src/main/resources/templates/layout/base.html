@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title layout:title-pattern="$LAYOUT_TITLE - $CONTENT_TITLE">Attendance System</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" th:href="@{/tailwind.css}">
+    <th:block layout:fragment="css"></th:block>
+</head>
+<body>
+    <div id="mobile-overlay" class="mobile-overlay hidden fixed inset-0 bg-black/50 z-[999]"></div>
+    <div class="flex flex-1 relative overflow-hidden h-screen p-4 box-border gap-5" th:classappend="${hideSidebar == true} ? 'h-screen w-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-200 p-0 m-0' : ''">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar w-[260px] border border-glass-border bg-glass/70 rounded-[24px] shadow-glass flex flex-col py-6 z-[1000] h-full box-border overflow-y-auto" th:if="${hideSidebar != true}">
+            <div class="flex flex-col items-start gap-1 pt-2 px-6 pb-5 border-b border-glass-border mb-4">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-clock text-primary text-2xl"></i>
+                    <span class="font-bold text-xl tracking-tight" th:text="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</span>
+                </div>
+            </div>
+
+            <!-- Sidebar Profile -->
+            <div class="sidebar-profile mx-4 mb-5 p-4 rounded-2xl bg-black/5 border border-glass-border" th:if="${currentUser != null}">
+                <div class="text-[0.8rem] text-txt-secondary font-medium">
+                    所属: <span th:text="${currentUser.department != null ? currentUser.department : '未設定'}">管理本部</span>
+                </div>
+                <div class="flex items-center justify-between mt-[0.4rem] flex-wrap gap-1">
+                    <span class="font-bold text-[1.1rem] text-txt-primary" th:text="${currentUser.fullName}">管理者 太郎</span>
+                    <span th:if="${currentUser.positionTitle != null}" class="text-[0.75rem] font-semibold text-primary bg-blue-500/10 px-1.5 py-0.5 rounded" th:text="${currentUser.positionTitle}">部長</span>
+                </div>
+                <div class="font-mono text-[0.8rem] text-txt-secondary mt-1" th:text="${currentUser.empNo != null ? currentUser.empNo : 'EMP000'}">EMP001</div>
+                <div class="mt-2 flex items-center gap-2">
+                    <span class="text-[0.75rem] px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 inline-flex items-center gap-1 font-bold">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span th:text="${currentUser.userRole.name() == 'ADMIN' ? 'システム管理者' : '一般ユーザー'}">システム管理者</span>
+                    </span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav flex flex-col gap-1 px-2 mb-4">
+                <!-- 一般メニュー -->
+                <div class="py-2 px-4 pb-1 text-[0.75rem] text-txt-secondary font-bold uppercase tracking-wider">一般メニュー</div>
+
+                <a th:href="@{/dashboard}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'dashboard'} ? 'active' : ''">
+                    <i class="fa-solid fa-chart-pie"></i> ダッシュボード
+                </a>
+                <a th:href="@{/attendance/quick}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'input'} ? 'active' : ''">
+                    <i class="fa-regular fa-clock"></i> 打刻・出退勤
+                </a>
+                <a th:href="@{/attendance}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'attendance'} ? 'active' : ''">
+                    <i class="fa-regular fa-calendar-check"></i> 月次勤怠
+                </a>
+                <a th:href="@{/leave}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'leaves'} ? 'active' : ''">
+                    <i class="fa-solid fa-umbrella-beach"></i> 休暇申請
+                </a>
+                <a th:href="@{/overtime}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'overtime'} ? 'active' : ''">
+                    <i class="fa-solid fa-business-time"></i> 残業申請
+                </a>
+                <a th:href="@{/dashboard/change-password}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'password'} ? 'active' : ''">
+                    <i class="fa-solid fa-key"></i> パスワード変更
+                </a>
+
+                <!-- 承認メニュー -->
+                <div th:if="${currentUser != null && (currentUser.canApproveAttendance == true || currentUser.userRole.name() == 'ADMIN')}" class="contents">
+                    <div class="pt-3 px-4 pb-1 text-[0.75rem] text-txt-secondary font-bold uppercase tracking-wider">承認メニュー</div>
+
+                    <a th:href="@{/attendance/approval}" class="nav-link text-sm font-medium justify-between" th:classappend="${activePage == 'approval'} ? 'active' : ''">
+                        <span class="inline-flex items-center gap-4"><i class="fa-regular fa-folder-open"></i> 勤怠承認待ち</span>
+                        <span th:if="${pendingSubmissionsCount != null && pendingSubmissionsCount > 0}" class="bg-danger text-white px-2 py-0.5 text-[0.7rem] font-bold rounded-full font-mono" th:text="${pendingSubmissionsCount}">3</span>
+                    </a>
+                    <a th:href="@{/attendance/approval/corrections}" class="nav-link text-sm font-medium justify-between" th:classappend="${activePage == 'corrections'} ? 'active' : ''">
+                        <span class="inline-flex items-center gap-4"><i class="fa-regular fa-circle-check"></i> 修正申請承認</span>
+                        <span th:if="${pendingCorrectionsCount != null && pendingCorrectionsCount > 0}" class="bg-danger text-white px-2 py-0.5 text-[0.7rem] font-bold rounded-full font-mono" th:text="${pendingCorrectionsCount}">2</span>
+                    </a>
+                </div>
+
+                <!-- 管理者専用メニュー -->
+                <div sec:authorize="hasRole('ADMIN')" class="contents">
+                    <div class="pt-3 px-4 pb-1 text-[0.75rem] text-txt-secondary font-bold uppercase tracking-wider">管理者専用メニュー</div>
+
+                    <a th:href="@{/admin/attendance}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'manage'} ? 'active' : ''">
+                        <i class="fa-solid fa-chart-line"></i> 管理者サマリー
+                    </a>
+                    <a th:href="@{/admin/users}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'users'} ? 'active' : ''">
+                        <i class="fa-solid fa-users-gear"></i> 従業員管理
+                    </a>
+                    <a th:href="@{/admin/work-schedules}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'schedules'} ? 'active' : ''">
+                        <i class="fa-regular fa-calendar-plus"></i> 勤務クラス設定
+                    </a>
+                    <a th:href="@{/admin/article36}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'article36'} ? 'active' : ''">
+                        <i class="fa-solid fa-shield-virus"></i> 36協定監視
+                    </a>
+                    <a th:href="@{/admin/announcements}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'notifications'} ? 'active' : ''">
+                        <i class="fa-regular fa-bell"></i> お知らせ管理
+                    </a>
+                    <a th:href="@{/admin/leave-usage}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'leave-usage'} ? 'active' : ''">
+                        <i class="fa-solid fa-plane-departure"></i> 有休消化管理
+                    </a>
+                    <a th:href="@{/admin/settings}" class="nav-link text-sm font-medium" th:classappend="${activePage == 'settings'} ? 'active' : ''">
+                        <i class="fa-solid fa-sliders"></i> システム設定
+                    </a>
+                </div>
+            </nav>
+
+            <div class="mt-auto pt-4 px-6 pb-2">
+                <form th:action="@{/logout}" method="post" class="w-full m-0 p-0 block">
+                    <button type="submit" class="w-full bg-transparent border-0 flex items-center gap-3 text-red-500 font-semibold cursor-pointer py-2 font-sans text-sm text-left hover:text-red-600 transition-colors">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> ログアウト
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden h-full box-border">
+            <!-- Main Content -->
+            <main class="flex-1 py-2 px-4 pb-4 overflow-y-auto h-full box-border" th:classappend="${hideSidebar == true} ? '!p-0 !overflow-hidden flex items-center justify-center h-full w-full' : ''">
+                <div class="flex flex-col min-h-full">
+                    <div class="flex flex-col flex-grow">
+                        <div layout:fragment="content" class="animate-fade-in flex flex-col flex-grow">
+                            <!-- Content goes here -->
+                        </div>
+                    </div>
+                    <!-- 画面下部コピーライト表示 (共通化フッター) -->
+                    <footer th:if="${hideSidebar != true}" class="text-center py-4 pb-4 text-[0.8rem] text-txt-secondary font-medium opacity-85 animate-fade-in mt-auto">
+                        <span th:text="${copyrightText}">© 2026 勤怠管理システム</span>
+                    </footer>
+                </div>
+            </main>
+        </div>
+        <!-- 各画面用モーダル挿入領域 -->
+        <th:block layout:fragment="modals"></th:block>
+    </div>
+
+    <script th:src="@{/js/main.js}"></script>
+    <th:block layout:fragment="js"></th:block>
+</body>
+</html>

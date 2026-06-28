@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.EventTypeMapper">
+
+    <resultMap id="eventTypeResultMap" type="com.attendance.app.entity.EventType">
+        <id column="event_type_id" property="eventTypeId"/>
+        <result column="code" property="code"/>
+        <result column="display_name" property="displayName"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="is_active" property="isActive"/>
+        <result column="created_at" property="createdAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <select id="selectAllActive" resultMap="eventTypeResultMap">
+        SELECT event_type_id, code, display_name, sort_order, is_active, created_at, updated_at
+        FROM event_types
+        WHERE is_active = TRUE
+        ORDER BY sort_order ASC
+    </select>
+
+    <select id="selectAll" resultMap="eventTypeResultMap">
+        SELECT event_type_id, code, display_name, sort_order, is_active, created_at, updated_at
+        FROM event_types
+        ORDER BY sort_order ASC
+    </select>
+
+    <select id="selectById" resultMap="eventTypeResultMap">
+        SELECT event_type_id, code, display_name, sort_order, is_active, created_at, updated_at
+        FROM event_types
+        WHERE event_type_id = #{eventTypeId}
+    </select>
+
+    <select id="selectByCode" resultMap="eventTypeResultMap">
+        SELECT event_type_id, code, display_name, sort_order, is_active, created_at, updated_at
+        FROM event_types
+        WHERE code = #{code}
+    </select>
+
+</mapper>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" layout:decorate="~{layout/base}" th:with="activePage='leave-usage'">
+<head>
+    <title>有給休暇取得状況</title>
+</head>
+<body>
+    <h2 layout:fragment="page-title">有給休暇取得状況 (<span class="font-mono" th:text="${currentYear}">2026</span>年)</h2>
+
+    <div layout:fragment="content">
+        <div class="card">
+            <p class="text-sm text-txt-secondary mb-6">
+                各従業員の今年度の有給休暇付与日数、取得日数、および年5日取得義務の達成状況を確認できます。
+            </p>
+            <div class="table-container">
+                <table class="table-custom">
+                    <thead class="bg-black/10 text-txt-primary">
+                        <tr>
+                            <th>社員ID</th>
+                            <th>氏名</th>
+                            <th>付与日数</th>
+                            <th>取得日数</th>
+                            <th>残日数</th>
+                            <th>5日取得義務</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-glass-border/10">
+                        <tr th:each="user : ${users}">
+                            <td class="font-mono" th:text="${'EMP-' + user.userId}">EMP-1</td>
+                            <td class="font-semibold" th:text="${user.fullName}">氏名</td>
+                            <td class="font-mono" th:with="balance=${balanceMap[user.userId]}" th:text="${balance.grantedDays} + ' 日'">10 日</td>
+                            <td class="font-mono" th:with="balance=${balanceMap[user.userId]}" th:text="${balance.usedDays} + ' 日'">2 日</td>
+                            <td class="font-mono" th:with="balance=${balanceMap[user.userId]}" th:text="${balance.grantedDays.subtract(balance.usedDays)} + ' 日'">8 日</td>
+                            <td>
+                                <span th:if="${obligationMetMap[user.userId]}" class="badge badge-success"><i class="fa-solid fa-check"></i> 達成</span>
+                                <span th:unless="${obligationMetMap[user.userId]}" class="badge badge-danger"><i class="fa-solid fa-triangle-exclamation"></i> 未達成</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

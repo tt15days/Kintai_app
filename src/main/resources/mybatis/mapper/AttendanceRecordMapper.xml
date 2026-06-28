@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.AttendanceRecordMapper">
+
+    <resultMap id="attendanceRecordResultMap" type="com.attendance.app.entity.AttendanceRecord">
+        <id column="record_id" property="recordId"/>
+        <result column="user_id" property="userId"/>
+        <result column="class_id" property="classId"/>
+        <result column="attendance_date" property="attendanceDate" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="start_time" property="startTime" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="end_time" property="endTime" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="event_type_id" property="eventTypeId"/>
+        <result column="working_hours" property="workingHours"/>
+        <result column="break_time_minutes" property="breakTimeMinutes"/>
+        <result column="overtime_hours" property="overtimeHours"/>
+        <result column="night_shift_hours" property="nightShiftHours"/>
+        <result column="holiday_work_hours" property="holidayWorkHours"/>
+        <result column="remarks" property="remarks"/>
+        <result column="created_at" property="createdAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler" jdbcType="TIMESTAMP"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectById" resultMap="attendanceRecordResultMap">
+        SELECT record_id, user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted
+        FROM attendance_records WHERE record_id = #{recordId} AND is_deleted = false
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="attendanceRecordResultMap">
+        SELECT record_id, user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted
+        FROM attendance_records WHERE record_id = #{recordId} AND is_deleted = false FOR UPDATE
+    </select>
+
+    <!-- クエリ最適化: 関数呼び出しによるインデックス無効化を防ぐため、範囲検索に変更 -->
+    <select id="selectByUserAndDate" resultMap="attendanceRecordResultMap">
+        SELECT record_id, user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted
+        FROM attendance_records 
+        WHERE user_id = #{userId} 
+        AND attendance_date >= ( #{attendanceDate}::DATE AT TIME ZONE 'Asia/Tokyo')
+        AND attendance_date &lt; ((#{attendanceDate}::DATE + INTERVAL '1 day') AT TIME ZONE 'Asia/Tokyo')
+        AND is_deleted = false
+    </select>
+
+    <select id="selectByUserAndDateForUpdate" resultMap="attendanceRecordResultMap">
+        SELECT record_id, user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted
+        FROM attendance_records 
+        WHERE user_id = #{userId} 
+        AND attendance_date >= ( #{attendanceDate}::DATE AT TIME ZONE 'Asia/Tokyo')
+        AND attendance_date &lt; ((#{attendanceDate}::DATE + INTERVAL '1 day') AT TIME ZONE 'Asia/Tokyo')
+        AND is_deleted = false FOR UPDATE
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectByUserAndDateRange" resultMap="attendanceRecordResultMap">
+        SELECT record_id, user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted
+        FROM attendance_records 
+        WHERE user_id = #{userId} 
+        AND attendance_date BETWEEN #{startDate} AND #{endDate}
+        AND is_deleted = false
+        ORDER BY attendance_date ASC
+    </select>
+
+    <!-- クエリ最適化: EXTRACT関数によるフルスキャンを回避するため、日付関数を使った範囲検索(>=, <)に修正 -->
+    <select id="selectByUserAndMonth" resultMap="attendanceRecordResultMap">
+        SELECT record_id, user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted
+        FROM attendance_records 
+        WHERE user_id = #{userId}
+        AND attendance_date >= (MAKE_DATE(
+                CASE WHEN #{month} = 1 THEN #{year} - 1 ELSE #{year} END,
+                CASE WHEN #{month} = 1 THEN 12 ELSE #{month} - 1 END,
+                21) AT TIME ZONE 'Asia/Tokyo')
+        AND attendance_date &lt; (MAKE_DATE(#{year}, #{month}, 21) AT TIME ZONE 'Asia/Tokyo')
+        AND is_deleted = false
+        ORDER BY attendance_date ASC
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectByUserId" resultMap="attendanceRecordResultMap">
+        SELECT record_id, user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted
+        FROM attendance_records WHERE user_id = #{userId} AND is_deleted = false ORDER BY attendance_date DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="recordId">
+        INSERT INTO attendance_records (user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted)
+        VALUES (#{userId}, #{classId}, #{attendanceDate,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, #{startTime,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, #{endTime,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, #{eventTypeId}, #{workingHours}, #{breakTimeMinutes}, #{overtimeHours}, #{nightShiftHours}, #{holidayWorkHours}, #{remarks}, NOW(), NOW(), COALESCE(#{isDeleted}, false))
+    </insert>
+
+    <update id="update">
+        UPDATE attendance_records 
+        SET user_id = #{userId}, 
+            class_id = #{classId},
+            attendance_date = #{attendanceDate,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, 
+            start_time = #{startTime,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, 
+            end_time = #{endTime,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, 
+            event_type_id = #{eventTypeId},
+            working_hours = #{workingHours},
+            break_time_minutes = #{breakTimeMinutes},
+            overtime_hours = #{overtimeHours},
+            night_shift_hours = #{nightShiftHours},
+            holiday_work_hours = #{holidayWorkHours},
+            remarks = #{remarks},
+            is_deleted = #{isDeleted},
+            updated_at = NOW()
+        WHERE record_id = #{recordId}
+    </update>
+
+    <update id="deleteById">
+        UPDATE attendance_records SET is_deleted = true, updated_at = NOW() WHERE record_id = #{recordId}
+    </update>
+
+    <update id="deleteByUserId">
+        UPDATE attendance_records SET is_deleted = true, updated_at = NOW() WHERE user_id = #{userId}
+    </update>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectAllByDateRange" resultMap="attendanceRecordResultMap">
+        SELECT record_id, user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted
+        FROM attendance_records
+        WHERE attendance_date BETWEEN #{startDate} AND #{endDate}
+        AND is_deleted = false
+        ORDER BY user_id ASC, attendance_date ASC
+    </select>
+
+</mapper>

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.OvertimeRecordMapper">
+
+    <resultMap id="overtimeRecordResultMap" type="com.attendance.app.entity.OvertimeRecord">
+        <id column="overtime_id" property="overtimeId"/>
+        <result column="user_id" property="userId"/>
+        <result column="overtime_date" property="overtimeDate" typeHandler="com.attendance.app.config.typehandler.LocalDateTypeHandler"/>
+        <result column="overtime_start" property="overtimeStart" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="overtime_end" property="overtimeEnd" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="overtime_hours" property="overtimeHours"/>
+        <result column="reason" property="reason"/>
+        <result column="remarks" property="remarks"/>
+        <result column="created_at" property="createdAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler" jdbcType="TIMESTAMP"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectById" resultMap="overtimeRecordResultMap">
+        SELECT overtime_id, user_id, overtime_date, overtime_start, overtime_end, overtime_hours, reason, remarks, created_at, updated_at, is_deleted
+        FROM overtime_records WHERE overtime_id = #{overtimeId} AND is_deleted = false
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="overtimeRecordResultMap">
+        SELECT overtime_id, user_id, overtime_date, overtime_start, overtime_end, overtime_hours, reason, remarks, created_at, updated_at, is_deleted
+        FROM overtime_records WHERE overtime_id = #{overtimeId} AND is_deleted = false FOR UPDATE
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectByUserId" resultMap="overtimeRecordResultMap">
+        SELECT overtime_id, user_id, overtime_date, overtime_start, overtime_end, overtime_hours, reason, remarks, created_at, updated_at, is_deleted
+        FROM overtime_records WHERE user_id = #{userId} AND is_deleted = false ORDER BY overtime_date DESC
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectByUserAndDateRange" resultMap="overtimeRecordResultMap">
+        SELECT overtime_id, user_id, overtime_date, overtime_start, overtime_end, overtime_hours, reason, remarks, created_at, updated_at, is_deleted
+        FROM overtime_records 
+        WHERE user_id = #{userId} 
+        AND overtime_date BETWEEN #{startDate} AND #{endDate}
+        AND is_deleted = false
+        ORDER BY overtime_date ASC
+    </select>
+
+    <!-- クエリ最適化: EXTRACT関数によるフルスキャンを回避し、範囲検索(>=, <)でインデックスを利用 -->
+    <select id="selectByUserAndMonth" resultMap="overtimeRecordResultMap">
+        SELECT overtime_id, user_id, overtime_date, overtime_start, overtime_end, overtime_hours, reason, remarks, created_at, updated_at, is_deleted
+        FROM overtime_records 
+        WHERE user_id = #{userId}
+        AND overtime_date >= MAKE_DATE(#{year}, #{month}, 1)
+        AND overtime_date &lt; MAKE_DATE(#{year}, #{month}, 1) + INTERVAL '1 month'
+        AND is_deleted = false
+        ORDER BY overtime_date ASC
+    </select>
+
+    <!-- クエリ最適化: EXTRACT関数によるフルスキャンを回避し、範囲検索(>=, <)でインデックスを利用 -->
+    <select id="selectOvertimeHoursSumByUserAndMonth" resultType="double">
+        SELECT COALESCE(SUM(overtime_hours), 0.0) FROM overtime_records 
+        WHERE user_id = #{userId}
+        AND overtime_date >= MAKE_DATE(#{year}, #{month}, 1)
+        AND overtime_date &lt; MAKE_DATE(#{year}, #{month}, 1) + INTERVAL '1 month'
+        AND is_deleted = false
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectByUserAndDate" resultMap="overtimeRecordResultMap">
+        SELECT overtime_id, user_id, overtime_date, overtime_start, overtime_end, overtime_hours, reason, remarks, created_at, updated_at, is_deleted
+        FROM overtime_records
+        WHERE user_id = #{userId}
+        AND overtime_date = #{overtimeDate}
+        AND is_deleted = false
+        ORDER BY overtime_id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectByUserAndDateForUpdate" resultMap="overtimeRecordResultMap">
+        SELECT overtime_id, user_id, overtime_date, overtime_start, overtime_end, overtime_hours, reason, remarks, created_at, updated_at, is_deleted
+        FROM overtime_records
+        WHERE user_id = #{userId}
+        AND overtime_date = #{overtimeDate}
+        AND is_deleted = false
+        ORDER BY overtime_id DESC
+        LIMIT 1
+        FOR UPDATE
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="overtimeId">
+        INSERT INTO overtime_records (user_id, overtime_date, overtime_start, overtime_end, overtime_hours, reason, remarks, created_at, updated_at, is_deleted)
+        VALUES (#{userId}, #{overtimeDate}, #{overtimeStart}, #{overtimeEnd}, #{overtimeHours}, #{reason}, #{remarks}, NOW(), NOW(), COALESCE(#{isDeleted}, false))
+    </insert>
+
+    <update id="update">
+        UPDATE overtime_records 
+        SET user_id = #{userId}, 
+            overtime_date = #{overtimeDate}, 
+            overtime_start = #{overtimeStart}, 
+            overtime_end = #{overtimeEnd}, 
+            overtime_hours = #{overtimeHours}, 
+            reason = #{reason}, 
+            remarks = #{remarks},
+            is_deleted = #{isDeleted},
+            updated_at = NOW()
+        WHERE overtime_id = #{overtimeId}
+    </update>
+
+    <update id="deleteById">
+        UPDATE overtime_records SET is_deleted = true, updated_at = NOW() WHERE overtime_id = #{overtimeId}
+    </update>
+
+    <update id="deleteByUserAndDate">
+        UPDATE overtime_records
+        SET is_deleted = true,
+            updated_at = NOW()
+        WHERE user_id = #{userId}
+        AND overtime_date = #{overtimeDate}
+    </update>
+
+</mapper>

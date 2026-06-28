@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}"
+      th:with="activePage='approval'">
+<head>
+    <title>勤怠承認一覧</title>
+</head>
+<body>
+
+<h2 layout:fragment="page-title">
+    <i class="fas fa-inbox"></i> 月次勤怠 承認待ち
+    <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-warning/15 text-warning border border-warning/20 ml-2"
+          th:if="${pendingSubmissions != null and !pendingSubmissions.isEmpty()}"
+          th:text="${#lists.size(pendingSubmissions)} + '件'"></span>
+</h2>
+
+<div layout:fragment="content" class="flex flex-col flex-grow">
+    <div class="flex justify-end mb-4">
+        <a th:href="@{/attendance/approval/corrections}" class="bg-black/5 hover:bg-black/10 border border-glass-border text-txt-primary inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-200 active:scale-95 cursor-pointer">
+            <i class="fas fa-pen-to-square"></i> 修正申請の承認へ
+        </a>
+    </div>
+
+    <!-- フラッシュメッセージ -->
+    <div class="mb-4" th:if="${message != null}">
+        <div class="bg-success/15 border border-success/30 text-success p-4 rounded-xl flex justify-between items-center mb-6 text-sm font-semibold transition-all duration-200" role="alert">
+            <span><i class="fas fa-check-circle"></i> <span th:text="${message}"></span></span>
+            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()">×</button>
+        </div>
+    </div>
+    <div class="mb-4" th:if="${error != null}">
+        <div class="bg-danger/12 border border-danger/30 text-danger p-4 rounded-xl flex justify-between items-center mb-6 text-sm font-semibold transition-all duration-200" role="alert">
+            <span><i class="fas fa-exclamation-circle"></i> <span th:text="${error}"></span></span>
+            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()">×</button>
+        </div>
+    </div>
+
+    <div class="bg-glass/70 backdrop-blur-glass border border-glass-border shadow-glass rounded-[24px] p-6 transition-all duration-300 flex-grow flex flex-col">
+        <div class="flex-grow flex flex-col">
+
+            <!-- 承認待ちなし -->
+            <div class="text-center py-12 text-txt-secondary opacity-80 flex flex-col items-center justify-center" th:if="${pendingSubmissions == null or pendingSubmissions.isEmpty()}">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <p class="mb-0 text-sm font-medium">承認待ちの月次勤怠申請はありません</p>
+            </div>
+
+            <!-- 承認待ち一覧 -->
+            <div th:each="submission : ${pendingSubmissions}" class="bg-glass/70 backdrop-blur-glass border border-glass-border shadow-glass rounded-[16px] p-5 flex flex-col mb-4 transition-all duration-300 border-l-[4px] border-l-warning hover:border-l-primary">
+                <div>
+                    <div class="flex flex-col md:flex-row gap-4 justify-between items-start">
+                        <!-- 申請者情報 -->
+                        <div class="flex-1 min-w-[200px]">
+                            <div class="font-semibold text-[15px] text-txt-primary mb-1">
+                                <a th:href="@{/attendance/approval/{userId}/detail(userId=${submission.userId}, yearMonth=${submission.targetYearMonth})}"
+                                   class="text-primary hover:underline font-semibold flex items-center gap-1.5">
+                                    <i class="fas fa-user-circle"></i>
+                                    <span th:text="${applicantUsers[submission.userId] != null ? applicantUsers[submission.userId].fullName : '不明ユーザー'}"></span>
+                                </a>
+                            </div>
+                            <div class="text-xs text-txt-secondary opacity-80 flex items-center mb-2">
+                                <i class="fas fa-envelope mr-1.5"></i>
+                                <span th:text="${applicantUsers[submission.userId] != null ? applicantUsers[submission.userId].email : ''}"></span>
+                            </div>
+                            <div class="mt-2">
+                                <span class="text-[13px] px-2.5 py-1 rounded-full bg-black/5 text-txt-secondary font-semibold border border-glass-border inline-flex items-center gap-1.5">
+                                    <i class="fas fa-calendar"></i>
+                                    <span th:text="${submission.targetYearMonth}"></span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 申請情報 -->
+                        <div class="flex-1 min-w-[200px]">
+                            <div class="text-xs text-txt-secondary opacity-80 flex items-center mb-1.5">
+                                <i class="fas fa-clock mr-1.5"></i> 申請日時:
+                                <span th:text="${submission.submittedAt != null ? #temporals.format(submission.submittedAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy/MM/dd HH:mm') : '-'}"></span>
+                            </div>
+                            <div>
+                                <span class="px-2 py-0.5 text-[0.7rem] font-bold rounded-full bg-warning/15 text-warning border border-warning/20"
+                                      th:if="${submission.status == submissionStatusPending}">
+                                    <i class="fas fa-hourglass-half mr-1"></i>承認待ち
+                                </span>
+                                <span class="px-2 py-0.5 text-[0.7rem] font-bold rounded-full bg-success/15 text-success border border-success/20"
+                                      th:if="${submission.status == submissionStatusApproved}">
+                                    <i class="fas fa-check mr-1"></i>承認済み
+                                </span>
+                                <span class="px-2 py-0.5 text-[0.7rem] font-bold rounded-full bg-danger/15 text-danger border border-danger/20"
+                                      th:if="${submission.status == submissionStatusReturned}">
+                                    <i class="fas fa-undo mr-1"></i>差し戻し済み
+                                </span>
+                            </div>
+                            <div class="text-xs text-txt-secondary opacity-80 flex items-center mt-1.5"
+                                 th:if="${submission.actionComment != null and !submission.actionComment.isBlank()}">
+                                <i class="fas fa-comment mr-1.5"></i>
+                                <span th:text="${submission.actionComment}"></span>
+                            </div>
+                        </div>
+
+                        <!-- 操作ボタン -->
+                        <div class="flex gap-2 flex-wrap justify-end items-start"
+                             th:if="${submission.status == submissionStatusPending}">
+                            <button type="button" class="bg-success text-white hover:bg-success/90 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 active:scale-95 text-xs cursor-pointer"
+                                    th:data-submission-id="${submission.submissionId}"
+                                    th:data-applicant-name="${applicantUsers[submission.userId] != null ? applicantUsers[submission.userId].fullName : '不明'}"
+                                    th:data-year-month="${submission.targetYearMonth}"
+                                    onclick="openApproveModal(this)">
+                                <i class="fas fa-check"></i> 承認
+                            </button>
+                            <button type="button" class="bg-danger text-white hover:bg-danger/90 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 active:scale-95 text-xs cursor-pointer"
+                                    th:data-submission-id="${submission.submissionId}"
+                                    th:data-applicant-name="${applicantUsers[submission.userId] != null ? applicantUsers[submission.userId].fullName : '不明'}"
+                                    th:data-year-month="${submission.targetYearMonth}"
+                                    onclick="openReturnModal(this)">
+                                <i class="fas fa-undo"></i> 差し戻し
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+</div>
+
+<th:block layout:fragment="modals">
+    <!-- 承認確認モーダル -->
+    <div class="absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300" id="approveModal" onclick="closeApproveModal()">
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div id="approveModalContent" class="card-heavy w-full max-w-[500px] transform scale-95 transition-all duration-300" onclick="event.stopPropagation()">
+                <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
+                    <h5 class="m-0 text-base font-bold text-txt-primary" id="approveModalLabel">
+                        <i class="fas fa-check-circle text-success mr-1.5"></i> 承認確認
+                    </h5>
+                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity" onclick="closeApproveModal()">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+                <div class="relative flex-auto py-2">
+                    <p class="mb-4 text-sm text-txt-primary">
+                        <strong id="approveApplicantName"></strong> さんの
+                        <strong id="approveYearMonth"></strong> 分の月次勤累計を承認しますか？
+                    </p>
+                    <form id="approveForm" method="post" class="space-y-4">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <div class="flex flex-col gap-1.5">
+                            <label for="approveComment" class="form-label">承認コメント（任意）</label>
+                            <textarea class="form-textarea" id="approveComment" name="comment" rows="2"
+                                      placeholder="承認コメントを入力してください"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="flex gap-4 mt-4">
+                    <button type="button" class="btn btn-flat flex-1" onclick="closeApproveModal()">
+                        キャンセル
+                    </button>
+                    <button type="button" class="btn btn-success flex-[2]" onclick="submitApproveForm()">
+                        <i class="fa-solid fa-check"></i> 承認する
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 差し戻し確認モーダル -->
+    <div class="absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300" id="returnModal" onclick="closeReturnModal()">
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div id="returnModalContent" class="card-heavy w-full max-w-[500px] transform scale-95 transition-all duration-300" onclick="event.stopPropagation()">
+                <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
+                    <h5 class="m-0 text-base font-bold text-txt-primary" id="returnModalLabel">
+                        <i class="fas fa-undo text-danger mr-1.5"></i> 差し戻し確認
+                    </h5>
+                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity" onclick="closeReturnModal()">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+                <div class="relative flex-auto py-2">
+                    <p class="mb-4 text-sm text-txt-primary">
+                        <strong id="returnApplicantName"></strong> さんの
+                        <strong id="returnYearMonth"></strong> 分の月次勤累計を差し戻しますか？
+                    </p>
+                    <form id="returnForm" method="post" class="space-y-4">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <div class="flex flex-col gap-1.5">
+                            <label for="returnComment" class="form-label">差し戻し理由</label>
+                            <textarea class="form-textarea" id="returnComment" name="comment" rows="2"
+                                      placeholder="差し戻しの理由を入力してください（申請者に通知されます）"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="flex gap-4 mt-4">
+                    <button type="button" class="btn btn-flat flex-1" onclick="closeReturnModal()">
+                        キャンセル
+                    </button>
+                    <button type="button" class="btn btn-danger flex-[2]" onclick="submitReturnForm()">
+                        <i class="fa-solid fa-undo"></i> 差し戻す
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</th:block>
+
+<th:block layout:fragment="js">
+    <script>
+        function openApproveModal(btn) {
+            var submissionId = btn.getAttribute('data-submission-id');
+            var applicantName = btn.getAttribute('data-applicant-name');
+            var yearMonth = btn.getAttribute('data-year-month');
+            document.getElementById('approveApplicantName').textContent = applicantName;
+            document.getElementById('approveYearMonth').textContent = yearMonth;
+            document.getElementById('approveForm').action = '/attendance/approval/' + submissionId + '/approve';
+            document.getElementById('approveComment').value = '';
+            
+            var modal = document.getElementById('approveModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.classList.add('opacity-100', 'pointer-events-auto');
+            var content = document.getElementById('approveModalContent');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }
+
+        function closeApproveModal() {
+            var modal = document.getElementById('approveModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.classList.remove('opacity-100', 'pointer-events-auto');
+            var content = document.getElementById('approveModalContent');
+            content.classList.add('scale-95');
+            content.classList.remove('scale-100');
+        }
+
+        function openReturnModal(btn) {
+            var submissionId = btn.getAttribute('data-submission-id');
+            var applicantName = btn.getAttribute('data-applicant-name');
+            var yearMonth = btn.getAttribute('data-year-month');
+            document.getElementById('returnApplicantName').textContent = applicantName;
+            document.getElementById('returnYearMonth').textContent = yearMonth;
+            document.getElementById('returnForm').action = '/attendance/approval/' + submissionId + '/return';
+            document.getElementById('returnComment').value = '';
+            
+            var modal = document.getElementById('returnModal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.classList.add('opacity-100', 'pointer-events-auto');
+            var content = document.getElementById('returnModalContent');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        }
+
+        function closeReturnModal() {
+            var modal = document.getElementById('returnModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.classList.remove('opacity-100', 'pointer-events-auto');
+            var content = document.getElementById('returnModalContent');
+            content.classList.add('scale-95');
+            content.classList.remove('scale-100');
+        }
+
+        function submitApproveForm() {
+            document.getElementById('approveForm').submit();
+        }
+
+        function submitReturnForm() {
+            document.getElementById('returnForm').submit();
+        }
+    </script>
+</th:block>
+</body>
+</html>

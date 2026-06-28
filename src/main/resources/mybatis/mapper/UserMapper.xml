@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.UserMapper">
+
+    <resultMap id="userResultMap" type="com.attendance.app.entity.User">
+        <id column="user_id" property="userId"/>
+        <result column="emp_no" property="empNo"/>
+        <result column="department" property="department"/>
+        <result column="employment_type" property="employmentType"/>
+        <result column="email" property="email"/>
+        <result column="password" property="password"/>
+        <result column="password_reset_required" property="passwordResetRequired"/>
+        <result column="full_name" property="fullName"/>
+        <result column="position_title" property="positionTitle"/>
+        <result column="phone_number" property="phoneNumber"/>
+        <result column="class_name" property="className"/>
+        <result column="paid_leave_days" property="paidLeaveDays"/>
+        <result column="notes" property="notes"/>
+        <result column="user_role" property="userRole" typeHandler="com.attendance.app.config.typehandler.UserRoleTypeHandler"/>
+        <result column="can_approve_attendance" property="canApproveAttendance"/>
+        <result column="is_active" property="isActive"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="last_login_at" property="lastLoginAt" jdbcType="TIMESTAMP" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="annual_leave_grant_days" property="annualLeaveGrantDays"/>
+        <result column="annual_leave_increment" property="annualLeaveIncrement"/>
+        <result column="max_paid_leave_days" property="maxPaidLeaveDays"/>
+        <result column="failed_login_count" property="failedLoginCount"/>
+        <result column="locked_until" property="lockedUntil" jdbcType="TIMESTAMP" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="account_locked" property="accountLocked"/>
+        <result column="hire_date" property="hireDate"/>
+    </resultMap>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectById" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        FROM users WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        FROM users WHERE user_id = #{userId} FOR UPDATE
+    </select>
+
+
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectByEmail" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        FROM users WHERE email = #{email}
+    </select>
+
+    <select id="selectByEmailForUpdate" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        FROM users WHERE email = #{email} FOR UPDATE
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectAllActive" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        FROM users WHERE is_active = true ORDER BY user_id ASC
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectAll" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        FROM users ORDER BY user_id ASC
+    </select>
+
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <select id="selectByRole" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        FROM users WHERE user_role = #{role} ORDER BY created_at DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="userId">
+        INSERT INTO users (
+            emp_no,
+            department,
+            employment_type,
+            email,
+            password,
+            password_reset_required,
+            full_name,
+            position_title,
+            phone_number,
+            class_name,
+            paid_leave_days,
+            notes,
+            user_role,
+            can_approve_attendance,
+            is_active,
+            created_at,
+            updated_at,
+            hire_date
+        )
+        VALUES (
+            #{empNo},
+            #{department},
+            #{employmentType},
+            #{email},
+            #{password},
+            COALESCE(#{passwordResetRequired}, false),
+            #{fullName},
+            #{positionTitle},
+            #{phoneNumber},
+            #{className},
+            COALESCE(#{paidLeaveDays}, 10.0),
+            #{notes},
+            #{userRole,typeHandler=com.attendance.app.config.typehandler.UserRoleTypeHandler},
+            COALESCE(#{canApproveAttendance}, false),
+            #{isActive},
+            NOW(),
+            NOW(),
+            #{hireDate}
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE users 
+        SET emp_no = #{empNo},
+            department = #{department},
+            employment_type = #{employmentType},
+            email = #{email}, 
+            password = #{password}, 
+            password_reset_required = #{passwordResetRequired},
+            full_name = #{fullName}, 
+            position_title = #{positionTitle},
+            phone_number = #{phoneNumber},
+            class_name = #{className},
+            paid_leave_days = #{paidLeaveDays},
+            notes = #{notes},
+            user_role = #{userRole,typeHandler=com.attendance.app.config.typehandler.UserRoleTypeHandler}, 
+            can_approve_attendance = #{canApproveAttendance},
+            is_active = #{isActive}, 
+            last_login_at = #{lastLoginAt},
+            hire_date = #{hireDate},
+            updated_at = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="updatePaidLeaveDays">
+        UPDATE users
+        SET paid_leave_days = #{paidLeaveDays},
+            updated_at     = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="updatePaidLeaveSettings">
+        UPDATE users
+        SET annual_leave_grant_days = #{annualLeaveGrantDays},
+            annual_leave_increment  = #{annualLeaveIncrement},
+            max_paid_leave_days     = #{maxPaidLeaveDays},
+            updated_at              = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="updateWorkScheduleClass">
+        UPDATE users
+        SET class_name = #{className},
+            updated_at = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="replaceClassName">
+        UPDATE users
+        SET class_name = #{newClassName},
+            updated_at = NOW()
+        WHERE class_name = #{oldClassName}
+    </update>
+
+    <update id="clearClassName">
+        UPDATE users
+        SET class_name = NULL,
+            updated_at = NOW()
+        WHERE class_name = #{className}
+    </update>
+
+    <update id="updateLastLogin">
+        UPDATE users
+        SET last_login_at = #{lastLoginAt, typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler},
+            updated_at = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE users
+        SET password = #{password},
+            password_reset_required = #{passwordResetRequired},
+            updated_at = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM users WHERE user_id = #{userId}
+    </delete>
+
+    <update id="softDeleteById">
+        UPDATE users SET is_active = false, updated_at = NOW() WHERE user_id = #{userId}
+    </update>
+
+    <select id="existsByEmail" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM users WHERE email = #{email})
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM users
+    </select>
+
+    <update id="updateLoginAttempt">
+        UPDATE users
+        SET failed_login_count = #{failedLoginCount},
+            locked_until       = #{lockedUntil, typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler},
+            account_locked     = #{accountLocked},
+            updated_at         = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="resetLoginAttempt">
+        UPDATE users
+        SET failed_login_count = 0,
+            locked_until       = NULL,
+            account_locked     = false,
+            updated_at         = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <select id="selectNextUserId" resultType="long">
+        SELECT COALESCE(MAX(user_id), 0) + 1 FROM users
+    </select>
+
+</mapper>

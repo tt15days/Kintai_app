@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" layout:decorate="~{layout/base}" th:with="activePage='input'">
+<head>
+    <title>打刻・出退勤</title>
+</head>
+<body>
+    <h2 layout:fragment="page-title">打刻・出退勤</h2>
+
+    <div layout:fragment="content" class="max-w-[600px] mx-auto">
+        <div th:if="${message}" class="alert alert-success text-center justify-center" th:text="${message}"></div>
+        <div th:if="${error}" class="alert alert-danger text-center justify-center" th:text="${error}"></div>
+        
+        <div class="card p-8 text-center">
+            <h3 class="text-center text-txt-secondary font-semibold m-0 text-lg" id="current-date" th:text="${#temporals.format(#temporals.createNow(), 'EEEE, MMMM dd')}">Friday, October 12</h3>
+            <div class="text-center my-8 text-6xl font-bold tracking-wider bg-gradient-to-r from-txt-primary to-txt-secondary bg-clip-text text-transparent font-mono" id="current-time">00:00:00</div>
+            
+            <div class="flex items-center justify-center gap-4 mb-6">
+                <span class="text-sm font-semibold text-txt-secondary">通常出勤</span>
+                <label class="relative inline-flex items-center cursor-pointer select-none">
+                    <input type="checkbox" id="holiday-work-toggle" class="sr-only peer">
+                    <div class="w-14 h-8 bg-slate-200/50 rounded-full peer peer-focus:ring-2 peer-focus:ring-primary/50 peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+                <span class="text-sm font-semibold text-txt-secondary">休日出勤</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <form th:action="@{/attendance/quick-start}" method="post" class="w-full" id="clock-in-form">
+                    <button type="submit" class="btn btn-primary p-6 text-xl rounded-2xl w-full gap-2 cursor-pointer" th:disabled="${todayRecord != null and todayRecord.startTime != null}">
+                        <i class="fa-solid fa-right-to-bracket"></i> 出勤打刻
+                    </button>
+                </form>
+                <form th:action="@{/attendance/quick-end}" method="post" class="w-full" id="clock-out-form">
+                    <input type="hidden" name="isHolidayWork" id="hidden-holiday-work" value="false">
+                    <button type="submit" class="btn btn-danger p-6 text-xl rounded-2xl w-full gap-2 cursor-pointer" th:disabled="${todayRecord == null or todayRecord.startTime == null or todayRecord.endTime != null}">
+                        <i class="fa-solid fa-right-from-bracket"></i> 退勤打刻
+                    </button>
+                </form>
+            </div>
+
+            <div class="flex gap-4 justify-center">
+                <button type="button" class="btn btn-flat px-5 py-3 text-sm gap-2 cursor-pointer" onclick="promptBreak()">
+                    <i class="fa-solid fa-mug-hot"></i> 休憩時間の記録
+                </button>
+                <a th:href="@{/leave/create}" class="btn btn-success px-5 py-3 text-sm gap-2">
+                    <i class="fa-solid fa-plane"></i> 有給休暇申請
+                </a>
+            </div>
+
+            <form th:action="@{/attendance/quick-break}" method="post" id="break-form" class="hidden">
+                <input type="hidden" name="breakTimeMinutes" id="break-time-minutes">
+            </form>
+        </div>
+    </div>
+
+    <th:block layout:fragment="js">
+        <script>
+            function updateTime() {
+                const now = new Date();
+                document.getElementById('current-time').textContent = now.toLocaleTimeString('ja-JP', { hour12: false });
+                document.getElementById('current-date').textContent = now.toLocaleDateString('ja-JP', { weekday: 'long', month: 'long', day: 'numeric' });
+            }
+            setInterval(updateTime, 1000);
+            updateTime();
+
+            const toggle = document.getElementById('holiday-work-toggle');
+            const hiddenInput = document.getElementById('hidden-holiday-work');
+            if (toggle && hiddenInput) {
+                toggle.addEventListener('change', function() {
+                    hiddenInput.value = this.checked;
+                });
+            }
+
+            function promptBreak() {
+                const minutes = prompt("休憩時間を分単位で入力してください（例: 60）:", "60");
+                if (minutes !== null && minutes.trim() !== "" && !isNaN(minutes)) {
+                    document.getElementById('break-time-minutes').value = parseInt(minutes, 10);
+                    document.getElementById('break-form').submit();
+                }
+            }
+        </script>
+    </th:block>
+</body>
+</html>

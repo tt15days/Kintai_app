@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" layout:decorate="~{layout/base}" th:with="activePage='dashboard'">
+
+<head>
+    <title>プロフィール</title>
+</head>
+
+<body>
+    <h2 layout:fragment="page-title">プロフィール</h2>
+
+    <div layout:fragment="content">
+        <div class="w-full">
+            <div class="content mt-4">
+
+                <div th:if="${successMessage}" class="alert alert-success">
+                    <span><i class="fas fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
+                    <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert], .bg-success\/15, .bg-danger\/12').remove()">×</button>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-danger">
+                    <span><i class="fas fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
+                    <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.parentElement.remove()">×</button>
+                </div>
+                <div th:if="${error}" class="alert alert-danger justify-center text-center" role="alert">
+                    <span th:text="${error}"></span>
+                </div>
+
+                <!-- プロフィール情報 -->
+                <div class="card mb-6">
+                    <div class="border-b border-glass-border pb-4 mb-4">
+                        <h4 class="m-0 text-lg font-bold text-txt-primary"><i class="fas fa-user"></i> プロフィール</h4>
+                    </div>
+                    <div th:if="${currentUser != null}">
+                        <dl class="grid grid-cols-1 sm:grid-cols-[1fr_2fr] gap-x-4 gap-y-3 mb-0 text-sm">
+                            <dt class="font-semibold text-txt-secondary">氏名</dt>
+                            <dd class="mb-0 text-txt-primary" th:text="${currentUser.fullName}"></dd>
+
+                            <dt class="font-semibold text-txt-secondary">メールアドレス</dt>
+                            <dd class="mb-0 text-txt-primary" th:text="${currentUser.email}"></dd>
+
+                            <dt class="font-semibold text-txt-secondary">役職</dt>
+                            <dd class="mb-0 text-txt-primary"
+                                th:text="${currentUser.positionTitle != null and !#strings.isEmpty(currentUser.positionTitle) ? currentUser.positionTitle : '-'}">
+                            </dd>
+
+                            <dt class="font-semibold text-txt-secondary">電話番号</dt>
+                            <dd class="mb-0 text-txt-primary"
+                                th:text="${currentUser.phoneNumber != null and !#strings.isEmpty(currentUser.phoneNumber) ? currentUser.phoneNumber : '-'}">
+                            </dd>
+
+                            <dt class="font-semibold text-txt-secondary">部署</dt>
+                            <dd class="mb-0 text-txt-primary"
+                                th:text="${currentUser.className != null and !#strings.isEmpty(currentUser.className) ? currentUser.className : '-'}">
+                            </dd>
+
+                            <dt class="font-semibold text-txt-secondary">有給付与日数</dt>
+                            <dd class="mb-0 text-txt-primary"
+                                th:text="${currentUser.paidLeaveDays != null ? currentUser.paidLeaveDays + ' 日' : '-'}">
+                            </dd>
+
+                            <dt class="font-semibold text-txt-secondary">当年使用日数</dt>
+                            <dd class="mb-0 text-txt-primary"
+                                th:text="${yearlyUsedPaidLeaveDays != null ? yearlyUsedPaidLeaveDays + ' 日' : '-'}">
+                            </dd>
+
+                            <dt class="font-semibold text-txt-secondary">残有給日数</dt>
+                            <dd class="mb-0">
+                                <span
+                                    th:if="${remainingPaidLeaveDays != null and remainingPaidLeaveDays.signum() &lt; 0}"
+                                    class="text-danger font-bold"
+                                    th:text="${#numbers.formatDecimal(remainingPaidLeaveDays, 1, 1) + ' 日'}"></span>
+                                <span th:if="${remainingPaidLeaveDays != null and remainingPaidLeaveDays.signum() >= 0}"
+                                    class="text-success font-bold"
+                                    th:text="${#numbers.formatDecimal(remainingPaidLeaveDays, 1, 1) + ' 日'}"></span>
+                                <span th:if="${remainingPaidLeaveDays == null}">-</span>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- 所属クラス変更フォーム -->
+                <div class="card mb-6">
+                    <div class="border-b border-glass-border pb-4 mb-4">
+                        <h5 class="m-0 text-lg font-bold text-txt-primary"><i class="fas fa-clock"></i> 所属クラス（勤務時間帯）</h5>
+                    </div>
+                    <div>
+                        <p class="text-txt-secondary text-sm mb-3">
+                            所属クラスは残業時間の計算基準となります。クラスが未設定の場合はシステムのデフォルト（09:00〜18:00）が適用されます。
+                        </p>
+
+                        <!-- 現在のクラス情報 -->
+                        <div th:with="currentClassName=${currentUser != null ? currentUser.className : null}">
+                            <div th:if="${currentClassName != null and workScheduleClasses != null}"
+                                class="bg-primary/10 border border-primary/20 text-primary p-4 rounded-xl mb-4 text-sm">
+                                <i class="fas fa-info-circle"></i>
+                                現在の所属クラス:
+                                <strong th:each="wsc : ${workScheduleClasses}" th:if="${wsc.name == currentClassName}">
+                                    <span th:text="${wsc.name}"></span>
+                                    （<span th:text="${#strings.substring(wsc.startTime.toString(), 0, 5)}"></span>
+                                    〜
+                                    <span th:text="${#strings.substring(wsc.endTime.toString(), 0, 5)}"></span>、
+                                    休憩 <span th:text="${wsc.breakScheduleSummary}"></span>
+                                    <span th:if="${wsc.workLocation != null and !#strings.isEmpty(wsc.workLocation)}">
+                                        、勤務地: <span th:text="${wsc.workLocation}"></span>
+                                    </span>）
+                                </strong>
+                            </div>
+                            <div th:if="${currentClassName == null}" class="bg-black/5 border border-glass-border text-txt-primary p-4 rounded-xl mb-4 text-sm">
+                                <i class="fas fa-info-circle"></i>
+                                所属クラスは未設定です。デフォルトの勤務時間（09:00〜18:00）が適用されます。
+                            </div>
+                        </div>
+
+                        <form method="post" th:action="@{/profile/work-schedule}">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                            <div class="mb-4">
+                                <label for="className" class="block text-sm font-semibold text-txt-secondary mb-1.5">所属クラスを選択</label>
+                                <select class="form-select" id="className" name="className">
+                                    <option value="">-- 未設定（デフォルト 09:00〜18:00）--</option>
+                                    <option th:each="wsc : ${workScheduleClasses}" th:value="${wsc.name}"
+                                        th:selected="${currentUser != null and currentUser.className != null and currentUser.className == wsc.name}"
+                                        th:text="${wsc.name + '（' + #strings.substring(wsc.startTime.toString(), 0, 5) + '〜' + #strings.substring(wsc.endTime.toString(), 0, 5) + '、休憩 ' + wsc.breakScheduleSummary + (wsc.workLocation != null and !#strings.isEmpty(wsc.workLocation) ? '、' + wsc.workLocation : '') + '）'}">
+                                    </option>
+                                </select>
+                                <div class="text-xs text-txt-secondary mt-1.5 flex items-center gap-1">
+                                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                                    所属クラスを変更すると、以降の残業計算の基準時刻が変わります。
+                                </div>
+                            </div>
+                            <div th:if="${workScheduleClasses == null or workScheduleClasses.isEmpty()}"
+                                class="bg-warning/10 border border-warning/20 text-warning p-4 rounded-xl mb-4 text-sm">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                勤務クラスが登録されていません。管理者にお問い合わせください。
+                            </div>
+                            <button type="submit" class="btn btn-primary px-5 py-3 text-sm cursor-pointer gap-2">
+                                <i class="fas fa-save"></i> 所属クラスを更新
+                            </button>
+                            <a href="/dashboard" class="btn btn-flat px-5 py-3 text-sm cursor-pointer ml-2 gap-2">
+                                <i class="fas fa-times"></i> 戻る
+                            </a>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 有給休暇残高カード -->
+                <div class="card mt-6">
+                    <div class="border-b border-glass-border pb-4 mb-4 flex justify-between items-center">
+                        <h5 class="m-0 text-lg font-bold text-txt-primary"><i class="fas fa-umbrella-beach text-success"></i> 有給休暇残高</h5>
+                        <span class="badge badge-success"
+                            th:text="'残 ' + ${totalRemainingPaidLeaveDays != null ? totalRemainingPaidLeaveDays : 0} + ' 日'"></span>
+                    </div>
+                    <div>
+                        <div th:if="${paidLeaveBalances == null or paidLeaveBalances.isEmpty()}" class="p-3 text-txt-secondary">
+                            <i class="fas fa-info-circle mr-1"></i> 有給残高データがありません。管理者にお問い合わせください。
+                        </div>
+                        <div th:if="${paidLeaveBalances != null and !paidLeaveBalances.isEmpty()}"
+                            class="table-container">
+                            <table class="table-custom mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>付与年度</th>
+                                        <th>付与日</th>
+                                        <th>付与</th>
+                                        <th>繰越</th>
+                                        <th>使用済</th>
+                                        <th>残日数</th>
+                                        <th>失効日</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="bal : ${paidLeaveBalances}"
+                                        th:classappend="${bal.remainingDays <= 0} ? 'opacity-65 text-txt-secondary' : ''">
+                                        <td th:text="${bal.grantYear + '年度'}"></td>
+                                        <td class="font-mono"
+                                            th:text="${bal.grantDate != null ? #temporals.format(bal.grantDate, 'yyyy/MM/dd') : '-'}">
+                                        </td>
+                                        <td class="font-mono" th:text="${bal.grantedDays}"></td>
+                                        <td class="font-mono" th:text="${bal.carriedOverDays}"></td>
+                                        <td class="font-mono" th:text="${bal.usedDays}"></td>
+                                        <td class="font-mono">
+                                            <strong
+                                                th:classappend="${bal.remainingDays > 0} ? 'text-success' : 'text-txt-secondary'"
+                                                th:text="${bal.remainingDays}"></strong>
+                                        </td>
+                                        <td class="font-mono"
+                                            th:text="${bal.expiryDate != null ? #temporals.format(bal.expiryDate, 'yyyy/MM/dd') : '-'}">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</body>
+
+</html>

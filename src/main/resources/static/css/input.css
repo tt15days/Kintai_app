@@ -1,0 +1,348 @@
+@import "tailwindcss";
+@source "../../templates";
+@source "../../../src/main/resources/templates";
+
+/* ============================================================
+   Tailwind v4 テーマ定義（カスタムデザイントークン）
+   ============================================================ */
+@theme {
+    --color-primary:         #2563eb;
+    --color-primary-hover:   #1d4ed8;
+    --color-primary-light:   rgba(37, 99, 235, 0.1);
+
+    --color-accent:          #7c3aed;
+    --color-accent-light:    rgba(124, 58, 237, 0.1);
+
+    --color-success:         #10b981;
+    --color-success-light:   rgba(16, 185, 129, 0.2);
+
+    --color-danger:          #ef4444;
+    --color-danger-light:    rgba(239, 68, 68, 0.2);
+
+    --color-warning:         #f59e0b;
+    --color-warning-light:   rgba(245, 158, 11, 0.2);
+
+    --color-glass:           rgba(255, 255, 255, 0.7);
+    --color-glass-bg:        rgba(255, 255, 255, 0.7);
+    --color-glass-border:    rgba(0, 0, 0, 0.08);
+    --color-glass-hover:     rgba(0, 0, 0, 0.03);
+    --color-glass-nav-hover: rgba(0, 0, 0, 0.05);
+    --color-glass-input:     rgba(255, 255, 255, 0.9);
+
+    --color-txt-primary:     #020617;
+    --color-txt-secondary:   #334155;
+    --color-secondary:       #334155;
+
+    --font-sans: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    --shadow-glass:          0 8px 32px 0 rgba(31, 38, 135, 0.05);
+    --shadow-glass-heavy:    0 10px 40px 0 rgba(31, 38, 135, 0.08);
+    --shadow-primary:        0 4px 15px rgba(59, 130, 246, 0.4);
+    --shadow-primary-hover:  0 6px 20px rgba(59, 130, 246, 0.6);
+
+    --backdrop-blur-glass:   12px;
+    --backdrop-blur-glass-heavy: 16px;
+
+    --radius-panel:          16px;
+    --radius-panel-heavy:    24px;
+}
+
+/* ============================================================
+   CSS変数（Glassmorphismデザイントークン）
+   ============================================================ */
+@layer base {
+    :root {
+        --bg-gradient-start: #f8fafc;
+        --bg-gradient-end:   #e2e8f0;
+        --body-bg:           linear-gradient(135deg, #f8fafc, #e2e8f0);
+
+        --glass-bg:          rgba(255, 255, 255, 0.7);
+        --glass-border:      rgba(0, 0, 0, 0.08);
+        --glass-shadow:      0 8px 32px 0 rgba(31, 38, 135, 0.05);
+        --glass-heavy-bg:    rgba(255, 255, 255, 0.9);
+        --glass-heavy-border:rgba(0, 0, 0, 0.12);
+        --glass-heavy-shadow:0 10px 40px 0 rgba(31, 38, 135, 0.08);
+
+        --primary-color:     #2563eb;
+        --primary-hover:     #1d4ed8;
+        --accent-color:      #7c3aed;
+        --text-primary:      #020617;
+        --text-secondary:    #334155;
+        --success-color:     #10b981;
+        --danger-color:      #ef4444;
+        --warning-color:     #f59e0b;
+
+        --topbar-bg:         rgba(248, 250, 252, 0.8);
+        --input-bg:          rgba(255, 255, 255, 0.9);
+        --input-focus-bg:    #ffffff;
+        --nav-hover-bg:      rgba(0, 0, 0, 0.05);
+        --table-hover-bg:    rgba(0, 0, 0, 0.03);
+    }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        margin: 0;
+        font-size: 18px;
+        background: var(--body-bg);
+        background-attachment: fixed;
+        color: var(--text-primary);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        margin-top: 0;
+        color: var(--text-primary);
+        transition: color 0.3s ease;
+    }
+
+    a {
+        color: var(--primary-color);
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+    a:hover {
+        color: var(--accent-color);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.5; }
+    }
+}
+
+/* ============================================================
+   コンポーネントクラス
+   ============================================================ */
+@layer components {
+    /* --- カード・パネル --- */
+    .card {
+        @apply bg-glass/70 backdrop-blur-glass border border-glass-border shadow-glass rounded-[24px] p-6 transition-all duration-300;
+    }
+    .card-sm {
+        @apply bg-glass/70 backdrop-blur-glass border border-glass-border shadow-glass rounded-[16px] p-4 transition-all duration-300;
+    }
+    .card-heavy {
+        @apply bg-glass/90 backdrop-blur-glass-heavy border border-glass-border shadow-glass-heavy rounded-[24px] p-6 transition-all duration-300;
+    }
+
+    /* --- ボタン基本 --- */
+    .btn {
+        @apply inline-flex items-center justify-center px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+    }
+
+    .btn-primary {
+        @apply bg-primary text-white hover:bg-primary-hover shadow-primary hover:shadow-primary-hover;
+    }
+
+    .btn-secondary {
+        @apply bg-white text-primary border border-primary/20 hover:bg-gray-50;
+    }
+
+    .btn-danger {
+        @apply bg-danger text-white hover:bg-danger/90;
+    }
+
+    .btn-success {
+        @apply bg-success text-white hover:bg-success/90;
+    }
+
+    .btn-warning {
+        @apply bg-warning text-white hover:bg-warning/90;
+    }
+
+    .btn-flat {
+        @apply bg-black/5 hover:bg-black/10 border border-glass-border text-txt-primary;
+    }
+
+    /* --- フォーム関連 --- */
+    .form-group {
+        @apply mb-4;
+    }
+    .form-label {
+        @apply block text-sm font-semibold text-txt-secondary mb-1.5;
+    }
+    .form-input {
+        @apply w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
+    }
+    .form-select {
+        @apply w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 cursor-pointer;
+    }
+    .form-textarea {
+        @apply w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
+    }
+
+    /* --- アラート --- */
+    .alert {
+        @apply p-4 rounded-xl flex justify-between items-center mb-6 text-sm font-semibold transition-all duration-200;
+    }
+    .alert-success {
+        @apply bg-success/15 border border-success/30 text-success;
+    }
+    .alert-danger {
+        @apply bg-danger/15 border border-danger/30 text-danger;
+    }
+    .alert-warning {
+        @apply bg-warning/15 border border-warning/30 text-warning;
+    }
+
+    /* --- バッジ --- */
+    .badge {
+        @apply px-2.5 py-1 text-xs font-bold rounded-full border inline-flex items-center gap-1;
+    }
+    .badge-success {
+        @apply bg-success/15 text-success border-success/20;
+    }
+    .badge-danger {
+        @apply bg-danger/15 text-danger border-danger/20;
+    }
+    .badge-warning {
+        @apply bg-warning/15 text-warning border-warning/20;
+    }
+    .badge-primary {
+        @apply bg-primary/10 text-primary border-primary/20;
+    }
+
+    /* --- テーブル --- */
+    .table-container {
+        @apply overflow-x-auto;
+    }
+    .table-custom {
+        @apply min-w-full divide-y divide-glass-border/30 text-left border-collapse;
+    }
+    .table-custom th {
+        @apply p-3 text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-glass-border/30;
+    }
+    .table-custom tr {
+        @apply hover:bg-glass-nav-hover/10 transition-colors;
+    }
+    .table-custom td {
+        @apply p-3 text-sm text-txt-primary;
+    }
+
+    .nav-link {
+        @apply flex items-center gap-3 px-4 py-3 rounded-xl text-secondary hover:bg-[var(--nav-hover-bg)] hover:text-primary transition-all duration-200;
+    }
+
+    .nav-link.active {
+        @apply bg-primary/10 text-primary font-semibold;
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-out forwards;
+    }
+
+    /* --- サイドバー（カスタムスクロールバー＆レスポンシブ） --- */
+    .sidebar::-webkit-scrollbar { width: 5px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.08);
+        border-radius: 10px;
+    }
+    .sidebar::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.15); }
+
+    /* --- モバイル用レイアウト・オーバーレイ --- */
+    .mobile-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+    .mobile-overlay.open { display: block; }
+
+    /* --- レスポンシブサイドバー --- */
+    @media (max-width: 768px) {
+        .sidebar {
+            position: fixed;
+            left: -260px;
+            top: 0;
+            bottom: 0;
+            background: var(--bg-gradient-start);
+            transition: left 0.3s ease;
+            box-shadow: none;
+        }
+        .sidebar.open {
+            left: 0;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
+        }
+    }
+
+    /* --- 通知ドロップダウン（JS動的制御用） --- */
+    .notification-bell-container {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+    }
+    .notification-dropdown {
+        position: absolute;
+        top: 40px;
+        right: 0;
+        width: 320px;
+        max-height: 400px;
+        display: none;
+        flex-direction: column;
+        padding: 0 !important;
+        z-index: 1010;
+        overflow: hidden;
+        animation: fadeIn 0.2s ease forwards;
+        background: var(--glass-heavy-bg);
+        border: 1px solid var(--glass-heavy-border);
+        border-radius: 16px;
+        box-shadow: var(--glass-heavy-shadow);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+    }
+    .notification-dropdown.show { display: flex; }
+    .notification-dropdown-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--glass-border);
+        font-weight: 600;
+        font-size: 0.9rem;
+        background: rgba(255, 255, 255, 0.02);
+    }
+    .notification-dropdown-list {
+        overflow-y: auto;
+        flex: 1;
+    }
+    .notification-item {
+        display: flex;
+        flex-direction: column;
+        cursor: pointer;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--glass-border);
+        font-size: 0.85rem;
+        text-align: left;
+        transition: background-color 0.2s;
+    }
+    .notification-item:hover { background-color: var(--table-hover-bg); }
+    .notification-item-text {
+        color: var(--text-primary);
+        line-height: 1.4;
+        margin-bottom: 4px;
+    }
+    .notification-item-time {
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+    }
+    .notification-empty {
+        padding: 24px;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+}

@@ -1,0 +1,482 @@
+package com.attendance.app.service;
+
+import com.attendance.app.entity.AttendanceRecord;
+import com.attendance.app.entity.EventType;
+import com.attendance.app.entity.User;
+import com.attendance.app.entity.WorkScheduleClass;
+import com.attendance.app.mapper.AttendanceRecordMapper;
+import com.attendance.app.mapper.EventTypeMapper;
+import com.attendance.app.mapper.UserMapper;
+import com.attendance.app.mapper.WorkScheduleClassMapper;
+import com.attendance.app.mapper.AttendanceSubmissionMapper;
+import com.attendance.app.util.DateTimeUtil;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.YearMonth;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+/**
+ * {@link AttendanceRecordService} の単体テスト。
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("AttendanceRecordService")
+class AttendanceRecordServiceTest {
+
+    @Mock
+    private AttendanceRecordMapper attendanceRecordMapper;
+    @Mock
+    private UserMapper userMapper;
+    @Mock
+    private WorkScheduleClassMapper workScheduleClassMapper;
+    @Mock
+    private AttendancePeriodSettingService attendancePeriodSettingService;
+    @Mock
+    private OvertimeRecordService overtimeRecordService;
+    @Mock
+    private EventTypeMapper eventTypeMapper;
+    @Mock
+    private AttendanceSubmissionMapper attendanceSubmissionMapper;
+
+    private AttendanceRecordService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new AttendanceRecordService(
+                attendanceRecordMapper,
+                overtimeRecordService,
+                userMapper,
+                workScheduleClassMapper,
+                attendancePeriodSettingService,
+                eventTypeMapper,
+                attendanceSubmissionMapper);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // checkArticle36
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("checkArticle36")
+    class CheckArticle36 {
+
+        @Test
+        @DisplayName("残業0時間は NORMAL を返す")
+        void zeroHours_returnsNormal() {
+            assertThat(service.checkArticle36(0.0)).isEqualTo("NORMAL");
+        }
+
+        @Test
+        @DisplayName("残業35.9時間（WARNING閾値未満）は NORMAL を返す")
+        void justBelowWarning_returnsNormal() {
+            assertThat(service.checkArticle36(35.9)).isEqualTo("NORMAL");
+        }
+
+        @Test
+        @DisplayName("残業36.0時間（WARNING閾値ちょうど）は WARNING を返す")
+        void exactWarningThreshold_returnsWarning() {
+            assertThat(service.checkArticle36(36.0)).isEqualTo("WARNING");
+        }
+
+        @Test
+        @DisplayName("残業44.9時間（ALERT閾値未満）は WARNING を返す")
+        void justBelowAlert_returnsWarning() {
+            assertThat(service.checkArticle36(44.9)).isEqualTo("WARNING");
+        }
+
+        @Test
+        @DisplayName("残業45.0時間（ALERT閾値ちょうど）は ALERT を返す")
+        void exactAlertThreshold_returnsAlert() {
+            assertThat(service.checkArticle36(45.0)).isEqualTo("ALERT");
+        }
+
+        @ParameterizedTest(name = "{0}時間 → {1}")
+        @CsvSource({
+            "0.0,    NORMAL",
+            "35.99,  NORMAL",
+            "36.0,   WARNING",
+            "44.99,  WARNING",
+            "45.0,   ALERT",
+            "80.0,   ALERT"
+        })
+        @DisplayName("パラメータ化: 各時間帯のステータスが正しい")
+        void parameterized_allBoundaries(double hours, String expectedStatus) {
+            assertThat(service.checkArticle36(hours)).isEqualTo(expectedStatus);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // getMonthRange
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("getMonthRange")
+    class GetMonthRange {
+
+        @Test
+        @DisplayName("開始日21日・終了日20日で payroll-style の範囲を返す")
+        void withStartDay21EndDay20_returnsPayrollStyleDates() {
+            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
+            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
+
+            AttendanceRecordService.MonthRange range = service.getMonthRange(YearMonth.of(2026, 5));
+
+            assertThat(range.getStartDate()).isEqualTo(LocalDate.of(2026, 4, 21));
+            assertThat(range.getEndDate()).isEqualTo(LocalDate.of(2026, 5, 20));
+        }
+
+        @Test
+        @DisplayName("対象月 null の場合は現在月を基準に範囲を返す")
+        void withNullYearMonth_defaultsToCurrentMonth() {
+            YearMonth now = YearMonth.now();
+            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
+            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
+
+            AttendanceRecordService.MonthRange range = service.getMonthRange(null);
+
+            assertThat(range.getYearMonth()).isEqualTo(now);
+            assertThat(range.getStartDate()).isEqualTo(now.minusMonths(1).atDay(21));
+            assertThat(range.getEndDate()).isEqualTo(now.atDay(20));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // saveRecord
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("saveRecord")
+    class SaveRecord {
+
+        @Test
+        @DisplayName("正常系: 新規レコードの登録")
+        void noOverlapBreakWindow_doesNotDeductBreak() {
+            Long userId = 10L;
+            LocalDate attendanceDate = LocalDate.of(2026, 6, 1);
+
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務")
+                    .startTime(LocalTime.of(9, 0))
+                    .endTime(LocalTime.of(18, 0))
+                    .breakStartTime(LocalTime.of(12, 0))
+                    .breakEndTime(LocalTime.of(13, 0))
+                    .build();
+
+            when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, attendanceDate)).thenReturn(Optional.empty());
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+            AttendanceRecord result = service.saveRecord(
+                    userId, attendanceDate, LocalTime.of(9, 0), LocalTime.of(12, 0), "", false, null);
+
+            assertThat(result.getWorkingHours()).isEqualTo(3.0);
+            verify(attendanceRecordMapper).insert(any(AttendanceRecord.class));
+        }
+
+        @Test
+        @DisplayName("正常系: 既存レコードの更新")
+        void existingRecord_updatesDetails() {
+            Long userId = 10L;
+            LocalDate attendanceDate = LocalDate.of(2026, 6, 1);
+            AttendanceRecord existing = AttendanceRecord.builder().recordId(100L).build();
+
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務")
+                    .startTime(LocalTime.of(9, 0))
+                    .endTime(LocalTime.of(18, 0))
+                    .breakStartTime(LocalTime.of(12, 0))
+                    .breakEndTime(LocalTime.of(13, 0))
+                    .build();
+
+            when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, attendanceDate)).thenReturn(Optional.of(existing));
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+            service.saveRecord(userId, attendanceDate, LocalTime.of(9, 0), LocalTime.of(18, 0), "更新備考", false, 3);
+
+            verify(attendanceRecordMapper).update(existing);
+            assertThat(existing.getRemarks()).isEqualTo("更新備考");
+            assertThat(existing.getEventTypeId()).isEqualTo(3);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // quickStartAttendance
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("quickStartAttendance")
+    class QuickStartAttendance {
+
+        @Test
+        @DisplayName("正常系: 出勤打刻の登録")
+        void quickStart_success() {
+            Long userId = 10L;
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務")
+                    .startTime(LocalTime.of(9, 0))
+                    .endTime(LocalTime.of(18, 0))
+                    .build();
+
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+            when(eventTypeMapper.selectByCode("通常")).thenReturn(Optional.of(EventType.builder().eventTypeId(1).build()));
+
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class)) {
+
+                LocalDate mockToday = LocalDate.of(2026, 6, 1);
+                Instant mockNow = Instant.parse("2026-06-01T09:00:00Z");
+                LocalTime mockTime = LocalTime.of(9, 0);
+
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.currentTimeJapan()).thenReturn(mockTime);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.toInstant(mockToday)).thenReturn(mockNow);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.toInstant(mockToday, mockTime)).thenReturn(mockNow);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.now()).thenReturn(mockNow);
+
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(eq(userId), any(LocalDate.class))).thenReturn(Optional.empty());
+
+                AttendanceRecord result = service.quickStartAttendance(userId);
+
+                assertThat(result).isNotNull();
+                verify(attendanceRecordMapper).insert(any(AttendanceRecord.class));
+            }
+        }
+
+        @Test
+        @DisplayName("異常系: 同日に既に出勤打刻がある場合は例外")
+        void quickStart_alreadyStarted_throwsException() {
+            Long userId = 10L;
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務").startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(18, 0)).build();
+
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+                LocalDate mockToday = LocalDate.of(2026, 6, 1);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+
+                AttendanceRecord existing = AttendanceRecord.builder()
+                        .startTime(Instant.parse("2026-06-01T09:00:00Z")).build();
+
+                // 前日分(5/31)と当日分(6/1)の戻り値を設定
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(eq(userId), any(LocalDate.class)))
+                        .thenAnswer(invocation -> {
+                            LocalDate date = invocation.getArgument(1);
+                            if (date.equals(mockToday)) {
+                                return Optional.of(existing);
+                            }
+                            return Optional.empty();
+                        });
+
+                assertThatThrownBy(() -> service.quickStartAttendance(userId))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("本日は既に勤務開始時刻が記録されています");
+            }
+        }
+
+        @Test
+        @DisplayName("異常系: 夜勤勤務で前日の退勤が記録されていない場合は例外")
+        void quickStart_overnightPrevDayNotEnded_throwsException() {
+            Long userId = 10L;
+            User user = User.builder().userId(userId).className("夜勤勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("夜勤勤務").startTime(LocalTime.of(17, 0)).endTime(LocalTime.of(2, 0)).build();
+
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("夜勤勤務")).thenReturn(Optional.of(schedule));
+
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+                LocalDate mockToday = LocalDate.of(2026, 6, 2);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+
+                // 前日(6/1)が出勤打刻あり、退勤打刻なし状態
+                AttendanceRecord prevRecord = AttendanceRecord.builder()
+                        .startTime(Instant.parse("2026-06-01T17:00:00Z")).endTime(null).build();
+
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, mockToday)).thenReturn(Optional.empty());
+                when(attendanceRecordMapper.selectByUserAndDate(userId, LocalDate.of(2026, 6, 1))).thenReturn(Optional.of(prevRecord));
+
+                assertThatThrownBy(() -> service.quickStartAttendance(userId))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("前日の勤務終了時刻が記録されていません");
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // quickEndAttendance
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("quickEndAttendance")
+    class QuickEndAttendance {
+
+        @Test
+        @DisplayName("正常系: 退勤打刻の登録")
+        void quickEnd_success() {
+            Long userId = 10L;
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務").startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(18, 0)).build();
+
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+
+                LocalDate mockToday = LocalDate.of(2026, 6, 1);
+                Instant mockStart = Instant.parse("2026-06-01T00:00:00Z"); // 09:00 JST
+                Instant mockEnd = Instant.parse("2026-06-01T09:00:00Z");   // 18:00 JST
+
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.currentTimeJapan()).thenReturn(LocalTime.of(18, 0));
+                mockedDateTimeUtil.when(() -> DateTimeUtil.now()).thenReturn(mockEnd);
+
+                AttendanceRecord existing = AttendanceRecord.builder()
+                        .userId(userId).attendanceDate(mockStart).startTime(mockStart).build();
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(eq(userId), any(LocalDate.class)))
+                        .thenAnswer(invocation -> {
+                            LocalDate date = invocation.getArgument(1);
+                            if (date.equals(mockToday)) {
+                                return Optional.of(existing);
+                            }
+                            return Optional.empty();
+                        });
+
+                AttendanceRecord result = service.quickEndAttendance(userId, false);
+
+                assertThat(result.getEndTime()).isEqualTo(mockEnd);
+                verify(attendanceRecordMapper).update(existing);
+            }
+        }
+
+        @Test
+        @DisplayName("異常系: 出勤打刻がない場合は例外")
+        void quickEnd_notStarted_throwsException() {
+            Long userId = 10L;
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務").startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(18, 0)).build();
+
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+                LocalDate mockToday = LocalDate.of(2026, 6, 1);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(eq(userId), any(LocalDate.class))).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> service.quickEndAttendance(userId, false))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("本日の勤務開始時刻が記録されていません");
+            }
+        }
+
+        @Test
+        @DisplayName("正常系: 休日出勤の場合は休出イベントタイプと休日出勤時間を設定")
+        void quickEnd_holidayWork_setsHolidayWork() {
+            Long userId = 10L;
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務").startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(18, 0)).build();
+
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+            when(eventTypeMapper.selectByCode("休出")).thenReturn(Optional.of(EventType.builder().eventTypeId(2).build()));
+
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+
+                LocalDate mockToday = LocalDate.of(2026, 6, 1);
+                Instant mockStart = Instant.parse("2026-06-01T00:00:00Z"); // 09:00 JST
+                Instant mockEnd = Instant.parse("2026-06-01T04:00:00Z");   // 13:00 JST (実働4時間)
+
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.currentTimeJapan()).thenReturn(LocalTime.of(13, 0));
+                mockedDateTimeUtil.when(() -> DateTimeUtil.now()).thenReturn(mockEnd);
+
+                AttendanceRecord existing = AttendanceRecord.builder()
+                        .userId(userId).attendanceDate(mockStart).startTime(mockStart).build();
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(eq(userId), any(LocalDate.class)))
+                        .thenAnswer(invocation -> {
+                            LocalDate date = invocation.getArgument(1);
+                            if (date.equals(mockToday)) {
+                                return Optional.of(existing);
+                            }
+                            return Optional.empty();
+                        });
+
+                AttendanceRecord result = service.quickEndAttendance(userId, true);
+
+                assertThat(result.getWorkingHours()).isEqualTo(0.0);
+                assertThat(result.getHolidayWorkHours()).isGreaterThan(0.0);
+                assertThat(result.getEventTypeId()).isEqualTo(2);
+                verify(attendanceRecordMapper).update(existing);
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // addBreakTime
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("addBreakTime")
+    class AddBreakTime {
+
+        @Test
+        @DisplayName("正常系: 既存の休憩時間に指定時間を加算する")
+        void addBreak_success() {
+            Long userId = 10L;
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+                LocalDate mockToday = LocalDate.of(2026, 6, 1);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.now()).thenReturn(Instant.parse("2026-06-01T12:00:00Z"));
+
+                AttendanceRecord existing = AttendanceRecord.builder()
+                        .startTime(Instant.parse("2026-06-01T09:00:00Z"))
+                        .breakTimeMinutes(30)
+                        .build();
+
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, mockToday)).thenReturn(Optional.of(existing));
+
+                service.addBreakTime(userId, 15);
+
+                assertThat(existing.getBreakTimeMinutes()).isEqualTo(45);
+                verify(attendanceRecordMapper).update(existing);
+            }
+        }
+
+        @Test
+        @DisplayName("異常系: 開始打刻がない場合は例外")
+        void addBreak_notStarted_throwsException() {
+            Long userId = 10L;
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+                LocalDate mockToday = LocalDate.of(2026, 6, 1);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, mockToday)).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> service.addBreakTime(userId, 15))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("本日の勤務開始時刻が記録されていません");
+            }
+        }
+    }
+}

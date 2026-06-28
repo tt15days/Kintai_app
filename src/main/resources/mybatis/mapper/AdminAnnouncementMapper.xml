@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.AdminAnnouncementMapper">
+
+    <resultMap id="announcementResultMap" type="com.attendance.app.entity.AdminAnnouncement">
+        <id column="announcement_id" property="announcementId"/>
+        <result column="title" property="title"/>
+        <result column="message" property="message"/>
+        <result column="is_active" property="isActive"/>
+        <result column="display_start_date" property="displayStartDate" jdbcType="TIMESTAMP"
+                typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="display_end_date" property="displayEndDate" jdbcType="TIMESTAMP"
+                typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"
+                typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"
+                typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="is_deleted" property="isDeleted"/>
+    </resultMap>
+
+    <!-- 現在表示対象のお知らせ（有効・表示期間内） -->
+    <select id="selectActive" resultMap="announcementResultMap">
+        SELECT announcement_id,
+               title,
+               message,
+               is_active,
+               display_start_date,
+               display_end_date,
+               created_by,
+               created_at,
+               updated_at,
+               is_deleted
+          FROM admin_announcements
+         WHERE is_active = true
+           AND is_deleted = false
+           AND display_start_date &lt;= NOW()
+           AND (display_end_date IS NULL OR display_end_date &gt;= NOW())
+         ORDER BY created_at DESC
+    </select>
+
+    <!-- 全お知らせ一覧（管理者用） -->
+    <select id="selectAll" resultMap="announcementResultMap">
+        SELECT announcement_id,
+               title,
+               message,
+               is_active,
+               display_start_date,
+               display_end_date,
+               created_by,
+               created_at,
+               updated_at,
+               is_deleted
+          FROM admin_announcements
+         WHERE is_deleted = false
+         ORDER BY created_at DESC
+    </select>
+
+    <!-- IDで1件取得 -->
+    <select id="selectById" resultMap="announcementResultMap">
+        SELECT announcement_id,
+               title,
+               message,
+               is_active,
+               display_start_date,
+               display_end_date,
+               created_by,
+               created_at,
+               updated_at,
+               is_deleted
+          FROM admin_announcements
+         WHERE announcement_id = #{announcementId}
+           AND is_deleted = false
+    </select>
+
+    <!-- 登録 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="announcementId">
+        INSERT INTO admin_announcements (
+            title,
+            message,
+            is_active,
+            display_start_date,
+            display_end_date,
+            created_by,
+            created_at,
+            updated_at,
+            is_deleted
+        ) VALUES (
+            #{title},
+            #{message},
+            #{isActive},
+            #{displayStartDate,jdbcType=TIMESTAMP,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler},
+            #{displayEndDate,jdbcType=TIMESTAMP,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler},
+            #{createdBy},
+            NOW(),
+            NOW(),
+            COALESCE(#{isDeleted}, false)
+        )
+    </insert>
+
+    <!-- 更新 -->
+    <update id="update">
+        UPDATE admin_announcements
+           SET title              = #{title},
+               message            = #{message},
+               is_active          = #{isActive},
+               display_start_date = #{displayStartDate,jdbcType=TIMESTAMP,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler},
+               display_end_date   = #{displayEndDate,jdbcType=TIMESTAMP,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler},
+               is_deleted         = #{isDeleted},
+               updated_at         = NOW()
+         WHERE announcement_id = #{announcementId}
+    </update>
+
+    <!-- 削除 -->
+    <update id="deleteById">
+        UPDATE admin_announcements
+           SET is_deleted = true,
+               updated_at = NOW()
+         WHERE announcement_id = #{announcementId}
+    </update>
+
+</mapper>

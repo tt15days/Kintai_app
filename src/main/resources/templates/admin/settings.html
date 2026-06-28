@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" layout:decorate="~{layout/base}" th:with="activePage='settings'">
+<head>
+    <title>システム設定</title>
+</head>
+<body>
+    <h2 layout:fragment="page-title">システム設定</h2>
+
+    <div layout:fragment="content" class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+        <!-- 勤怠期間設定 -->
+        <div class="card">
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-calendar-days text-primary"></i> 勤怠期間設定</h3>
+            <form method="post" th:action="@{/admin/settings/attendance-period}" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
+                <div class="flex flex-col">
+                    <label for="startDay" class="form-label">開始日（前月）</label>
+                    <input type="number" class="form-input font-mono h-11" id="startDay" name="startDay"
+                           th:value="${attendancePeriodStartDay}" min="1" max="28" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="endDay" class="form-label">終了日（当月）</label>
+                    <input type="number" class="form-input font-mono h-11" id="endDay" name="endDay"
+                           th:value="${attendancePeriodEndDay}" min="1" max="28" required>
+                </div>
+                <div class="md:col-span-2 flex justify-end pt-2">
+                    <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
+                        <i class="fa-solid fa-save"></i> 保存
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- バッチ処理設定 -->
+        <div class="card">
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-rotate text-primary"></i> バッチ処理設定</h3>
+            <form method="post" th:action="@{/admin/settings/batch}" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
+                <div class="flex flex-col">
+                    <label for="daysAfterEnd" class="form-label">月次集計期限(終了日後日数)</label>
+                    <input type="number" class="form-input font-mono h-11" id="daysAfterEnd" name="daysAfterEnd"
+                           th:value="${batchSettingDaysAfterEnd}" min="1" max="14" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="grantMonth" class="form-label">有給付与月</label>
+                    <input type="number" class="form-input font-mono h-11" id="grantMonth" name="grantMonth"
+                           th:value="${batchSettingGrantMonth}" min="1" max="12" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="grantDay" class="form-label">有給付与日</label>
+                    <input type="number" class="form-input font-mono h-11" id="grantDay" name="grantDay"
+                           th:value="${batchSettingGrantDay}" min="1" max="28" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="reminderDay" class="form-label">リマインド日</label>
+                    <input type="number" class="form-input font-mono h-11" id="reminderDay" name="reminderDay"
+                           th:value="${batchSettingReminderDay}" min="1" max="28" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="reminderHour" class="form-label">リマインド時刻</label>
+                    <input type="number" class="form-input font-mono h-11" id="reminderHour" name="reminderHour"
+                           th:value="${batchSettingReminderHour}" min="0" max="23" required>
+                </div>
+                <div class="md:col-span-3 flex justify-end pt-2">
+                    <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
+                        <i class="fa-solid fa-save"></i> 保存
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- アラート閾値設定 -->
+        <div class="card">
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-primary"></i> アラート閾値設定</h3>
+            <form method="post" th:action="@{/admin/settings/alert}" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
+                <div class="flex flex-col">
+                    <label for="article36Limit1" class="form-label">36協定 注意 (時間)</label>
+                    <input type="number" class="form-input font-mono h-11" id="article36Limit1" name="article36Limit1"
+                           th:value="${alertArticle36Limit1}" min="0" max="100" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="article36Limit2" class="form-label">36協定 超過 (時間)</label>
+                    <input type="number" class="form-input font-mono h-11" id="article36Limit2" name="article36Limit2"
+                           th:value="${alertArticle36Limit2}" min="0" max="150" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="paidLeaveMonths" class="form-label">有休期限 (月数)</label>
+                    <input type="number" class="form-input font-mono h-11" id="paidLeaveMonths" name="paidLeaveMonths"
+                           th:value="${alertPaidLeaveMonths}" min="1" max="24" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="paidLeaveDays" class="form-label">有休残日数 (アラート閾値)</label>
+                    <input type="number" class="form-input font-mono h-11" id="paidLeaveDays" name="paidLeaveDays"
+                           th:value="${alertPaidLeaveDays}" min="0" max="40" required>
+                </div>
+                <div class="md:col-span-2 flex justify-end pt-2">
+                    <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
+                        <i class="fa-solid fa-save"></i> 保存
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 年次有給休暇の自動付与設定 -->
+        <div class="card">
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-cogs text-primary"></i> 年次有給休暇の自動付与設定</h3>
+            <p class="text-sm text-txt-secondary mb-4">
+                設定した日付の深夜0時に、全従業員に対して指定した日数の有給休暇が自動で付与されます。
+            </p>
+            <form th:action="@{/admin/settings}" method="post" class="space-y-4">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
+                <div>
+                    <label class="form-label" for="paidLeaveGrantDate">付与日 (MM-DD)</label>
+                    <input type="text" id="paidLeaveGrantDate" name="paidLeaveGrantDate" class="form-input font-mono h-11" th:value="${paidLeaveGrantDate}" placeholder="例: 04-01" required pattern="^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$">
+                    <small class="text-xs text-txt-secondary opacity-70 block mt-2">月と日をハイフン区切りで入力してください。</small>
+                </div>
+                <div>
+                    <label class="form-label" for="paidLeaveGrantDays">付与日数</label>
+                    <input type="number" id="paidLeaveGrantDays" name="paidLeaveGrantDays" class="form-input font-mono h-11" th:value="${paidLeaveGrantDays}" min="1" max="40" required>
+                </div>
+                <div class="pt-2">
+                    <button type="submit" class="btn btn-primary w-full gap-2 text-sm">
+                        <i class="fa-solid fa-save"></i> 設定を保存する
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- CSV出力ファイル名パターン設定 -->
+        <div class="card">
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-file-csv text-primary"></i> CSV出力ファイル名パターン設定</h3>
+            <p class="text-sm text-txt-secondary mb-4">
+                CSVをダウンロードする際のファイル名パターンを指定します。<br>
+                使用可能なトークン: <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{yyyy}</code>(年), <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{MM}</code>(月), <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{userId}</code>(ユーザーID), <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{name}</code>(氏名), <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{downloadAt}</code>(ダウンロード日時)
+            </p>
+            <form th:action="@{/admin/settings/csv-pattern}" method="post" class="space-y-4">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
+                <div>
+                    <label class="form-label" for="pattern">ファイル名パターン</label>
+                    <input type="text" id="pattern" name="pattern" class="form-input font-mono h-11" th:value="${csvFilenamePattern}" placeholder="例: {yyyy}-{MM}_{userId}_{name}_{downloadAt}" required>
+                    <small class="text-xs text-txt-secondary opacity-70 block mt-2">※ 拡張子（.csv）は自動的に付与されます。すべてのトークンを含める必要があります。</small>
+                </div>
+                <div class="pt-2">
+                    <button type="submit" class="btn btn-primary w-full gap-2 text-sm">
+                        <i class="fa-solid fa-save"></i> 設定を保存する
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- システム名設定 -->
+        <div class="card">
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-desktop text-primary"></i> システム名表示設定</h3>
+            <p class="text-sm text-txt-secondary mb-4">
+                ログイン画面およびサイドバーに表示されるシステム名（初期値: 勤怠管理システム）を指定します。
+            </p>
+            <form th:action="@{/admin/settings/system-name}" method="post" class="space-y-4">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
+                <div>
+                    <label class="form-label" for="systemName">システム名</label>
+                    <input type="text" id="systemName" name="systemName" class="form-input font-mono h-11" th:value="${systemName}" placeholder="例: 勤怠管理システム" required>
+                </div>
+                <div class="pt-2">
+                    <button type="submit" class="btn btn-primary w-full gap-2 text-sm">
+                        <i class="fa-solid fa-save"></i> 設定を保存する
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- コピーライト設定 -->
+        <div class="card">
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-regular fa-copyright text-primary"></i> コピーライト表示設定</h3>
+            <p class="text-sm text-txt-secondary mb-4">
+                画面下部に表示されるコピーライトの表示文言を指定します。
+            </p>
+            <form th:action="@{/admin/settings/copyright}" method="post" class="space-y-4">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
+                <div>
+                    <label class="form-label" for="copyrightText">表示文言</label>
+                    <input type="text" id="copyrightText" name="copyrightText" class="form-input font-mono h-11" th:value="${copyrightText}" placeholder="例: © 2026 勤怠管理システム" required>
+                </div>
+                <div class="pt-2">
+                    <button type="submit" class="btn btn-primary w-full gap-2 text-sm">
+                        <i class="fa-solid fa-save"></i> 設定を保存する
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 社員番号プレフィックス設定 -->
+        <div class="card">
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-id-badge text-primary"></i> 社員番号プレフィックス設定</h3>
+            <p class="text-sm text-txt-secondary mb-4">
+                ユーザー作成時に自動生成される社員番号の先頭文字列を指定します。空欄の場合は数値のみ（例: <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">004</code>）、<code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">EMP-</code> を設定すると <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">EMP-004</code> のように生成されます。
+            </p>
+            <form th:action="@{/admin/settings/emp-no-prefix}" method="post" class="space-y-4">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
+                <div>
+                    <label class="form-label" for="empNoPrefix">プレフィックス（空欄で数値のみ）</label>
+                    <input type="text" id="empNoPrefix" name="empNoPrefix" class="form-input font-mono h-11" th:value="${empNoPrefix}" placeholder="例: EMP-（空欄可）" maxlength="50">
+                </div>
+                <div class="pt-2">
+                    <button type="submit" class="btn btn-primary w-full gap-2 text-sm">
+                        <i class="fa-solid fa-save"></i> 設定を保存する
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 祝日設定 -->
+        <div class="card animate-fade-in" id="holidays-section">
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-calendar-alt text-primary"></i> 祝日設定</h3>
+            
+            <!-- 現在の祝日数 -->
+            <div class="mb-6">
+                <p class="text-txt-primary text-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-info-circle text-primary"></i> 
+                    現在登録されている祝日: <strong th:text="${holidayCount}" class="text-primary text-xl font-bold font-mono">0</strong> 件
+                </p>
+            </div>
+
+            <!-- CSVアップロード -->
+            <div class="mb-6">
+                <h4 class="text-sm font-bold text-txt-primary mb-3 flex items-center gap-1.5"><i class="fa-solid fa-file-csv text-primary"></i> CSVファイルをアップロード</h4>
+                <form th:action="@{/admin/settings/holidays/upload}" method="post" enctype="multipart/form-data" class="space-y-4">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
+                    <div class="flex flex-col">
+                        <label for="csvFile" class="form-label">CSVファイル選択</label>
+                        <input type="file" class="form-input max-w-md file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" id="csvFile" name="file" accept=".csv" required>
+                        <small class="text-xs text-txt-secondary opacity-70 block mt-2">
+                            形式: 日付(YYYY-MM-DD),祝日名<br>
+                            例: 2026-01-01,元日
+                        </small>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
+                            <i class="fa-solid fa-upload"></i> アップロード
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- プレビューセクション -->
+            <div class="card mb-6 border-l-4 border-l-warning p-4 bg-warning/5" th:if="${previewHolidays != null and !previewHolidays.isEmpty()}">
+                <h3 class="text-base font-bold text-txt-primary mb-4 flex items-center gap-1.5"><i class="fa-solid fa-binoculars text-primary"></i> プレビュー・編集 (<span id="rowCount" class="font-mono">[[${#lists.size(previewHolidays)}]]</span>件)</h3>
+                
+                <div class="table-container max-h-[400px] border border-glass-border/30 rounded-xl mb-4 overflow-y-auto">
+                    <table class="table-custom" id="previewTable">
+                        <thead class="bg-black/10 text-txt-primary sticky top-0 backdrop-blur-md z-10">
+                            <tr>
+                                <th width="40%">日付 (YYYY-MM-DD)</th>
+                                <th width="45%">祝日名</th>
+                                <th width="15%">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-glass-border/10">
+                            <tr th:each="holiday : ${previewHolidays}" class="data-row">
+                                <td class="p-2"><input type="date" class="form-input text-sm font-mono holiday-date" th:value="${holiday.holidayDate}"></td>
+                                <td class="p-2"><input type="text" class="form-input text-sm holiday-name" th:value="${holiday.name}"></td>
+                                <td class="p-2 text-center">
+                                    <button type="button" class="btn btn-danger p-2 rounded-lg text-xs delete-row" title="この行を削除">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mb-4">
+                    <button type="button" id="addRowBtn" class="btn bg-primary/10 hover:bg-primary/20 text-primary border-0 gap-2 text-sm h-11">
+                        <i class="fa-solid fa-plus"></i> 行を追加
+                    </button>
+                </div>
+                
+                <div class="alert bg-blue-500/10 border border-blue-500/20 text-blue-500 mb-6">
+                    <p class="m-0">
+                        <i class="fa-solid fa-lightbulb"></i> 
+                        データを編集・追加・削除できます。完了したら「設定を確認して保存」ボタンをクリックしてください。
+                    </p>
+                </div>
+                
+                <div class="flex gap-3">
+                    <form th:action="@{/admin/settings/holidays/confirm}" method="post" id="confirmForm" class="inline-block m-0">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
+                        <input type="hidden" id="holidaysData" name="holidaysData">
+                        <button type="submit" class="btn btn-success gap-2 text-sm h-11" id="submitBtn">
+                            <i class="fa-solid fa-check"></i> 設定を確認して保存
+                        </button>
+                    </form>
+                    <a th:href="@{/admin/settings/holidays/cancel}" class="btn btn-flat gap-2 text-sm h-11 flex items-center justify-center">
+                        <i class="fa-solid fa-times"></i> キャンセル
+                    </a>
+                </div>
+            </div>
+
+            <!-- 保存済み祝日リスト表示セクション -->
+            <div class="card mb-6 border-l-4 border-l-success p-4 bg-success/5" th:if="${savedHolidays != null and !savedHolidays.isEmpty()}">
+                <h3 class="text-base font-bold text-txt-primary mb-4 flex items-center gap-1.5"><i class="fa-solid fa-check-circle text-success"></i> 保存済み祝日リスト (<span th:text="${#lists.size(savedHolidays)}">0</span>件)</h3>
+                
+                <div class="table-container max-h-[300px] border border-glass-border/30 rounded-xl mb-4 overflow-y-auto">
+                    <table class="table-custom">
+                        <thead class="bg-black/10 text-txt-primary sticky top-0 backdrop-blur-md z-10">
+                            <tr>
+                                <th width="35%">日付</th>
+                                <th width="65%">祝日名</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-glass-border/10">
+                            <tr th:each="holiday : ${savedHolidays}">
+                                <td class="font-mono p-2" th:text="${holiday.holidayDate}"></td>
+                                <td class="p-2" th:text="${holiday.name}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="flex gap-3">
+                    <a th:href="@{/admin/settings}" class="btn btn-flat gap-2 text-sm h-11 flex items-center justify-center">
+                        <i class="fa-solid fa-sync"></i> リストを閉じる
+                    </a>
+                </div>
+            </div>
+
+            <!-- 初期表示時の登録済み祝日リスト -->
+            <div th:if="${existingHolidays != null and !existingHolidays.isEmpty() and savedHolidays == null and (previewHolidays == null or previewHolidays.isEmpty())}">
+                <h4 class="text-sm font-bold text-txt-primary mb-3 flex items-center gap-1.5"><i class="fa-solid fa-database text-primary"></i> 登録済み祝日 (<span th:text="${#lists.size(existingHolidays)}">0</span>件)</h4>
+                
+                <div class="table-container max-h-[400px] border border-glass-border/30 rounded-xl mb-4 overflow-y-auto">
+                    <table class="table-custom">
+                        <thead class="bg-black/10 text-txt-primary sticky top-0 backdrop-blur-md z-10">
+                            <tr>
+                                <th width="35%">日付</th>
+                                <th width="65%">祝日名</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-glass-border/10">
+                            <tr th:each="holiday : ${existingHolidays}">
+                                <td class="font-mono p-2" th:text="${holiday.holidayDate}"></td>
+                                <td class="p-2" th:text="${holiday.name}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <p class="text-xs text-txt-secondary opacity-70 mt-2">
+                    <i class="fa-solid fa-info-circle"></i> 
+                    現在データベースに登録されている祝日一覧です。新しいCSVファイルをアップロードするとすべての祝日が置き換わります。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <th:block layout:fragment="js">
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const addRowBtn = document.getElementById('addRowBtn');
+                const tableBody = document.getElementById('tableBody');
+                const confirmForm = document.getElementById('confirmForm');
+                const holidaysDataInput = document.getElementById('holidaysData');
+                const rowCountSpan = document.getElementById('rowCount');
+
+                // 行を追加
+                if (addRowBtn) {
+                    addRowBtn.addEventListener('click', function() {
+                        const newRow = document.createElement('tr');
+                        newRow.className = 'data-row';
+                        newRow.innerHTML = `
+                            <td class="p-2"><input type="date" class="form-input text-sm font-mono holiday-date"></td>
+                            <td class="p-2"><input type="text" class="form-input text-sm holiday-name" placeholder="祝日名を入力"></td>
+                            <td class="p-2 text-center">
+                                <button type="button" class="btn btn-danger p-2 rounded-lg text-xs delete-row" title="この行を削除">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </td>
+                        `;
+                        tableBody.appendChild(newRow);
+                        attachDeleteHandler(newRow.querySelector('.delete-row'));
+                        updateRowCount();
+                    });
+                }
+
+                // 削除ボタンのハンドラ
+                function attachDeleteHandler(deleteBtn) {
+                    deleteBtn.addEventListener('click', function() {
+                        const row = this.closest('tr');
+                        row.remove();
+                        updateRowCount();
+                    });
+                }
+
+                // 既存の削除ボタンにハンドラを付与
+                document.querySelectorAll('.delete-row').forEach(btn => {
+                    attachDeleteHandler(btn);
+                });
+
+                // 行数を更新
+                function updateRowCount() {
+                    const count = document.querySelectorAll('#tableBody .data-row').length;
+                    if (rowCountSpan) {
+                        rowCountSpan.textContent = count;
+                    }
+                }
+
+                // フォーム送信時にテーブルデータをJSON形式で格納
+                if (confirmForm) {
+                    confirmForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+
+                        const holidays = [];
+                        let hasError = false;
+                        
+                        document.querySelectorAll('#tableBody .data-row').forEach((row, index) => {
+                            const dateInput = row.querySelector('.holiday-date');
+                            const nameInput = row.querySelector('.holiday-name');
+                            
+                            const date = dateInput.value;
+                            const name = nameInput.value;
+
+                            if (!date) {
+                                alert(`行 ${index + 1}: 日付を入力してください`);
+                                dateInput.focus();
+                                hasError = true;
+                                return;
+                            }
+                            if (!name) {
+                                alert(`行 ${index + 1}: 祝日名を入力してください`);
+                                nameInput.focus();
+                                hasError = true;
+                                return;
+                            }
+
+                            holidays.push({
+                                holidayDate: date,
+                                name: name
+                            });
+                        });
+
+                        if (hasError) {
+                            return;
+                        }
+
+                        if (holidays.length === 0) {
+                            alert('少なくとも1つの祝日を登録してください');
+                            return;
+                        }
+
+                        // JSONとして隠しフィールドに格納
+                        const jsonData = JSON.stringify(holidays);
+                        holidaysDataInput.value = jsonData;
+                        
+                        // フォームを送信
+                        this.submit();
+                    });
+                }
+            });
+        </script>
+    </th:block>
+</body>
+</html>

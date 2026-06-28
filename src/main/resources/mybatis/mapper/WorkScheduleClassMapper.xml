@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.WorkScheduleClassMapper">
+
+    <resultMap id="workScheduleClassResultMap" type="com.attendance.app.entity.WorkScheduleClass">
+        <id column="class_id" property="classId"/>
+        <result column="name" property="name"/>
+        <result column="work_location" property="workLocation"/>
+        <result column="address" property="address"/>
+        <result column="station" property="station"/>
+        <result column="telephone" property="telephone"/>
+        <result column="section_name" property="sectionName"/>
+        <result column="folder_name" property="folderName"/>
+        <result column="tags" property="tags"/>
+        <result column="is_active" property="isActive"/>
+        <result column="max_hours" property="maxHours"/>
+        <result column="min_hours" property="minHours"/>
+        <result column="start_time" property="startTime" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="end_time" property="endTime" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="break_start_time" property="breakStartTime" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="break_end_time" property="breakEndTime" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="break_start_time_2" property="breakStartTime2" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="break_end_time_2" property="breakEndTime2" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="break_start_time_3" property="breakStartTime3" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="break_end_time_3" property="breakEndTime3" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="break_start_time_4" property="breakStartTime4" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="break_end_time_4" property="breakEndTime4" typeHandler="com.attendance.app.config.typehandler.LocalTimeTypeHandler"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="workScheduleClassResultMap">
+        SELECT * FROM work_schedule_classes ORDER BY name ASC
+    </select>
+
+    <select id="selectById" resultMap="workScheduleClassResultMap">
+        SELECT * FROM work_schedule_classes WHERE class_id = #{classId}
+    </select>
+
+    <select id="selectByName" resultMap="workScheduleClassResultMap">
+        SELECT * FROM work_schedule_classes WHERE name = #{name}
+    </select>
+
+    <select id="selectAllActive" resultMap="workScheduleClassResultMap">
+        SELECT * FROM work_schedule_classes WHERE is_active = TRUE ORDER BY name ASC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="classId">
+        INSERT INTO work_schedule_classes (name, work_location,
+                                           address, station, telephone, section_name,
+                                           folder_name, tags,
+                                           is_active, max_hours, min_hours,
+                                           start_time, end_time,
+                                           break_start_time, break_end_time,
+                                           break_start_time_2, break_end_time_2,
+                                           break_start_time_3, break_end_time_3,
+                                           break_start_time_4, break_end_time_4,
+                                           created_at, updated_at)
+        VALUES (
+            #{name},
+            #{workLocation},
+            #{address},
+            #{station},
+            #{telephone},
+            #{sectionName},
+            #{folderName},
+            #{tags},
+            #{isActive},
+            #{maxHours},
+            #{minHours},
+            #{startTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{endTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{breakStartTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{breakEndTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{breakStartTime2, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{breakEndTime2, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{breakStartTime3, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{breakEndTime3, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{breakStartTime4, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            #{breakEndTime4, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE work_schedule_classes
+        SET name            = #{name},
+            work_location   = #{workLocation},
+            address         = #{address},
+            station         = #{station},
+            telephone       = #{telephone},
+            section_name    = #{sectionName},
+            folder_name     = #{folderName},
+            tags            = #{tags},
+            is_active       = #{isActive},
+            max_hours       = #{maxHours},
+            min_hours       = #{minHours},
+            start_time      = #{startTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            end_time        = #{endTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            break_start_time   = #{breakStartTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            break_end_time     = #{breakEndTime, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            break_start_time_2 = #{breakStartTime2, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            break_end_time_2   = #{breakEndTime2, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            break_start_time_3 = #{breakStartTime3, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            break_end_time_3   = #{breakEndTime3, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            break_start_time_4 = #{breakStartTime4, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            break_end_time_4   = #{breakEndTime4, typeHandler=com.attendance.app.config.typehandler.LocalTimeTypeHandler},
+            updated_at      = NOW()
+        WHERE class_id = #{classId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM work_schedule_classes WHERE class_id = #{classId}
+    </delete>
+
+    <select id="existsByNameAndNotId" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1 FROM work_schedule_classes
+            WHERE name = #{name}
+              AND class_id != #{classId}
+        )
+    </select>
+
+    <select id="existsByName" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM work_schedule_classes WHERE name = #{name})
+    </select>
+
+</mapper>

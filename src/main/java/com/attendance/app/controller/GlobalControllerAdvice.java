@@ -1,0 +1,85 @@
+package com.attendance.app.controller;
+
+import com.attendance.app.entity.User;
+import com.attendance.app.mapper.SystemSettingMapper;
+import com.attendance.app.security.SecurityUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ModelAttribute;
+
+/**
+ * Global Controller Advice - 全コントローラー共通のデータ処理
+ *
+ * 全ての画面表示用モデルに対して、ログイン中のユーザー情報を自動的に追加します。
+ * これにより、サイドバーなどの共通コンポーネントでユーザー情報を安全に表示できます。
+ */
+@Slf4j
+@ControllerAdvice
+@RequiredArgsConstructor
+public class GlobalControllerAdvice {
+
+    private final SecurityUtil securityUtil;
+    private final SystemSettingMapper systemSettingMapper;
+
+    /**
+     * ログイン中のユーザー情報をモデルに追加します。
+     *
+     * @param model Spring MVC モデル
+     */
+    @ModelAttribute
+    public void addCurrentUser(Model model) {
+        try {
+            if (securityUtil.isAuthenticated() && securityUtil.getCurrentUsername().isPresent()) {
+                String username = securityUtil.getCurrentUsername().get();
+                if (!"anonymousUser".equals(username)) {
+                    User currentUser = securityUtil.getCurrentUser();
+                    model.addAttribute("currentUser", currentUser);
+                }
+            }
+        } catch (Exception e) {
+            // 未ログイン時または匿名ユーザーアクセス時は例外を無視します
+            log.trace("グローバルユーザー情報の取得をスキップしました: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 共通のコピーライト表示文言をモデルに追加します。
+     *
+     * @param model Spring MVC モデル
+     */
+    @ModelAttribute
+    public void addCopyrightText(Model model) {
+        try {
+            String copyright = systemSettingMapper.selectValueByKey("COPYRIGHT_TEXT");
+            if (copyright == null || copyright.trim().isEmpty()) {
+                copyright = "© 2026 勤怠管理システム";
+            }
+            model.addAttribute("copyrightText", copyright);
+        } catch (Exception e) {
+            log.warn("コピーライト設定の取得に失敗しました。デフォルト値を使用します。: {}", e.getMessage());
+            model.addAttribute("copyrightText", "© 2026 勤怠管理システム");
+        }
+    }
+
+    /**
+     * 共通のシステム名表示文言をモデルに追加します。
+     *
+     * @param model Spring MVC モデル
+     */
+    @ModelAttribute
+    public void addSystemName(Model model) {
+        try {
+            String systemName = systemSettingMapper.selectValueByKey("SYSTEM_NAME");
+            if (systemName == null || systemName.trim().isEmpty()) {
+                systemName = "勤怠管理システム";
+            }
+            model.addAttribute("systemName", systemName);
+        } catch (Exception e) {
+            log.warn("システム名設定の取得に失敗しました。デフォルト値を使用します。: {}", e.getMessage());
+            model.addAttribute("systemName", "勤怠管理システム");
+        }
+    }
+}
+
