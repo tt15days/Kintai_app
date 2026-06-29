@@ -50,7 +50,6 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT check_user_role CHECK (user_role IN ('ADMIN', 'USER'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_user_role ON users(user_role);
 CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
 
@@ -108,7 +107,6 @@ CREATE TABLE IF NOT EXISTS work_schedule_classes (
         )
 );
 
-CREATE INDEX IF NOT EXISTS idx_work_schedule_classes_name ON work_schedule_classes(name);
 
 -- ============================================================
 -- Event Types テーブル（勤怠事由マスタ）
@@ -172,7 +170,6 @@ CREATE TABLE IF NOT EXISTS attendance_records (
 CREATE INDEX IF NOT EXISTS idx_attendance_records_user_id ON attendance_records(user_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_class_id ON attendance_records(class_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_attendance_date ON attendance_records(attendance_date);
-CREATE INDEX IF NOT EXISTS idx_attendance_records_user_date ON attendance_records(user_id, attendance_date);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_working_hours ON attendance_records(user_id, working_hours);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_overtime ON attendance_records(user_id, overtime_hours);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_event_type ON attendance_records(event_type_id);
@@ -238,7 +235,6 @@ CREATE TABLE IF NOT EXISTS holidays (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(holiday_date);
 
 -- ============================================================
 -- Attendance Submissions テーブル
@@ -265,6 +261,7 @@ CREATE TABLE IF NOT EXISTS attendance_submissions (
 CREATE INDEX IF NOT EXISTS idx_attendance_submissions_status ON attendance_submissions(status);
 CREATE INDEX IF NOT EXISTS idx_attendance_submissions_month ON attendance_submissions(target_year_month);
 
+
 -- ============================================================
 -- Attendance Approver Assignments テーブル
 -- ============================================================
@@ -289,11 +286,6 @@ CREATE TABLE IF NOT EXISTS attendance_user_approvers (
     CONSTRAINT uq_attendance_user_approvers UNIQUE (applicant_user_id, approver_user_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_attendance_department_approvers_department
-    ON attendance_department_approvers(department_name);
-
-CREATE INDEX IF NOT EXISTS idx_attendance_user_approvers_applicant
-    ON attendance_user_approvers(applicant_user_id);
 
 -- ============================================================
 -- system_settings テーブル（システム設定マスタ）
@@ -417,8 +409,6 @@ CREATE TABLE IF NOT EXISTS paid_leave_balance (
 
 CREATE INDEX IF NOT EXISTS idx_plb_user_id
     ON paid_leave_balance(user_id);
-CREATE INDEX IF NOT EXISTS idx_plb_user_year
-    ON paid_leave_balance(user_id, grant_year);
 CREATE INDEX IF NOT EXISTS idx_plb_expiry_date
     ON paid_leave_balance(expiry_date);
 

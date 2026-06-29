@@ -58,6 +58,7 @@
                     <!-- 月の選択 -->
                     <div class="mb-6">
                         <form th:if="${user != null}" method="get" th:action="@{/attendance/approval/{userId}/detail(userId=${user.userId})}" class="flex flex-wrap items-end gap-4">
+                            <input type="hidden" name="from" th:value="${from}" th:if="${from != null}">
                             <div class="flex flex-col min-w-[200px]">
                                 <label for="yearMonth" class="form-label">
                                     <i class="fas fa-calendar text-txt-secondary/80"></i> 表示月
@@ -129,7 +130,80 @@
 
                     <!-- 勤怠記録テーブル -->
                     <h5 class="text-sm font-bold text-txt-secondary mb-3 flex items-center gap-1.5"><i class="fas fa-table text-txt-secondary/80"></i> 勤怠記録</h5>
-                    <div class="table-container mb-6">
+                    
+                    <!-- 管理者アカウントの場合（一括編集フォーム） -->
+                    <form th:if="${#authorization.expression('hasRole(''ADMIN'')')}" method="post" th:action="@{/attendance/approval/{userId}/detail/saveAll(userId=${user.userId})}" onsubmit="return validateBulkSave(this)">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <input type="hidden" name="yearMonth" th:value="${yearMonth}" />
+                        <input type="hidden" name="from" th:value="${from}" th:if="${from != null}" />
+                        <div class="table-container mb-6">
+                            <table class="table-custom mb-0">
+                                <thead class="bg-black/10 text-txt-primary">
+                                    <tr>
+                                        <th><i class="fas fa-calendar"></i> 日付</th>
+                                        <th><i class="fas fa-calendar-alt"></i> 曜日</th>
+                                        <th>開始時刻</th>
+                                        <th>終了時刻</th>
+                                        <th>事由</th>
+                                        <th><i class="fas fa-clock"></i> 勤務時間</th>
+                                        <th><i class="fas fa-hourglass-end"></i> 残業時間</th>
+                                        <th><i class="fas fa-comment"></i> 備考</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-glass-border/10">
+                                    <tr th:each="record : ${records}"
+                                        th:with="recDate=${recordDateMap != null ? recordDateMap[record.recordId] : null}"
+                                        th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'table-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'table-primary' : '')}">
+                                        <td class="font-mono" th:text="${recDate != null ? #temporals.format(recDate, 'yyyy-MM-dd') : '-'}"></td>
+                                        <td class="font-mono" th:text="${recDate != null ? #temporals.format(recDate, 'E') : '-'}"></td>
+                                        <td>
+                                            <input type="hidden" name="attendanceDate" th:value="${recDate}">
+                                            <input type="time" name="startTime" class="form-input max-w-[120px] p-2 font-mono"
+                                                   th:value="${recordStartTimeMap != null ? recordStartTimeMap[record.recordId] : ''}">
+                                        </td>
+                                        <td>
+                                            <input type="time" name="endTime" class="form-input max-w-[120px] p-2 font-mono"
+                                                   th:value="${recordEndTimeMap != null ? recordEndTimeMap[record.recordId] : ''}">
+                                        </td>
+                                        <td>
+                                            <select name="eventTypeId" class="form-select max-w-[120px] p-2">
+                                                <option th:each="et : ${eventTypes}"
+                                                        th:value="${et.eventTypeId}"
+                                                        th:text="${et.displayName}"
+                                                        th:selected="${record.eventTypeId != null ? record.eventTypeId == et.eventTypeId : et.code == '通常'}">
+                                                </option>
+                                            </select>
+                                        </td>
+                                        <td class="font-mono" th:text="${record.workingHours != null ? (#numbers.formatDecimal(record.workingHours, 1, 2) + '時間') : '-'}"></td>
+                                        <td>
+                                            <span th:if="${recordOvertimeHoursMap != null and recordOvertimeHoursMap[record.recordId] != null and recordOvertimeHoursMap[record.recordId] > 0}" class="text-danger font-bold font-mono">
+                                                <span th:text="${#numbers.formatDecimal(recordOvertimeHoursMap[record.recordId], 1, 2)}"></span>時間
+                                            </span>
+                                            <span th:unless="${recordOvertimeHoursMap != null and recordOvertimeHoursMap[record.recordId] != null and recordOvertimeHoursMap[record.recordId] > 0}" class="text-txt-secondary opacity-65 font-mono">-</span>
+                                        </td>
+                                        <td>
+                                            <input type="text" name="remarks" class="form-input p-2 w-full text-sm font-semibold text-txt-primary" 
+                                                   th:value="${record.remarks != null ? record.remarks : ''}" placeholder="例) 会議参加">
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${records == null or records.isEmpty()}">
+                                        <td colspan="8" class="text-center py-12 text-txt-secondary opacity-80">
+                                            <i class="fas fa-inbox fa-2x mb-2 text-txt-secondary/50"></i>
+                                            <p class="text-sm font-medium">記録がありません</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button type="submit" class="btn btn-primary px-6 py-2.5 text-sm cursor-pointer gap-2">
+                                <i class="fas fa-save"></i> 当月分を保存
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- 管理者以外の場合（閲覧専用テーブル） -->
+                    <div th:unless="${#authorization.expression('hasRole(''ADMIN'')')}" class="table-container mb-6">
                         <table class="table-custom">
                             <thead class="bg-black/10 text-txt-primary">
                                 <tr>
@@ -137,6 +211,7 @@
                                     <th><i class="fas fa-calendar-alt"></i> 曜日</th>
                                     <th>開始時刻</th>
                                     <th>終了時刻</th>
+                                    <th>事由</th>
                                     <th><i class="fas fa-clock"></i> 勤務時間</th>
                                     <th><i class="fas fa-hourglass-end"></i> 残業時間</th>
                                     <th><i class="fas fa-comment"></i> 備考</th>
@@ -144,11 +219,13 @@
                             </thead>
                             <tbody class="divide-y divide-glass-border/10">
                                 <tr th:each="record : ${records}"
-                                    th:with="recDate=${recordDateMap != null ? recordDateMap[record.recordId] : null}">
+                                    th:with="recDate=${recordDateMap != null ? recordDateMap[record.recordId] : null}"
+                                    th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'table-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'table-primary' : '')}">
                                     <td class="font-mono" th:text="${recDate != null ? #temporals.format(recDate, 'yyyy-MM-dd') : '-'}"></td>
                                     <td class="font-mono" th:text="${recDate != null ? #temporals.format(recDate, 'E') : '-'}"></td>
                                     <td class="font-mono" th:text="${recordStartTimeMap != null and recordStartTimeMap[record.recordId] != null ? recordStartTimeMap[record.recordId] : '-'}"></td>
                                     <td class="font-mono" th:text="${recordEndTimeMap != null and recordEndTimeMap[record.recordId] != null ? recordEndTimeMap[record.recordId] : '-'}"></td>
+                                    <td th:text="${eventTypeMap != null and record.eventTypeId != null ? eventTypeMap[record.eventTypeId] : '-'}"></td>
                                     <td class="font-mono" th:text="${record.workingHours != null ? (#numbers.formatDecimal(record.workingHours, 1, 2) + '時間') : '-'}"></td>
                                     <td>
                                         <span th:if="${recordOvertimeHoursMap != null and recordOvertimeHoursMap[record.recordId] != null and recordOvertimeHoursMap[record.recordId] > 0}" class="text-danger font-bold font-mono">
@@ -159,7 +236,7 @@
                                     <td th:text="${record.remarks != null ? record.remarks : '-'}"></td>
                                 </tr>
                                 <tr th:if="${records == null or records.isEmpty()}">
-                                    <td colspan="7" class="text-center py-12 text-txt-secondary opacity-80">
+                                    <td colspan="8" class="text-center py-12 text-txt-secondary opacity-80">
                                         <i class="fas fa-inbox fa-2x mb-2 text-txt-secondary/50"></i>
                                         <p class="text-sm font-medium">記録がありません</p>
                                     </td>
@@ -230,5 +307,137 @@
             </div>
         </div>
     </div>
+
+    <style th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
+        .row-modified {
+            background-color: rgba(245, 158, 11, 0.15) !important; /* amber/yellow highlight */
+        }
+    </style>
+
+    <!-- Client-side bulk validation and highlights for admin editing -->
+    <script th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
+        function parseTimeToMinutes(timeStr) {
+            if (!timeStr) return null;
+            var parts = timeStr.split(':');
+            if (parts.length !== 2) return null;
+            var h = Number(parts[0]);
+            var m = Number(parts[1]);
+            if (isNaN(h) || isNaN(m)) return null;
+            return h * 60 + m;
+        }
+
+        function validateBulkSave(form) {
+            var rows = form.querySelectorAll('tbody tr');
+            var errors = [];
+            var overnightCount = 0;
+            for (var i = 0; i < rows.length; i++) {
+                var row = rows[i];
+                var dateInput = row.querySelector('input[name="attendanceDate"]');
+                if (!dateInput) continue;
+                var date = dateInput.value || ('行' + (i + 1));
+
+                var startSelect = row.querySelector('input[name="startTime"]');
+                var endSelect = row.querySelector('input[name="endTime"]');
+
+                if ((startSelect && startSelect.disabled) || (endSelect && endSelect.disabled)) continue;
+
+                var start = startSelect ? startSelect.value : '';
+                var end = endSelect ? endSelect.value : '';
+
+                if (!start && !end) continue; // empty row allowed
+
+                var timeRegex = /^\d{2}:\d{2}$/;
+                if (start && !timeRegex.test(start)) {
+                    errors.push(date + ': 開始時刻の形式が不正です');
+                    continue;
+                }
+                if (end && !timeRegex.test(end)) {
+                    errors.push(date + ': 終了時刻の形式が不正です');
+                    continue;
+                }
+
+                if (start && end) {
+                    var s = parseTimeToMinutes(start);
+                    var e = parseTimeToMinutes(end);
+                    if (s == null || e == null) {
+                        errors.push(date + ': 時刻の解析に失敗しました');
+                        continue;
+                    }
+                    if (e < s) {
+                        overnightCount++;
+                    }
+                }
+            }
+
+            if (errors.length > 0) {
+                alert('保存前に以下を修正してください:\n' + errors.join('\n'));
+                return false;
+            }
+
+            if (overnightCount > 0) {
+                return confirm('終了時刻が開始時刻より前の行が ' + overnightCount + ' 件あります。翌日扱いで保存しますか？');
+            }
+
+            return true;
+        }
+
+        function normalizeInputValue(value) {
+            return (value || '').trim();
+        }
+
+        function initializeChangedRowHighlight() {
+            var rows = document.querySelectorAll('form[action*="/saveAll"] tbody tr');
+
+            rows.forEach(function (row) {
+                var startSelect = row.querySelector('input[name="startTime"]');
+                var endSelect = row.querySelector('input[name="endTime"]');
+                var remarksInput = row.querySelector('input[name="remarks"]');
+                var eventTypeSelect = row.querySelector('select[name="eventTypeId"]');
+
+                if (!startSelect && !endSelect && !remarksInput && !eventTypeSelect) {
+                    return;
+                }
+
+                row.dataset.initialStartTime = normalizeInputValue(startSelect ? startSelect.value : '');
+                row.dataset.initialEndTime = normalizeInputValue(endSelect ? endSelect.value : '');
+                row.dataset.initialRemarks = normalizeInputValue(remarksInput ? remarksInput.value : '');
+                row.dataset.initialEventTypeId = normalizeInputValue(eventTypeSelect ? eventTypeSelect.value : '');
+
+                var updateRowState = function () {
+                    var currentStart = normalizeInputValue(startSelect ? startSelect.value : '');
+                    var currentEnd = normalizeInputValue(endSelect ? endSelect.value : '');
+                    var currentRemarks = normalizeInputValue(remarksInput ? remarksInput.value : '');
+                    var currentEventTypeId = normalizeInputValue(eventTypeSelect ? eventTypeSelect.value : '');
+
+                    var changed = currentStart !== row.dataset.initialStartTime
+                        || currentEnd !== row.dataset.initialEndTime
+                        || currentRemarks !== row.dataset.initialRemarks
+                        || currentEventTypeId !== row.dataset.initialEventTypeId;
+
+                    row.classList.toggle('row-modified', changed);
+                };
+
+                if (startSelect && !startSelect.disabled) {
+                    startSelect.addEventListener('change', updateRowState);
+                }
+                if (endSelect && !endSelect.disabled) {
+                    endSelect.addEventListener('change', updateRowState);
+                }
+                if (eventTypeSelect && !eventTypeSelect.disabled) {
+                    eventTypeSelect.addEventListener('change', updateRowState);
+                }
+                if (remarksInput && !remarksInput.disabled) {
+                    remarksInput.addEventListener('input', updateRowState);
+                    remarksInput.addEventListener('change', updateRowState);
+                }
+
+                updateRowState();
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChangedRowHighlight();
+        });
+    </script>
 </body>
 </html>

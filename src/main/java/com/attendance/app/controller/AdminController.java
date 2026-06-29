@@ -529,9 +529,9 @@ public class AdminController {
     public String showUserAttendanceRecords(
             @PathVariable Long userId,
             @RequestParam(required = false) String yearMonth) {
-        String redirect = "redirect:/attendance/approval/" + userId + "/detail";
+        String redirect = "redirect:/attendance/approval/" + userId + "/detail?from=admin";
         if (yearMonth != null && !yearMonth.isEmpty()) {
-            redirect += "?yearMonth=" + yearMonth;
+            redirect += "&yearMonth=" + yearMonth;
         }
         return redirect;
     }

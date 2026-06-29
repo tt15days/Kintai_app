@@ -17,6 +17,8 @@ import com.attendance.app.service.LeaveApplicationService;
 import com.attendance.app.service.UserNotificationService;
 import com.attendance.app.service.UserService;
 import com.attendance.app.service.WorkScheduleClassService;
+import com.attendance.app.service.EventTypeService;
+import com.attendance.app.service.HolidayService;
 import com.attendance.app.util.DateTimeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,10 +38,13 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Controller
@@ -63,6 +68,8 @@ public class AttendanceApprovalController {
     private final AttendanceRecordService attendanceRecordService;
     private final LeaveApplicationService leaveApplicationService;
     private final WorkScheduleClassService workScheduleClassService;
+    private final EventTypeService eventTypeService;
+    private final HolidayService holidayService;
 
     /**
      * 現在ユーザーが承認可能な勤怠申請一覧を表示します。
@@ -243,6 +250,7 @@ public class AttendanceApprovalController {
     public String showUserAttendanceRecords(
             @PathVariable Long userId,
             @RequestParam(required = false) String yearMonth,
+            @RequestParam(required = false) String from,
             Model model) {
 
         checkViewPermission(userId);
@@ -390,10 +398,155 @@ public class AttendanceApprovalController {
         model.addAttribute("userScheduleClass", userScheduleClass);
 
         // 戻るボタンの動的な宛先を設定
-        String backUrl = securityUtil.hasRole("ROLE_ADMIN") ? "/admin/attendance" : "/attendance/approval";
+        User currentUser = securityUtil.getCurrentUser();
+        String backUrl = "/dashboard";
+        boolean isAdmin = securityUtil.hasRole("ROLE_ADMIN");
+        boolean isApprover = userService.isAttendanceApprover(currentUser);
+
+        if (isAdmin) {
+            if ("admin".equals(from)) {
+                backUrl = "/admin/attendance";
+            } else {
+                backUrl = "/attendance/approval";
+            }
+        } else if (isApprover) {
+            backUrl = "/attendance/approval";
+        }
         model.addAttribute("backUrl", backUrl);
+        model.addAttribute("from", from);
+
+        // テンプレート用: マスタデータ
+        Map<Integer, String> eventTypeMap = new HashMap<>();
+        for (var et : eventTypeService.getAllActiveEventTypes()) {
+            eventTypeMap.put(et.getEventTypeId(), et.getDisplayName());
+        }
+        model.addAttribute("eventTypeMap", eventTypeMap);
+        model.addAttribute("eventTypes", eventTypeService.getAllActiveEventTypes());
+        try {
+            model.addAttribute("holidays", holidayService.loadHolidays());
+        } catch (Exception e) {
+            log.error("祝日のロードに失敗: {}", e.getMessage());
+            model.addAttribute("holidays", Collections.emptySet());
+        }
 
         return USER_ATTENDANCE_DETAIL_VIEW;
+    }
+
+    /**
+     * 管理者がユーザーの勤怠記録を一括保存します。
+     */
+    @PostMapping("/{userId}/detail/saveAll")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public String saveUserAttendance(
+            @PathVariable Long userId,
+            @RequestParam(required = false) String yearMonth,
+            @RequestParam(required = false) String from,
+            @RequestParam("attendanceDate") List<String> attendanceDateStrs,
+            @RequestParam(value = "startTime", required = false) List<String> startTimeStrs,
+            @RequestParam(value = "endTime", required = false) List<String> endTimeStrs,
+            @RequestParam(value = "remarks", required = false) List<String> remarksList,
+            @RequestParam(value = "eventTypeId", required = false) List<Integer> eventTypeIdList,
+            RedirectAttributes redirectAttributes) {
+
+        YearMonth selectedMonth = parseYearMonthOrNow(yearMonth);
+        try {
+            Integer codeDoyou = eventTypeService.getAllActiveEventTypes().stream()
+                    .filter(et -> "土出".equals(et.getCode()))
+                    .map(e -> e.getEventTypeId())
+                    .findFirst().orElse(-1);
+            Integer codeKyujitsu = eventTypeService.getAllActiveEventTypes().stream()
+                    .filter(et -> "休出".equals(et.getCode()))
+                    .map(e -> e.getEventTypeId())
+                    .findFirst().orElse(-1);
+
+            Set<LocalDate> holidayWorkDateSet = new HashSet<>();
+            List<LocalDate> dates = new ArrayList<>();
+            List<LocalTime> starts = new ArrayList<>();
+            List<LocalTime> ends = new ArrayList<>();
+            List<String> filteredRemarks = new ArrayList<>();
+            List<Integer> eventTypeIds = new ArrayList<>();
+
+            int j = 0;
+            for (int i = 0; i < attendanceDateStrs.size(); i++) {
+                String dateStr = attendanceDateStrs.get(i);
+                if (dateStr == null || dateStr.isEmpty())
+                    continue;
+
+                LocalDate date = LocalDate.parse(dateStr);
+
+                List<LeaveApplication> existingLeaves = leaveApplicationService
+                        .getApplicationsByUserAndDateRange(userId, date, date);
+                if (existingLeaves != null && !existingLeaves.isEmpty()) {
+                    log.info("休暇申請済みのため保存をスキップ: date={}", date);
+                    continue;
+                }
+
+                dates.add(date);
+
+                LocalTime s = null;
+                if (startTimeStrs != null && startTimeStrs.size() > j) {
+                    String sStr = startTimeStrs.get(j);
+                    if (sStr != null && !sStr.isEmpty())
+                        s = LocalTime.parse(sStr);
+                }
+                starts.add(s);
+
+                LocalTime e = null;
+                if (endTimeStrs != null && endTimeStrs.size() > j) {
+                    String eStr = endTimeStrs.get(j);
+                    if (eStr != null && !eStr.isEmpty())
+                        e = LocalTime.parse(eStr);
+                }
+                ends.add(e);
+
+                String remark = null;
+                if (remarksList != null && remarksList.size() > j)
+                    remark = remarksList.get(j);
+                filteredRemarks.add(remark);
+
+                Integer et = null;
+                if (eventTypeIdList != null && eventTypeIdList.size() > j)
+                    et = eventTypeIdList.get(j);
+                eventTypeIds.add(et);
+
+                if (et != null && (et.equals(codeDoyou) || et.equals(codeKyujitsu))) {
+                    holidayWorkDateSet.add(date);
+                }
+
+                j++;
+            }
+
+            if (!dates.isEmpty()) {
+                int savedCount = attendanceRecordService.saveRecordsBatch(userId, dates, starts, ends, filteredRemarks,
+                        holidayWorkDateSet, eventTypeIds);
+                if (savedCount > 0) {
+                    redirectAttributes.addFlashAttribute("successMessage", "当月分を保存しました。変更保存件数: " + savedCount);
+                } else {
+                    redirectAttributes.addFlashAttribute("successMessage", "変更はありませんでした");
+                }
+            } else {
+                redirectAttributes.addFlashAttribute("successMessage", "保存対象はありませんでした");
+            }
+        } catch (IllegalArgumentException ex) {
+            log.warn("管理者による勤怠保存の入力検証に失敗: {}", ex.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        } catch (Exception ex) {
+            log.error("管理者による勤怠保存に失敗", ex);
+            redirectAttributes.addFlashAttribute("errorMessage", "保存中にエラーが発生しました");
+        }
+
+        String redirectUrl = "redirect:/attendance/approval/" + userId + "/detail";
+        List<String> queryParams = new ArrayList<>();
+        if (from != null && !from.isEmpty()) {
+            queryParams.add("from=" + from);
+        }
+        if (yearMonth != null && !yearMonth.isEmpty()) {
+            queryParams.add("yearMonth=" + yearMonth);
+        }
+        if (!queryParams.isEmpty()) {
+            redirectUrl += "?" + String.join("&", queryParams);
+        }
+        return redirectUrl;
     }
 
     private void checkViewPermission(Long targetUserId) {

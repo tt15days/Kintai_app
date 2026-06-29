@@ -8,6 +8,7 @@ target/
 *.zip
 *.jar
 *.war
+logs/
 
 # IDE specific files
 .classpath
@@ -16,8 +17,6 @@ target/
 .idea/
 *.iml
 .vscode/
-.agents/
-logs/
 
 # OS specific files
 .DS_Store

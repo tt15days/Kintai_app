@@ -3,6 +3,9 @@ package com.attendance.app.controller;
 import com.attendance.app.entity.User;
 import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.security.SecurityUtil;
+import com.attendance.app.service.UserService;
+import com.attendance.app.service.AttendanceSubmissionService;
+import com.attendance.app.service.AttendanceCorrectionRequestService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -13,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ui.ExtendedModelMap;
 
 import java.util.Optional;
+import java.util.List;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -27,6 +32,15 @@ class GlobalControllerAdviceTest {
 
     @Mock
     private SystemSettingMapper systemSettingMapper;
+
+    @Mock
+    private UserService userService;
+
+    @Mock
+    private AttendanceSubmissionService attendanceSubmissionService;
+
+    @Mock
+    private AttendanceCorrectionRequestService correctionRequestService;
 
     @InjectMocks
     private GlobalControllerAdvice advice;
@@ -157,6 +171,57 @@ class GlobalControllerAdviceTest {
             advice.addSystemName(model);
 
             assertEquals("勤怠管理システム", model.getAttribute("systemName"));
+        }
+    }
+
+    @Nested
+    @DisplayName("addPendingApprovalsCount")
+    class AddPendingApprovalsCount {
+
+        @Test
+        @DisplayName("ログイン済みかつ承認者の場合、承認待ち件数がモデルに追加されること")
+        void addPendingApprovalsCount_approver() {
+            User user = User.builder().userId(10L).fullName("テストユーザー").build();
+            when(securityUtil.isAuthenticated()).thenReturn(true);
+            when(securityUtil.getCurrentUsername()).thenReturn(Optional.of("test@example.com"));
+            when(securityUtil.getCurrentUser()).thenReturn(user);
+            when(userService.isAttendanceApprover(user)).thenReturn(true);
+            when(attendanceSubmissionService.getPendingSubmissions(user)).thenReturn(List.of(new com.attendance.app.entity.AttendanceSubmission()));
+            when(correctionRequestService.getPendingRequests(user)).thenReturn(List.of(new com.attendance.app.entity.AttendanceCorrectionRequest(), new com.attendance.app.entity.AttendanceCorrectionRequest()));
+
+            ExtendedModelMap model = new ExtendedModelMap();
+            advice.addPendingApprovalsCount(model);
+
+            assertEquals(1, model.getAttribute("pendingSubmissionsCount"));
+            assertEquals(2, model.getAttribute("pendingCorrectionsCount"));
+        }
+
+        @Test
+        @DisplayName("一般ユーザーの場合、承認待ち件数はモデルに追加されないこと")
+        void addPendingApprovalsCount_notApprover() {
+            User user = User.builder().userId(10L).fullName("テストユーザー").build();
+            when(securityUtil.isAuthenticated()).thenReturn(true);
+            when(securityUtil.getCurrentUsername()).thenReturn(Optional.of("test@example.com"));
+            when(securityUtil.getCurrentUser()).thenReturn(user);
+            when(userService.isAttendanceApprover(user)).thenReturn(false);
+
+            ExtendedModelMap model = new ExtendedModelMap();
+            advice.addPendingApprovalsCount(model);
+
+            assertNull(model.getAttribute("pendingSubmissionsCount"));
+            assertNull(model.getAttribute("pendingCorrectionsCount"));
+        }
+
+        @Test
+        @DisplayName("未ログインの場合、承認待ち件数は追加されないこと")
+        void addPendingApprovalsCount_notAuthenticated() {
+            when(securityUtil.isAuthenticated()).thenReturn(false);
+
+            ExtendedModelMap model = new ExtendedModelMap();
+            advice.addPendingApprovalsCount(model);
+
+            assertNull(model.getAttribute("pendingSubmissionsCount"));
+            assertNull(model.getAttribute("pendingCorrectionsCount"));
         }
     }
 }
