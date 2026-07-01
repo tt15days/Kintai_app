@@ -154,8 +154,8 @@
                                     <tr th:each="record : ${records}"
                                         th:with="recDate=${recordDateMap != null ? recordDateMap[record.recordId] : null}"
                                         th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'table-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'table-primary' : '')}">
-                                        <td class="font-mono" th:text="${recDate != null ? #temporals.format(recDate, 'yyyy-MM-dd') : '-'}"></td>
-                                        <td class="font-mono" th:text="${recDate != null ? #temporals.format(recDate, 'E') : '-'}"></td>
+                                        <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'text-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${recDate != null ? #temporals.format(recDate, 'yyyy-MM-dd') : '-'}"></td>
+                                        <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'text-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${recDate != null ? #temporals.format(recDate, 'E') : '-'}"></td>
                                         <td>
                                             <input type="hidden" name="attendanceDate" th:value="${recDate}">
                                             <input type="time" name="startTime" class="form-input max-w-[120px] p-2 font-mono"
@@ -221,8 +221,8 @@
                                 <tr th:each="record : ${records}"
                                     th:with="recDate=${recordDateMap != null ? recordDateMap[record.recordId] : null}"
                                     th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'table-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'table-primary' : '')}">
-                                    <td class="font-mono" th:text="${recDate != null ? #temporals.format(recDate, 'yyyy-MM-dd') : '-'}"></td>
-                                    <td class="font-mono" th:text="${recDate != null ? #temporals.format(recDate, 'E') : '-'}"></td>
+                                    <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'text-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${recDate != null ? #temporals.format(recDate, 'yyyy-MM-dd') : '-'}"></td>
+                                    <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'text-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${recDate != null ? #temporals.format(recDate, 'E') : '-'}"></td>
                                     <td class="font-mono" th:text="${recordStartTimeMap != null and recordStartTimeMap[record.recordId] != null ? recordStartTimeMap[record.recordId] : '-'}"></td>
                                     <td class="font-mono" th:text="${recordEndTimeMap != null and recordEndTimeMap[record.recordId] != null ? recordEndTimeMap[record.recordId] : '-'}"></td>
                                     <td th:text="${eventTypeMap != null and record.eventTypeId != null ? eventTypeMap[record.eventTypeId] : '-'}"></td>

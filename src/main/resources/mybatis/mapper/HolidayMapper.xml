@@ -17,6 +17,12 @@
         SELECT holiday_date, name, created_at FROM holidays ORDER BY holiday_date ASC
     </select>
 
+    <select id="selectByYear" resultMap="holidayResultMap">
+        SELECT holiday_date, name, created_at FROM holidays 
+        WHERE EXTRACT(YEAR FROM holiday_date) = #{year}
+        ORDER BY holiday_date ASC
+    </select>
+
     <delete id="deleteAll">
         DELETE FROM holidays
     </delete>

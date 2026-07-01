@@ -29,6 +29,14 @@ public interface HolidayMapper {
     List<Holiday> selectAll();
 
     /**
+     * 指定された年の祝日を取得します。
+     *
+     * @param year 対象年
+     * @return 祝日情報のリスト
+     */
+    List<Holiday> selectByYear(@Param("year") int year);
+
+    /**
      * 登録済み祝日を全件削除します。
      */
     void deleteAll();

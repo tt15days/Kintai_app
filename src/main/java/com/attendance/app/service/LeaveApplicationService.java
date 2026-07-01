@@ -240,18 +240,6 @@ public class LeaveApplicationService {
     }
 
     /**
-     * 申請IDから休暇申請を取得し、存在しない場合は例外を送出します。
-     *
-     * @param applicationId 休暇申請ID
-     * @return 休暇申請情報
-     * @throws IllegalArgumentException 申請が存在しない場合
-     */
-    private LeaveApplication findApplicationOrThrow(Long applicationId) {
-        return leaveApplicationMapper.selectById(applicationId)
-                .orElseThrow(() -> new IllegalArgumentException(APPLICATION_NOT_FOUND_MESSAGE));
-    }
-
-    /**
      * 申請IDから休暇申請を取得し（排他ロックを獲得）、存在しない場合は例外を送出します。
      *
      * @param applicationId 休暇申請ID

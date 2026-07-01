@@ -234,18 +234,6 @@ public class OvertimeRecordService {
     }
 
     /**
-     * 残業記録IDから残業記録を取得し、存在しない場合は例外を送出します。
-     *
-     * @param overtimeId 残業記録ID
-     * @return 残業記録
-     * @throws IllegalArgumentException 残業記録が存在しない場合
-     */
-    private OvertimeRecord findRecordOrThrow(Long overtimeId) {
-        return overtimeRecordMapper.selectById(overtimeId)
-                .orElseThrow(() -> new IllegalArgumentException(OVERTIME_RECORD_NOT_FOUND_MESSAGE));
-    }
-
-    /**
      * 残業記録IDから残業記録を取得し（排他ロックを獲得）、存在しない場合は例外を送出します。
      *
      * @param overtimeId 残業記録ID

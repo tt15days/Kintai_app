@@ -13,6 +13,9 @@
         <!-- 勤怠期間設定 -->
         <div class="card">
             <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-calendar-days text-primary"></i> 勤怠期間設定</h3>
+            <p class="text-sm text-txt-secondary mb-4">
+                毎月の勤怠集計の対象期間（前月の開始日〜当月の終了日）を設定します。設定は1〜28日の間で指定してください。
+            </p>
             <form method="post" th:action="@{/admin/settings/attendance-period}" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
                 <div class="flex flex-col">
@@ -36,22 +39,15 @@
         <!-- バッチ処理設定 -->
         <div class="card">
             <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-rotate text-primary"></i> バッチ処理設定</h3>
+            <p class="text-sm text-txt-secondary mb-4">
+                勤怠期間終了後の自動集計を行うタイミングや、従業員への未提出・未承認リマインドメールを自動送信するスケジュールを設定します。
+            </p>
             <form method="post" th:action="@{/admin/settings/batch}" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
                 <div class="flex flex-col">
                     <label for="daysAfterEnd" class="form-label">月次集計期限(終了日後日数)</label>
                     <input type="number" class="form-input font-mono h-11" id="daysAfterEnd" name="daysAfterEnd"
                            th:value="${batchSettingDaysAfterEnd}" min="1" max="14" required>
-                </div>
-                <div class="flex flex-col">
-                    <label for="grantMonth" class="form-label">有給付与月</label>
-                    <input type="number" class="form-input font-mono h-11" id="grantMonth" name="grantMonth"
-                           th:value="${batchSettingGrantMonth}" min="1" max="12" required>
-                </div>
-                <div class="flex flex-col">
-                    <label for="grantDay" class="form-label">有給付与日</label>
-                    <input type="number" class="form-input font-mono h-11" id="grantDay" name="grantDay"
-                           th:value="${batchSettingGrantDay}" min="1" max="28" required>
                 </div>
                 <div class="flex flex-col">
                     <label for="reminderDay" class="form-label">リマインド日</label>
@@ -74,6 +70,9 @@
         <!-- アラート閾値設定 -->
         <div class="card">
             <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-primary"></i> アラート閾値設定</h3>
+            <p class="text-sm text-txt-secondary mb-4">
+                時間外労働（36協定）の注意・超過時間、および有給休暇の有効期限・残日数に関するアラートを表示する基準（閾値）を設定します。
+            </p>
             <form method="post" th:action="@{/admin/settings/alert}" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
                 <div class="flex flex-col">
@@ -95,6 +94,12 @@
                     <label for="paidLeaveDays" class="form-label">有休残日数 (アラート閾値)</label>
                     <input type="number" class="form-input font-mono h-11" id="paidLeaveDays" name="paidLeaveDays"
                            th:value="${alertPaidLeaveDays}" min="0" max="40" required>
+                </div>
+                <div class="flex flex-col">
+                    <label for="minIntervalHours" class="form-label">勤務間インターバル (時間)</label>
+                    <input type="number" class="form-input font-mono h-11" id="minIntervalHours" name="minIntervalHours"
+                           th:value="${alertMinIntervalHours}" min="0" max="24" required>
+                    <small class="text-xs text-txt-secondary opacity-70 mt-1">※ 0を設定した場合は、勤務間インターバル警告機能が無効になります。</small>
                 </div>
                 <div class="md:col-span-2 flex justify-end pt-2">
                     <button type="submit" class="btn btn-primary gap-2 text-sm h-11">

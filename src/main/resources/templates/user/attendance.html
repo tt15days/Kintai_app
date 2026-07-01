@@ -177,8 +177,8 @@
                             <tbody>
                                 <tr th:each="date : ${monthDates}"
                                     th:with="dateKey=${date.toString()}, leaveApp=${leaveMap != null ? leaveMap.get(date) : null}"
-                                    th:classappend="${holidays.contains(date) or date.dayOfWeek.value == 7 ? 'table-danger' : (date.dayOfWeek.value == 6 ? 'table-primary' : '')}">
-                                    <td class="font-mono" th:text="${#temporals.format(date, 'MM-dd (E)')}"></td>
+                                    th:classappend="${(holidays != null and holidays.contains(date)) or date.dayOfWeek.value == 7 ? 'table-danger' : (date.dayOfWeek.value == 6 ? 'table-primary' : '')}">
+                                    <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(date)) or date.dayOfWeek.value == 7 ? 'text-danger' : (date.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${#temporals.format(date, 'MM-dd (E)')}"></td>
                                     <td>
                                         <input type="hidden" name="attendanceDate" th:value="${date}">
 

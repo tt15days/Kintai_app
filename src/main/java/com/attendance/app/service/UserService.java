@@ -487,21 +487,21 @@ public class UserService {
      * ユーザー別年次有給設定を管理者が更新します。
      *
      * @param userId               対象ユーザーID
-     * @param annualLeaveGrantDays 次回付与日数（0〜20）
-     * @param annualLeaveIncrement 毎年自動増加量（0.0〜10.0）
+     * @param annualLeaveGrantDays 次回付与日数（0〜30）
+     * @param annualLeaveIncrement 毎年自動増加量（0.0〜30.0）
      * @param maxPaidLeaveDays    有給残日数の上限（1〜100）
      */
     @Transactional
     public void updatePaidLeaveSettings(Long userId, int annualLeaveGrantDays,
                                         BigDecimal annualLeaveIncrement, int maxPaidLeaveDays) {
         findUserOrThrow(userId);
-        if (annualLeaveGrantDays < 0 || annualLeaveGrantDays > 20) {
-            throw new IllegalArgumentException("次回付与日数は0〜20の範囲で設定してください");
+        if (annualLeaveGrantDays < 0 || annualLeaveGrantDays > 30) {
+            throw new IllegalArgumentException("次回付与日数は0〜30の範囲で設定してください");
         }
         if (annualLeaveIncrement == null
                 || annualLeaveIncrement.compareTo(BigDecimal.ZERO) < 0
-                || annualLeaveIncrement.compareTo(BigDecimal.TEN) > 0) {
-            throw new IllegalArgumentException("年間増加量は0.0〜10.0の範囲で設定してください");
+                || annualLeaveIncrement.compareTo(BigDecimal.valueOf(30)) > 0) {
+            throw new IllegalArgumentException("年間増加量は0.0〜30.0の範囲で設定してください");
         }
         if (maxPaidLeaveDays < 1 || maxPaidLeaveDays > 100) {
             throw new IllegalArgumentException("最大有給日数は1〜100の範囲で設定してください");

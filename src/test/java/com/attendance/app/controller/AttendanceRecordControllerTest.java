@@ -87,7 +87,7 @@ public class AttendanceRecordControllerTest {
                 .thenAnswer(invocation -> new AttendanceRecordService.MonthRange(invocation.getArgument(0), 21, 20));
         when(attendanceSubmissionService.getSubmission(anyLong(), any(YearMonth.class))).thenReturn(Optional.empty());
         when(attendanceSubmissionService.isEditableMonth(anyLong(), any(YearMonth.class))).thenReturn(true);
-        when(holidayService.loadHolidays()).thenReturn(Collections.emptySet());
+        lenient().when(holidayService.getHolidaysByYear(org.mockito.ArgumentMatchers.anyInt())).thenReturn(Collections.emptySet());
         lenient().when(leaveApplicationService.getApplicationsByUserAndDateRange(anyLong(), any(), any()))
                 .thenReturn(Collections.emptyList());
         when(userService.isAttendanceApprover(testUser)).thenReturn(false);

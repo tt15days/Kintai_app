@@ -79,14 +79,6 @@
                             <i class="fa-solid fa-chart-line"></i> 月次集計を実行
                         </button>
                     </form>
-                    <!-- 年次有給付与 -->
-                    <form method="post" th:action="@{/admin/batch/annual-leave-grant}">
-                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                        <button type="submit" class="btn btn-success px-5 py-3 text-sm h-[48px] gap-2"
-                                onclick="return confirm('全アクティブユーザーに年次有給を付与します。よろしいですか？')">
-                            <i class="fa-solid fa-gift"></i> 年次有給付与を実行
-                        </button>
-                    </form>
                     <!-- 勤怠提出リマインド -->
                     <form method="post" th:action="@{/admin/batch/reminder}">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />

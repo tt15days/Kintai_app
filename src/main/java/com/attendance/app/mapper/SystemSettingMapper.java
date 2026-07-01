@@ -15,6 +15,7 @@ public interface SystemSettingMapper {
      * @param settingKey 設定キー
      * @return 設定値。存在しない場合は null
      */
+    @org.springframework.cache.annotation.Cacheable("systemSettings")
     String selectValueByKey(@Param("settingKey") String settingKey);
 
     /**
@@ -24,5 +25,6 @@ public interface SystemSettingMapper {
      * @param settingValue 設定値
      * @return 更新または追加された件数
      */
+    @org.springframework.cache.annotation.CacheEvict(value = "systemSettings", key = "#settingKey")
     int upsertValue(@Param("settingKey") String settingKey, @Param("settingValue") String settingValue);
 }

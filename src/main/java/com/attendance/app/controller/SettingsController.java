@@ -65,14 +65,13 @@ public class SettingsController {
         model.addAttribute("attendancePeriodStartDay", attendancePeriodSettingService.getStartDay());
         model.addAttribute("attendancePeriodEndDay", attendancePeriodSettingService.getEndDay());
         model.addAttribute("batchSettingDaysAfterEnd", batchSettingService.getMonthlySummaryDaysAfterEnd());
-        model.addAttribute("batchSettingGrantMonth", batchSettingService.getPaidLeaveGrantMonth());
-        model.addAttribute("batchSettingGrantDay", batchSettingService.getPaidLeaveGrantDay());
         model.addAttribute("batchSettingReminderDay", batchSettingService.getReminderDay());
         model.addAttribute("batchSettingReminderHour", batchSettingService.getReminderHour());
         model.addAttribute("alertArticle36Limit1", batchSettingService.getAlertArticle36Limit1());
         model.addAttribute("alertArticle36Limit2", batchSettingService.getAlertArticle36Limit2());
         model.addAttribute("alertPaidLeaveMonths", batchSettingService.getAlertPaidLeaveMonths());
         model.addAttribute("alertPaidLeaveDays", batchSettingService.getAlertPaidLeaveDays());
+        model.addAttribute("alertMinIntervalHours", batchSettingService.getAlertMinIntervalHours());
         model.addAttribute("csvFilenamePattern", csvFilenamePatternService.getPattern());
 
         // 登録済みの祝日を取得してモデルに設定
@@ -201,16 +200,14 @@ public class SettingsController {
     @PostMapping("/batch")
     public String updateBatchSettings(
             @RequestParam int daysAfterEnd,
-            @RequestParam int grantMonth,
-            @RequestParam int grantDay,
             @RequestParam int reminderDay,
             @RequestParam int reminderHour,
             RedirectAttributes redirectAttributes) {
         try {
-            batchSettingService.updateSettings(daysAfterEnd, grantMonth, grantDay, reminderDay, reminderHour);
+            batchSettingService.updateSettings(daysAfterEnd, reminderDay, reminderHour);
             redirectAttributes.addFlashAttribute("message", "バッチ処理設定を更新しました");
-            log.info("バッチ処理設定を更新: daysAfterEnd={}, grantMonth={}, grantDay={}, reminderDay={}, reminderHour={}",
-                    daysAfterEnd, grantMonth, grantDay, reminderDay, reminderHour);
+            log.info("バッチ処理設定を更新: daysAfterEnd={}, reminderDay={}, reminderHour={}",
+                    daysAfterEnd, reminderDay, reminderHour);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             log.warn("バッチ処理設定の更新に失敗: {}", e.getMessage());
@@ -227,12 +224,13 @@ public class SettingsController {
             @RequestParam int article36Limit2,
             @RequestParam int paidLeaveMonths,
             @RequestParam int paidLeaveDays,
+            @RequestParam int minIntervalHours,
             RedirectAttributes redirectAttributes) {
         try {
-            batchSettingService.updateAlertSettings(article36Limit1, article36Limit2, paidLeaveMonths, paidLeaveDays);
+            batchSettingService.updateAlertSettings(article36Limit1, article36Limit2, paidLeaveMonths, paidLeaveDays, minIntervalHours);
             redirectAttributes.addFlashAttribute("message", "アラート閾値設定を更新しました");
-            log.info("アラート閾値設定を更新: article36Limit1={}, article36Limit2={}, paidLeaveMonths={}, paidLeaveDays={}",
-                    article36Limit1, article36Limit2, paidLeaveMonths, paidLeaveDays);
+            log.info("アラート閾値設定を更新: article36Limit1={}, article36Limit2={}, paidLeaveMonths={}, paidLeaveDays={}, minIntervalHours={}",
+                    article36Limit1, article36Limit2, paidLeaveMonths, paidLeaveDays, minIntervalHours);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             log.warn("アラート閾値設定の更新に失敗: {}", e.getMessage());

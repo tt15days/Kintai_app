@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,6 +36,19 @@ public class HolidayService {
      */
     public Set<LocalDate> loadHolidays() {
         List<Holiday> list = holidayMapper.selectAll();
+        if (list == null || list.isEmpty()) return new HashSet<>();
+        return list.stream().map(h -> h.getHolidayDate()).collect(Collectors.toSet());
+    }
+
+    /**
+     * 指定された年の祝日をキャッシュから取得します。
+     *
+     * @param year 対象年
+     * @return 祝日の日付セット
+     */
+    @Cacheable("holidays")
+    public Set<LocalDate> getHolidaysByYear(int year) {
+        List<Holiday> list = holidayMapper.selectByYear(year);
         if (list == null || list.isEmpty()) return new HashSet<>();
         return list.stream().map(h -> h.getHolidayDate()).collect(Collectors.toSet());
     }
@@ -74,6 +89,7 @@ public class HolidayService {
      * 既存祝日を全削除して、指定一覧で置き換えます。
      */
     @Transactional
+    @CacheEvict(value = "holidays", allEntries = true)
     public void saveHolidays(List<Holiday> holidays) {
         // replace all holidays with new list
         holidayMapper.deleteAll();

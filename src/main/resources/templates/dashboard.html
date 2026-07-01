@@ -78,146 +78,143 @@
             </div>
         </div>
 
-        <!-- 3. 中段2列レイアウト (AIアドバイザー & お知らせ/通知) -->
-        <div class="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 mb-6 animate-fade-in">
-            <!-- 左側: Gemini AI 勤務・健康アドバイザー -->
-            <div class="card flex flex-col min-h-[380px]">
-                <div class="flex justify-between items-start mb-6">
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="w-10.5 h-10.5 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-400 flex items-center justify-center text-white text-xl">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i>
-                        </div>
-                        <div class="text-left">
-                            <h3 class="m-0 text-[1.15rem] font-bold text-txt-primary">AI 勤務・健康アドバイザー</h3>
-                            <span class="text-[0.75rem] text-txt-secondary font-medium">今月の打刻からパーソナライズ傾向診断</span>
-                        </div>
+        <!-- 3. 中段レイアウト (2列2行: 上段に通知/お知らせ、下段に本日の出勤概要) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 animate-fade-in">
+            <!-- 通知カード -->
+            <div class="card flex flex-col min-h-[300px]">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-bell text-[1.15rem] text-primary"></i>
+                        <h3 class="m-0 text-[1.1rem] font-bold text-txt-primary">通知</h3>
+                        <span id="dashboard-notification-badge"
+                            class="text-[0.75rem] bg-danger text-white px-2 py-0.5 rounded-full font-semibold"
+                            th:if="${notifications != null and !notifications.isEmpty()}"
+                            th:text="${notifications.size()}">
+                            0
+                        </span>
                     </div>
-                    <button id="run-analysis-btn"
-                        class="btn btn-secondary py-1.5 px-4 text-[0.85rem] rounded-lg shadow-sm h-[34px]">
-                        分析
-                    </button>
+                    <form th:action="@{/dashboard/notifications/read-all}" method="post" class="m-0"
+                        th:if="${notifications != null and !notifications.isEmpty()}">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <button type="submit"
+                            class="text-primary hover:text-accent font-medium text-[0.8rem] transition-colors cursor-pointer bg-transparent border-0 p-0">すべて既読</button>
+                    </form>
                 </div>
 
-                <div id="analysis-content"
-                    class="flex-1 flex flex-col items-center justify-center text-center text-txt-secondary py-4 px-8">
-                    <div class="text-[3rem] mb-4 opacity-35">
-                        <i class="fa-regular fa-face-smile"></i>
+                <div id="dashboard-notification-list" class="flex-1 overflow-y-auto pr-1">
+                    <div th:if="${notifications == null or notifications.isEmpty()}"
+                        class="text-center text-txt-secondary py-6 text-[0.85rem]">
+                        新しい通知はありません。
                     </div>
-                    <p class="m-0 text-[0.9rem] leading-relaxed text-txt-secondary max-w-[440px]">
-                        「分析」ボタンを押すと、AIが勤務時間や残業過多のリスク、休みの効果的な取得法について個別に診断アドバイスを生成します。
-                    </p>
+                    <div th:each="note : ${notifications}"
+                        th:onclick="'markDashboardNotificationAsRead(' + ${note.notificationId} + ', this)'"
+                        class="mb-2 py-2 px-3 rounded-lg bg-black/5 border border-glass-border hover:bg-black/10 cursor-pointer transition-colors duration-200 text-left">
+                        <div class="text-[0.8rem] text-txt-primary leading-normal mb-0.5" th:text="${note.message}">
+                            通知メッセージ</div>
+                        <div class="text-[0.7rem] text-txt-secondary"
+                            th:text="${note.createdAt != null ? #temporals.format(note.createdAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'MM-dd HH:mm') : '-'}">
+                            06-17 12:00</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- 右側: 通知 と お知らせ の縦積み構成 -->
-            <div class="flex flex-col gap-5">
-                <!-- 通知カード -->
-                <div class="card flex flex-col min-h-[190px] max-h-[250px]">
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-bell text-[1.15rem] text-primary"></i>
-                            <h3 class="m-0 text-[1.1rem] font-bold text-txt-primary">通知</h3>
-                            <span id="dashboard-notification-badge"
-                                class="text-[0.75rem] bg-danger text-white px-2 py-0.5 rounded-full font-semibold"
-                                th:if="${notifications != null and !notifications.isEmpty()}"
-                                th:text="${notifications.size()}">
-                                0
-                            </span>
-                        </div>
-                        <form th:action="@{/dashboard/notifications/read-all}" method="post" class="m-0"
-                            th:if="${notifications != null and !notifications.isEmpty()}">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                            <button type="submit"
-                                class="text-primary hover:text-accent font-medium text-[0.8rem] transition-colors cursor-pointer bg-transparent border-0 p-0">すべて既読</button>
-                        </form>
-                    </div>
+            <!-- お知らせカード -->
+            <div class="card flex flex-col min-h-[300px]">
+                <div class="flex items-center gap-2 mb-4">
+                    <i class="fa-regular fa-bell text-[1.15rem] text-warning"></i>
+                    <h3 class="m-0 text-[1.1rem] font-bold text-txt-primary">お知らせ</h3>
+                </div>
 
-                    <div id="dashboard-notification-list" class="flex-1 overflow-y-auto pr-1">
-                        <div th:if="${notifications == null or notifications.isEmpty()}"
-                            class="text-center text-txt-secondary py-6 text-[0.85rem]">
-                            新しい通知はありません。
-                        </div>
-                        <div th:each="note : ${notifications}"
-                            th:onclick="'markDashboardNotificationAsRead(' + ${note.notificationId} + ', this)'"
-                            class="mb-2 py-2 px-3 rounded-lg bg-black/5 border border-glass-border hover:bg-black/10 cursor-pointer transition-colors duration-200 text-left">
-                            <div class="text-[0.8rem] text-txt-primary leading-normal mb-0.5" th:text="${note.message}">
-                                通知メッセージ</div>
-                            <div class="text-[0.7rem] text-txt-secondary"
-                                th:text="${note.createdAt != null ? #temporals.format(note.createdAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'MM-dd HH:mm') : '-'}">
-                                06-17 12:00</div>
+                <div class="flex-1 overflow-y-auto pr-1">
+                    <div th:if="${announcements_board == null or announcements_board.isEmpty()}"
+                        class="text-center text-txt-secondary py-6 text-[0.85rem]">
+                        現在掲示中のお知らせはありません。
+                    </div>
+                    <div th:each="ann : ${announcements_board}"
+                        class="mb-4 pb-4 border-b border-glass-border text-left">
+                        <span class="badge badge-warning text-[0.65rem] px-1.5 py-0.5 mb-1.5">通知</span>
+                        <h4 class="m-0 mb-1 text-[0.85rem] font-bold text-txt-primary leading-snug"
+                            th:text="${ann.title}">お知らせタイトル</h4>
+                        <p class="m-0 mb-1.5 text-[0.8rem] text-txt-secondary leading-normal whitespace-pre-wrap break-words"
+                            th:text="${ann.message}">お知らせ本文プレビュー</p>
+                        <div class="text-[0.7rem] text-txt-secondary font-mono">
+                            掲載日: <span
+                                th:text="${ann.displayStartDate != null ? #temporals.format(ann.displayStartDate.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy-MM-dd') : '-'}">2026-06-10</span>
+                            〜
+                            <span
+                                th:text="${ann.displayEndDate != null ? #temporals.format(ann.displayEndDate.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy-MM-dd') : '-'}">2026-07-02</span>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- お知らせカード -->
-                <div class="card flex flex-col min-h-[190px] max-h-[250px]">
-                    <div class="flex items-center gap-2 mb-4">
-                        <i class="fa-regular fa-bell text-[1.15rem] text-warning"></i>
-                        <h3 class="m-0 text-[1.1rem] font-bold text-txt-primary">お知らせ</h3>
-                    </div>
-
-                    <div class="flex-1 overflow-y-auto pr-1">
-                        <div th:if="${announcements_board == null or announcements_board.isEmpty()}"
-                            class="text-center text-txt-secondary py-6 text-[0.85rem]">
-                            現在掲示中のお知らせはありません。
-                        </div>
-                        <div th:each="ann : ${announcements_board}"
-                            class="mb-4 pb-4 border-b border-glass-border text-left">
-                            <span class="badge badge-warning text-[0.65rem] px-1.5 py-0.5 mb-1.5">通知</span>
-                            <h4 class="m-0 mb-1 text-[0.85rem] font-bold text-txt-primary leading-snug"
-                                th:text="${ann.title}">お知らせタイトル</h4>
-                            <p class="m-0 mb-1.5 text-[0.8rem] text-txt-secondary leading-normal"
-                                th:text="${ann.message}">お知らせ本文プレビュー</p>
-                            <div class="text-[0.7rem] text-txt-secondary font-mono">
-                                掲載日: <span
-                                    th:text="${ann.displayStartDate != null ? #temporals.format(ann.displayStartDate.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy-MM-dd') : '-'}">2026-06-10</span>
-                                〜
-                                <span
-                                    th:text="${ann.displayEndDate != null ? #temporals.format(ann.displayEndDate.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy-MM-dd') : '-'}">2026-07-02</span>
-                            </div>
-                        </div>
-                    </div>
+            <!-- 本日の出勤概要 -->
+            <div class="card lg:col-span-2">
+                <h3 class="mb-5 text-[1.15rem] font-bold text-txt-primary text-left">本日の出勤概要</h3>
+                <div th:if="${todayRecord == null}"
+                    class="text-center text-txt-secondary py-12 px-8 bg-black/5 rounded-2xl border border-dashed border-glass-border text-sm">
+                    本日はまだ打刻レコードがありません。
+                </div>
+                <div th:if="${todayRecord != null}" class="table-container">
+                    <table class="table-custom mt-4">
+                        <thead>
+                            <tr>
+                                <th>日付</th>
+                                <th>出勤時間</th>
+                                <th>退勤時間</th>
+                                <th>ステータス</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="font-mono"
+                                    th:text="${todayRecord.attendanceDate != null ? #temporals.format(todayRecord.attendanceDate, 'MM月dd日') : '-'}">
+                                    10月12日</td>
+                                <td class="font-mono"
+                                    th:text="${todayRecord.startTime != null ? #temporals.format(todayRecord.startTime.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'HH:mm') : '--:--'}">
+                                    08:55</td>
+                                <td class="font-mono"
+                                    th:text="${todayRecord.endTime != null ? #temporals.format(todayRecord.endTime.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'HH:mm') : '--:--'}">
+                                    --:--</td>
+                                <td>
+                                    <span class="badge badge-success" th:if="${todayRecord.endTime != null}">記録済み</span>
+                                    <span class="badge badge-warning"
+                                        th:if="${todayRecord.startTime != null && todayRecord.endTime == null}">勤務中</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <!-- 4. 本日の出勤概要 -->
+        <!-- 4. 勤務・健康アドバイザー -->
         <div class="card mb-8 animate-fade-in">
-            <h3 class="mb-5 text-[1.15rem] font-bold text-txt-primary text-left">本日の出勤概要</h3>
-            <div th:if="${todayRecord == null}"
-                class="text-center text-txt-secondary py-12 px-8 bg-black/5 rounded-2xl border border-dashed border-glass-border text-sm">
-                本日はまだ打刻レコードがありません。
+            <div class="flex justify-between items-start mb-6">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-10.5 h-10.5 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-400 flex items-center justify-center text-white text-xl">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <div class="text-left">
+                        <h3 class="m-0 text-[1.15rem] font-bold text-txt-primary">AI 勤務・健康アドバイザー</h3>
+                        <span class="text-[0.75rem] text-txt-secondary font-medium">今月の打刻からパーソナライズ傾向診断</span>
+                    </div>
+                </div>
+                <button id="run-analysis-btn"
+                    class="btn btn-secondary py-1.5 px-4 text-[0.85rem] rounded-lg shadow-sm h-[34px]">
+                    分析
+                </button>
             </div>
-            <div th:if="${todayRecord != null}" class="table-container">
-                <table class="table-custom mt-4">
-                    <thead>
-                        <tr>
-                            <th>日付</th>
-                            <th>出勤時間</th>
-                            <th>退勤時間</th>
-                            <th>ステータス</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="font-mono"
-                                th:text="${todayRecord.attendanceDate != null ? #temporals.format(todayRecord.attendanceDate, 'MM月dd日') : '-'}">
-                                10月12日</td>
-                            <td class="font-mono"
-                                th:text="${todayRecord.startTime != null ? #temporals.format(todayRecord.startTime.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'HH:mm') : '--:--'}">
-                                08:55</td>
-                            <td class="font-mono"
-                                th:text="${todayRecord.endTime != null ? #temporals.format(todayRecord.endTime.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'HH:mm') : '--:--'}">
-                                --:--</td>
-                            <td>
-                                <span class="badge badge-success" th:if="${todayRecord.endTime != null}">記録済み</span>
-                                <span class="badge badge-warning"
-                                    th:if="${todayRecord.startTime != null && todayRecord.endTime == null}">勤務中</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+
+            <div id="analysis-content"
+                class="flex-1 flex flex-col items-center justify-center text-center text-txt-secondary py-4 px-8">
+                <div class="text-[3rem] mb-4 opacity-35">
+                    <i class="fa-regular fa-face-smile"></i>
+                </div>
+                <p class="m-0 text-[0.9rem] leading-relaxed text-txt-secondary max-w-[440px]">
+                    「分析」ボタンを押すと、AIが勤務時間や残業過多のリスク、休みの効果的な取得法について個別に診断アドバイスを生成します。
+                </p>
             </div>
         </div>
 

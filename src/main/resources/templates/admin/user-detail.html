@@ -242,23 +242,23 @@
                             class="flex flex-wrap items-end gap-4">
                             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                             <div class="flex flex-col">
-                                <label for="annualLeaveGrantDays" class="form-label">次回付与日数（0〜20）</label>
+                                <label for="annualLeaveGrantDays" class="form-label">次回付与日数（0〜30）</label>
                                 <div class="flex items-stretch">
                                     <input type="number" class="form-input rounded-l-xl font-mono h-11 w-24 text-center"
                                         id="annualLeaveGrantDays" name="annualLeaveGrantDays"
                                         th:value="${user.annualLeaveGrantDays != null ? user.annualLeaveGrantDays : 10}"
-                                        min="0" max="20" required>
+                                        min="0" max="30" required>
                                     <span
                                         class="px-3 py-2 bg-black/10 border border-glass-border border-l-0 rounded-r-xl text-xs text-txt-secondary flex items-center font-semibold">日</span>
                                 </div>
                             </div>
                             <div class="flex flex-col">
-                                <label for="annualLeaveIncrement" class="form-label">毎年自動増加量（0〜10）</label>
+                                <label for="annualLeaveIncrement" class="form-label">毎年自動増加量（0〜30）</label>
                                 <div class="flex items-stretch">
                                     <input type="number" class="form-input rounded-l-xl font-mono h-11 w-24 text-center"
                                         id="annualLeaveIncrement" name="annualLeaveIncrement"
                                         th:value="${user.annualLeaveIncrement != null ? user.annualLeaveIncrement : 1.0}"
-                                        min="0" max="10" step="0.5" required>
+                                        min="0" max="30" step="0.5" required>
                                     <span
                                         class="px-3 py-2 bg-black/10 border border-glass-border border-l-0 rounded-r-xl text-xs text-txt-secondary flex items-center font-semibold">日/年</span>
                                 </div>

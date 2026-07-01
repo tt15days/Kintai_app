@@ -1,9 +1,12 @@
 package com.attendance.app.security;
 
 import com.attendance.app.entity.User;
+import com.attendance.app.entity.AuditEventType;
+import com.attendance.app.service.AuditLogService;
 import com.attendance.app.service.LoginAttemptResult;
 import com.attendance.app.service.LoginAttemptService;
 import com.attendance.app.service.UserService;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -50,8 +53,9 @@ public class SecurityConfig {
      * @throws Exception セキュリティ設定時の例外
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, UserService userService, LoginAttemptService loginAttemptService) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, UserService userService, LoginAttemptService loginAttemptService, AuditLogService auditLogService) throws Exception {
         http
+                .addFilterAfter(new MdcFilter(), SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(authorize -> authorize
                         // ログインページ、ログアウト、ログアウト完了ページとリソースはアクセス許可
                     .requestMatchers("/login", "/logout", "/logout-success", "/access-denied", "/tailwind.css", "/css/**", "/js/**", "/images/**").permitAll()
@@ -77,6 +81,9 @@ public class SecurityConfig {
 
                                 userService.updateLastLogin(user.getUserId());
 
+                                log.info("ログイン成功: email={}", email);
+                                auditLogService.recordUserEvent(AuditEventType.LOGIN_SUCCESS, user.getUserId(), user.getUserId(), "ログイン成功");
+
                                 if (Boolean.TRUE.equals(user.getPasswordResetRequired())) {
                                     response.sendRedirect(contextPath + "/dashboard/change-password?required=true");
                                     return;
@@ -90,6 +97,13 @@ public class SecurityConfig {
                         .failureHandler((request, response, exception) -> {
                             String failEmail = request.getParameter("email");
                             String contextPath = request.getContextPath();
+
+                            log.warn("ログイン失敗: email={}, 原因={}", failEmail, exception.getMessage());
+                            try {
+                                auditLogService.recordUserEvent(AuditEventType.LOGIN_FAILED, null, null, "ログイン失敗: email=" + failEmail);
+                            } catch (Exception e) {
+                                log.error("監査ログ(ログイン失敗)の記録に失敗: {}", e.getMessage());
+                            }
 
                             if (exception instanceof LockedException) {
                                 // ロック中でも試行カウントをインクリメント（一時ロック → 永続ロックへの移行を可能にする）
@@ -132,6 +146,17 @@ public class SecurityConfig {
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
+                        .addLogoutHandler((request, response, authentication) -> {
+                            if (authentication != null) {
+                                String email = authentication.getName();
+                                log.info("ログアウト: email={}", email);
+                                try {
+                                    auditLogService.recordUserEvent(AuditEventType.LOGOUT, null, null, "ログアウト: email=" + email);
+                                } catch (Exception e) {
+                                    log.error("監査ログ(ログアウト)の記録に失敗: {}", e.getMessage());
+                                }
+                            }
+                        })
                         .logoutSuccessUrl("/logout-success")
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")

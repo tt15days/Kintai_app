@@ -3,7 +3,7 @@
 ## 1. このSpringBootプロジェクトについて
 本プロジェクトは、Java 25 および Spring Boot 4.1.0 をベースに構築された「勤怠管理システム (Attendance Management System)」です。
 従業員の出退勤打刻、有給休暇申請、残業申請、および月次勤怠の承認ワークフローなど、勤怠管理に関わる一連の業務をシステム化することを目的としています。
-現在のバージョンは `0.0.6-SNAPSHOT` です。
+現在のバージョンは `0.0.8` です。
 
 ### 主な採用技術とアーキテクチャ
 - **バックエンド**: Java 25, Spring Boot 4.1.0
@@ -12,7 +12,7 @@
 - **DBマイグレーション**: Flyway (起動時に `db/migration` 配下のスクリプトを自動実行)
 - **フロントエンド**: Thymeleaf (テンプレートエンジン), Tailwind CSS (`tailwind-maven-plugin` によりビルド時に `src/main/resources/static/tailwind.css` を自動生成)
 - **セキュリティ**: Spring Security (ログイン認証・権限管理)
-- **ユーティリティ**: Lombok (ボイラープレートコードの削減), Gson, Apache Commons CSV 1.10.0, Jackson JSR310
+- **ユーティリティ**: Lombok, Gson, Apache Commons CSV 1.10.0, Jackson JSR310
 
 アーキテクチャとしては、MVC (Model-View-Controller) パターンを採用し、`Controller` で画面からのリクエストを受け付け、ビジネスロジックを実行後、Thymeleaf を用いて画面 (`src/main/resources/templates`) をレンダリングする構成となっています。
 
@@ -29,8 +29,8 @@ mvn spring-boot:run
 ```bash
 mvn clean package -P local
 ```
-上記コマンドを実行すると、ソースコードのコンパイルとテストが行われ、`target/` ディレクトリ配下に実行可能なJARファイル（`attendance-app-0.0.6-SNAPSHOT.jar`）が生成されます。
-プロダクション環境等で実行する場合は、このJARファイルを利用します（例: `java -jar target/attendance-app-0.0.6-SNAPSHOT.jar`）。
+上記コマンドを実行すると、ソースコードのコンパイルとテストが行われ、`target/` ディレクトリ配下に実行可能なJARファイル（`attendance-app-0.0.8.jar`）が生成されます。
+プロダクション環境等で実行する場合は、このJARファイルを利用します（例: `java -jar target/attendance-app-0.0.8.jar`）。
 
 テストをスキップしてビルドする場合:
 ```bash

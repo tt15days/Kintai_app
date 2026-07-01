@@ -125,7 +125,7 @@ public class AttendanceRecordController {
             }
 
             // holidays (records分類前に必要)
-            holidays = holidayService.loadHolidays();
+            holidays = holidayService.getHolidaysByYear(current.getYear());
 
             // load existing records and map times to HH:mm
             List<AttendanceRecord> records = attendanceRecordService.getRecordsByUserAndMonth(userId, current);

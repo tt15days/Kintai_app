@@ -33,6 +33,7 @@ public class UserNotificationService {
     public static final String TYPE_REJECTED = "REJECTED";
     public static final String TYPE_ARTICLE36_ALERT = "ARTICLE36_ALERT";
     public static final String TYPE_ADMIN_MESSAGE = "ADMIN_MESSAGE";
+    public static final String TYPE_INTERVAL_ALERT = "INTERVAL_ALERT";
 
     private static final DateTimeFormatter YEAR_MONTH_DISPLAY = DateTimeFormatter.ofPattern("yyyy年MM月");
 
@@ -253,6 +254,17 @@ public class UserNotificationService {
     public void notifyArticle36Alert(Long userId, String message) {
         insertNotification(userId, message, TYPE_ARTICLE36_ALERT);
         log.info("36協定アラート通知を送信: userId={}", userId);
+    }
+
+    /**
+     * 勤務間インターバル不足の警告を指定ユーザーに送信します。
+     *
+     * @param userId  対象ユーザーID
+     * @param message アラートメッセージ
+     */
+    public void notifyIntervalAlert(Long userId, String message) {
+        insertNotification(userId, message, TYPE_INTERVAL_ALERT);
+        log.info("勤務間インターバル不足アラート通知を送信: userId={}", userId);
     }
 
     /**

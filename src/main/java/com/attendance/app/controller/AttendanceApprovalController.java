@@ -32,7 +32,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -423,7 +422,7 @@ public class AttendanceApprovalController {
         model.addAttribute("eventTypeMap", eventTypeMap);
         model.addAttribute("eventTypes", eventTypeService.getAllActiveEventTypes());
         try {
-            model.addAttribute("holidays", holidayService.loadHolidays());
+            model.addAttribute("holidays", holidayService.getHolidaysByYear(currentMonth.getYear()));
         } catch (Exception e) {
             log.error("祝日のロードに失敗: {}", e.getMessage());
             model.addAttribute("holidays", Collections.emptySet());
@@ -448,7 +447,6 @@ public class AttendanceApprovalController {
             @RequestParam(value = "eventTypeId", required = false) List<Integer> eventTypeIdList,
             RedirectAttributes redirectAttributes) {
 
-        YearMonth selectedMonth = parseYearMonthOrNow(yearMonth);
         try {
             Integer codeDoyou = eventTypeService.getAllActiveEventTypes().stream()
                     .filter(et -> "土出".equals(et.getCode()))

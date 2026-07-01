@@ -1,13 +1,8 @@
 package com.attendance.app.controller;
 
-import com.attendance.app.entity.AttendanceRecord;
 import com.attendance.app.entity.AttendanceSubmission;
-import com.attendance.app.entity.LeaveApplication;
-import com.attendance.app.entity.LeaveStatus;
-import com.attendance.app.entity.LeaveType;
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserRole;
-import com.attendance.app.entity.WorkScheduleClass;
 import com.attendance.app.security.SecurityUtil;
 import com.attendance.app.service.AttendanceApproverAssignmentService;
 import com.attendance.app.service.BatchSchedulerService;
@@ -15,7 +10,6 @@ import com.attendance.app.service.BatchSettingService;
 import com.attendance.app.service.AttendanceRecordService;
 import com.attendance.app.service.AttendanceSubmissionService;
 import com.attendance.app.service.CsvFilenamePatternService;
-import com.attendance.app.service.LeaveApplicationService;
 import com.attendance.app.service.ReportService;
 import com.attendance.app.service.UserService;
 import com.attendance.app.service.WorkScheduleClassService;
@@ -35,8 +29,6 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.LocalTime;
@@ -64,13 +56,11 @@ import java.util.stream.Collectors;
 public class AdminController {
 
     private static final String INVALID_YEAR_MONTH_LOG = "yearMonth形式が不正: {}";
-    private static final LocalTime DEFAULT_STANDARD_END_TIME = LocalTime.of(18, 0);
     private static final String ADMIN_DASHBOARD_VIEW = "admin/dashboard";
     private static final String USER_CREATE_VIEW = "admin/user-create";
     private static final String USER_LIST_VIEW = "admin/user-list";
     private static final String USER_DETAIL_VIEW = "admin/user-detail";
     private static final String ATTENDANCE_DASHBOARD_VIEW = "admin/attendance-manage";
-    private static final String USER_ATTENDANCE_DETAIL_VIEW = "admin/user-attendance-detail";
     private static final String ADMIN_USERS_REDIRECT = "redirect:/admin/users";
     private static final String ADMIN_DASHBOARD_SUCCESS_REDIRECT = "redirect:/admin/dashboard?success=true";
     private static final String ADMIN_USER_DETAIL_REDIRECT_PREFIX = "redirect:/admin/users/";
@@ -84,7 +74,6 @@ public class AdminController {
     private final AttendanceRecordService attendanceRecordService;
     private final AttendanceApproverAssignmentService approverAssignmentService;
     private final AttendanceSubmissionService attendanceSubmissionService;
-    private final LeaveApplicationService leaveApplicationService;
     private final SecurityUtil securityUtil;
     private final WorkScheduleClassService workScheduleClassService;
     private final ReportService reportService;
@@ -460,22 +449,6 @@ public class AdminController {
     }
 
     /**
-     * 手動で年次有給付与を実行します。
-     */
-    @PostMapping("/batch/annual-leave-grant")
-    public String runManualAnnualLeaveGrant(RedirectAttributes redirectAttributes) {
-        try {
-            batchSchedulerService.executeAnnualPaidLeaveGrant();
-            redirectAttributes.addFlashAttribute("successMessage", "年次有給付与を実行しました");
-            log.info("手動年次有給付与を実行");
-        } catch (Exception e) {
-            logActionError(e, "手動年次有給付与に失敗");
-            redirectAttributes.addFlashAttribute("errorMessage", "年次有給付与の実行に失敗しました");
-        }
-        return "redirect:/admin/dashboard";
-    }
-
-    /**
      * 手動で勤怠提出リマインドを送信します。
      */
     @PostMapping("/batch/reminder")
@@ -625,34 +598,6 @@ public class AdminController {
             log.warn(INVALID_YEAR_MONTH_LOG, yearMonth);
             return YearMonth.now().minusMonths(1);
         }
-    }
-
-    /**
-     * 既存データ互換のため、overtimeHours が null（未設定）の場合のみ基準終了時刻と終了時刻から算出します。
-     * overtime_hours=0.0 は「残業なし確定」として扱い、フォールバック算出は行いません。
-     */
-    private double resolveOvertimeHours(AttendanceRecord record) {
-        if (record == null) {
-            return 0.0;
-        }
-        if (record.getOvertimeHours() != null) {
-            return record.getOvertimeHours();
-        }
-        if (record.getAttendanceDate() == null || record.getEndTime() == null) {
-            return 0.0;
-        }
-
-        LocalDate attendanceDate = DateTimeUtil.toLocalDate(record.getAttendanceDate());
-        Instant standardEndInstant = DateTimeUtil.toInstant(attendanceDate, DEFAULT_STANDARD_END_TIME);
-        if (standardEndInstant == null || !record.getEndTime().isAfter(standardEndInstant)) {
-            return 0.0;
-        }
-
-        long minutes = Duration.between(standardEndInstant, record.getEndTime()).toMinutes();
-        if (minutes <= 0) {
-            return 0.0;
-        }
-        return minutes / 60.0;
     }
 
     // ============================================================

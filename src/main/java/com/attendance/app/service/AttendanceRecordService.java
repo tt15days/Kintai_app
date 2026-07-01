@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.attendance.app.entity.AttendanceRecord;
 import com.attendance.app.entity.WorkScheduleClass;
+import com.attendance.app.entity.UserNotification;
 import com.attendance.app.mapper.AttendanceRecordMapper;
 import com.attendance.app.mapper.EventTypeMapper;
 import com.attendance.app.mapper.UserMapper;
@@ -48,6 +49,8 @@ public class AttendanceRecordService {
     private final AttendancePeriodSettingService attendancePeriodSettingService;
     private final EventTypeMapper eventTypeMapper;
     private final AttendanceSubmissionMapper attendanceSubmissionMapper;
+    private final UserNotificationService userNotificationService;
+    private final BatchSettingService batchSettingService;
 
     private static final LocalTime DEFAULT_STANDARD_START_TIME = LocalTime.of(9, 0);
     private static final LocalTime DEFAULT_STANDARD_END_TIME = LocalTime.of(18, 0);
@@ -204,6 +207,10 @@ public class AttendanceRecordService {
         java.time.Instant startInstant = DateTimeUtil.toInstant(attendanceDate, startTime);
         java.time.Instant endInstant = resolveAttendanceEndInstant(attendanceDate, startTime, endTime);
 
+        if (startInstant != null) {
+            checkIntervalAndNotify(userId, attendanceDate, startInstant);
+        }
+
         Double workingHours = calculateWorkingHoursExcludingBreakOverlaps(startInstant, endInstant, attendanceDate, schedule);
         Double overtimeHours = calculateExcessOvertime(attendanceDate, schedule, endInstant);
         Double holidayWorkHours = isHolidayWork ? workingHours : 0.0;
@@ -280,17 +287,7 @@ public class AttendanceRecordService {
                     });
         }
 
-        // [TODO] 勤務間インターバルのモックチェック（法制化対応用）
-        // 前回の退勤時刻から十分な時間（例: 11時間）が経過しているかチェックする
-        attendanceRecordMapper.selectByUserAndDate(userId, today.minusDays(1))
-                .filter(record -> record.getEndTime() != null)
-                .ifPresent(record -> {
-                    java.time.Duration interval = java.time.Duration.between(record.getEndTime(), DateTimeUtil.toInstant(today, currentTime));
-                    if (interval.toHours() < 11) {
-                        log.warn("【警告】勤務間インターバル不足: userId={}, intervalHours={}", userId, interval.toHours());
-                        // 実際にはここでユーザーへの警告表示や、出勤制限をかけるなどの処理を実装する
-                    }
-                });
+        checkIntervalAndNotify(userId, today, DateTimeUtil.toInstant(today, currentTime));
 
         if (existing.isPresent() && existing.get().getStartTime() != null) {
             throw new IllegalArgumentException("本日は既に勤務開始時刻が記録されています");
@@ -1032,4 +1029,64 @@ public class AttendanceRecordService {
      * @param recordCount   出勤レコード数
      */
     public record MonthlyUserSummary(Long userId, double workingHours, double overtimeHours, int recordCount) {}
+
+    private void checkIntervalAndNotify(Long userId, LocalDate attendanceDate, Instant startTime) {
+        if (startTime == null) {
+            return;
+        }
+        int minIntervalHours = batchSettingService.getAlertMinIntervalHours();
+        if (minIntervalHours <= 0) {
+            // 0時間の場合は警告機能を無効化
+            return;
+        }
+
+        // 前日の退勤レコードを取得
+        attendanceRecordMapper.selectByUserAndDate(userId, attendanceDate.minusDays(1))
+                .filter(record -> record.getEndTime() != null)
+                .ifPresent(record -> {
+                    java.time.Duration interval = java.time.Duration.between(record.getEndTime(), startTime);
+                    long intervalMinutes = interval.toMinutes();
+                    double intervalHours = intervalMinutes / 60.0;
+
+                    if (intervalHours < minIntervalHours) {
+                        log.warn("【警告】勤務間インターバル不足: userId={}, intervalHours={}", userId, String.format("%.1f", intervalHours));
+                        
+                        String dateStr = attendanceDate.toString(); // "yyyy-MM-dd"
+                        
+                        // 1. 本人向け通知の送信と重複チェック
+                        List<UserNotification> unreadNotifications = userNotificationService.getUnreadByUserId(userId);
+                        boolean alreadyNotified = unreadNotifications.stream()
+                                .anyMatch(note -> UserNotificationService.TYPE_INTERVAL_ALERT.equals(note.getNotificationType())
+                                        && note.getMessage() != null && note.getMessage().contains(dateStr));
+                        
+                        if (!alreadyNotified) {
+                            String message = String.format(
+                                    "【警告】%s の勤務開始において、勤務間インターバルが%d時間に満たない状態で記録されました（前回の退勤から %.1f 時間）。十分な休息をとるようにしてください。",
+                                    dateStr, minIntervalHours, intervalHours);
+                            userNotificationService.notifyIntervalAlert(userId, message);
+                        }
+
+                        // 2. 管理者向け通知の送信（ユーザー名付き）と重複チェック
+                        String userName = userMapper.selectById(userId)
+                                .map(user -> user.getFullName())
+                                .orElse("従業員");
+                        String adminMessage = String.format(
+                                "【警告】%s さんの %s の勤務開始において、勤務間インターバルが%d時間に満たない状態で記録されました（前回の退勤から %.1f 時間）。",
+                                userName, dateStr, minIntervalHours, intervalHours);
+
+                        List<com.attendance.app.entity.User> admins = userMapper.selectByRole("ADMIN");
+                        for (com.attendance.app.entity.User admin : admins) {
+                            List<UserNotification> adminUnread = userNotificationService.getUnreadByUserId(admin.getUserId());
+                            boolean adminAlreadyNotified = adminUnread.stream()
+                                    .anyMatch(note -> UserNotificationService.TYPE_INTERVAL_ALERT.equals(note.getNotificationType())
+                                            && note.getMessage() != null
+                                            && note.getMessage().contains(dateStr)
+                                            && note.getMessage().contains(userName));
+                            if (!adminAlreadyNotified) {
+                                userNotificationService.notifyIntervalAlert(admin.getUserId(), adminMessage);
+                            }
+                        }
+                    }
+                });
+    }
 }

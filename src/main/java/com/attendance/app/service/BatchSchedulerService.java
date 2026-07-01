@@ -1,6 +1,5 @@
 package com.attendance.app.service;
 
-import com.attendance.app.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -37,7 +36,6 @@ public class BatchSchedulerService {
     private static final String BATCH_LOG_DONE  = "バッチ完了: {}";
     private static final String BATCH_LOG_ERROR = "バッチ異常終了: job={}, error={}";
 
-    private final UserService userService;
     private final AttendanceRecordService attendanceRecordService;
     private final AttendancePeriodSettingService attendancePeriodSettingService;
     private final BatchSettingService batchSettingService;
@@ -96,50 +94,6 @@ public class BatchSchedulerService {
         }
     }
 
-    // -------------------------------------------------------
-    // 2. 年次有給付与バッチ
-    //    毎日 02:00（JST）にポーリング実行
-    // -------------------------------------------------------
-
-    /**
-     * 年次有給付与ジョブのポーリングエントリポイント。
-     * 今日が設定した付与月日と一致する場合にのみ実行します。
-     */
-    @Scheduled(cron = "0 0 2 * * ?", zone = "Asia/Tokyo")
-    public void runAnnualPaidLeaveGrantCheck() {
-        LocalDate today = LocalDate.now(JAPAN_ZONE);
-        int grantMonth = batchSettingService.getPaidLeaveGrantMonth();
-        int grantDay   = batchSettingService.getPaidLeaveGrantDay();
-        if (today.getMonthValue() == grantMonth && today.getDayOfMonth() == grantDay) {
-            executeAnnualPaidLeaveGrant();
-        }
-    }
-
-    /**
-     * 年次有給付与を全アクティブユーザーに対して実行します。
-     * 管理者画面からの手動起動でも利用されます。
-     */
-    public void executeAnnualPaidLeaveGrant() {
-        log.info(BATCH_LOG_START, "年次有給付与");
-        int granted = 0;
-        int skipped = 0;
-        try {
-            List<User> activeUsers = userService.getActiveUsers();
-            for (User user : activeUsers) {
-                try {
-                    userService.grantAnnualPaidLeave(user.getUserId());
-                    granted++;
-                } catch (Exception e) {
-                    log.warn("有給付与スキップ: userId={}, reason={}", user.getUserId(), e.getMessage());
-                    skipped++;
-                }
-            }
-            log.info(BATCH_LOG_DONE, "年次有給付与: 付与=" + granted + "名, スキップ=" + skipped + "名");
-            batchSettingService.recordAnnualLeaveGrantExecutedAt(LocalDateTime.now(JAPAN_ZONE));
-        } catch (Exception e) {
-            log.error(BATCH_LOG_ERROR, "年次有給付与", e.getMessage(), e);
-        }
-    }
 
     // -------------------------------------------------------
     // 3. 勤怠提出リマインドバッチ

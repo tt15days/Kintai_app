@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
@@ -20,6 +22,7 @@ public class AutoGrantPaidLeaveService {
     private final SystemSettingMapper systemSettingMapper;
     private final PaidLeaveBalanceService paidLeaveBalanceService;
     private final UserService userService;
+    private final BatchSettingService batchSettingService;
 
     /**
      * 毎日深夜0時に実行される有給休暇自動付与バッチ
@@ -71,6 +74,7 @@ public class AutoGrantPaidLeaveService {
             }
 
             log.info("有給休暇自動付与バッチが正常に終了しました。");
+            batchSettingService.recordAnnualLeaveGrantExecutedAt(LocalDateTime.now(ZoneId.of("Asia/Tokyo")));
         } catch (Exception e) {
             log.error("有給休暇自動付与バッチ中にエラーが発生しました。", e);
         }

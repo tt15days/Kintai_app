@@ -36,6 +36,7 @@ public class WorkScheduleClassService {
      *
      * @return 勤務クラスのリスト
      */
+    @org.springframework.cache.annotation.Cacheable(value = "workScheduleClasses", key = "'all'")
     public List<WorkScheduleClass> getAllClasses() {
         return workScheduleClassMapper.selectAll();
     }
@@ -45,6 +46,7 @@ public class WorkScheduleClassService {
      *
      * @return 有効な勤務クラスのリスト
      */
+    @org.springframework.cache.annotation.Cacheable(value = "workScheduleClasses", key = "'active'")
     public List<WorkScheduleClass> getAllActiveClasses() {
         return workScheduleClassMapper.selectAllActive();
     }
@@ -55,6 +57,7 @@ public class WorkScheduleClassService {
      * @param classId 勤務クラスID
      * @return 勤務クラスのOptional
      */
+    @org.springframework.cache.annotation.Cacheable(value = "workScheduleClasses", key = "'id_' + #classId")
     public Optional<WorkScheduleClass> getClassById(Long classId) {
         return workScheduleClassMapper.selectById(classId);
     }
@@ -65,6 +68,7 @@ public class WorkScheduleClassService {
      * @param name 勤務クラス名
      * @return 勤務クラスのOptional
      */
+    @org.springframework.cache.annotation.Cacheable(value = "workScheduleClasses", key = "'name_' + #name", condition = "#name != null")
     public Optional<WorkScheduleClass> getClassByName(String name) {
         if (name == null || name.trim().isEmpty()) {
             return Optional.empty();
@@ -89,6 +93,7 @@ public class WorkScheduleClassService {
      * @param breakEndTime4 休憩終了時刻4
      * @return 作成された勤務クラス
      */
+    @org.springframework.cache.annotation.CacheEvict(value = "workScheduleClasses", allEntries = true)
     public WorkScheduleClass createClass(String name, String workLocation,
                                          String address, String station, String telephone,
                                          String sectionName, String folderName, String tags,
@@ -158,6 +163,7 @@ public class WorkScheduleClassService {
      * @param breakEndTime4 休憩終了時刻4
      * @return 更新された勤務クラス
      */
+    @org.springframework.cache.annotation.CacheEvict(value = "workScheduleClasses", allEntries = true)
     public WorkScheduleClass updateClass(Long classId, String name, String workLocation,
                                          String address, String station, String telephone,
                                          String sectionName, String folderName, String tags,
@@ -220,6 +226,7 @@ public class WorkScheduleClassService {
      *
      * @param classId 削除対象의勤務クラスID
      */
+    @org.springframework.cache.annotation.CacheEvict(value = "workScheduleClasses", allEntries = true)
     public void deleteClass(Long classId) {
         WorkScheduleClass workScheduleClass = workScheduleClassMapper.selectById(classId)
                 .orElseThrow(() -> new IllegalArgumentException(CLASS_NOT_FOUND_PREFIX + classId));

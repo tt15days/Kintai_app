@@ -1,6 +1,5 @@
 package com.attendance.app.service;
 
-import com.attendance.app.entity.User;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -61,32 +60,6 @@ public class BatchSchedulerServiceTest {
         verify(batchSettingService, never()).recordMonthlySummaryExecutedAt(any());
     }
 
-    @Test
-    void testExecuteAnnualPaidLeaveGrant_Success() {
-        User user1 = new User();
-        user1.setUserId(1L);
-        User user2 = new User();
-        user2.setUserId(2L);
-
-        when(userService.getActiveUsers()).thenReturn(List.of(user1, user2));
-        doNothing().when(userService).grantAnnualPaidLeave(1L);
-        doThrow(new RuntimeException("Skip error")).when(userService).grantAnnualPaidLeave(2L);
-
-        batchSchedulerService.executeAnnualPaidLeaveGrant();
-
-        verify(userService).grantAnnualPaidLeave(1L);
-        verify(userService).grantAnnualPaidLeave(2L);
-        verify(batchSettingService).recordAnnualLeaveGrantExecutedAt(any(LocalDateTime.class));
-    }
-
-    @Test
-    void testExecuteAnnualPaidLeaveGrant_ExceptionHandling() {
-        when(userService.getActiveUsers()).thenThrow(new RuntimeException("DB Error"));
-
-        batchSchedulerService.executeAnnualPaidLeaveGrant();
-
-        verify(batchSettingService, never()).recordAnnualLeaveGrantExecutedAt(any());
-    }
 
     @Test
     void testExecuteSubmissionReminder_Success() {

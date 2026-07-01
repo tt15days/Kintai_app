@@ -17,7 +17,6 @@ import org.springframework.ui.ExtendedModelMap;
 
 import java.util.Optional;
 import java.util.List;
-import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

@@ -24,6 +24,7 @@ public class EventTypeService {
      *
      * @return 有効な勤怠事由のリスト（表示順）
      */
+    @org.springframework.cache.annotation.Cacheable("eventTypes")
     public List<EventType> getAllActiveEventTypes() {
         return eventTypeMapper.selectAllActive();
     }
@@ -33,6 +34,7 @@ public class EventTypeService {
      *
      * @return デフォルト事由のID。存在しない場合は null
      */
+    @org.springframework.cache.annotation.Cacheable(value = "eventTypes", key = "'default'")
     public Integer getDefaultEventTypeId() {
         return eventTypeMapper.selectByCode(DEFAULT_EVENT_CODE)
                 .map(e -> e.getEventTypeId())
@@ -45,6 +47,7 @@ public class EventTypeService {
      * @param eventTypeId 事由ID
      * @return 勤怠事由のOptional
      */
+    @org.springframework.cache.annotation.Cacheable(value = "eventTypes", key = "#eventTypeId")
     public Optional<EventType> getEventTypeById(Integer eventTypeId) {
         if (eventTypeId == null) {
             return Optional.empty();
