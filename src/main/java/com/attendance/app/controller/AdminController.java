@@ -334,7 +334,7 @@ public class AdminController {
             String initialPassword = userService.resetPasswordByAdmin(userId, securityUtil.getCurrentUserId());
             redirectAttributes.addFlashAttribute(
                     "successMessage",
-                    "パスワードを初期化しました。初期パスワード: " + initialPassword + "（次回ログイン時に変更が必要です）");
+                    "パスワードを初期化しました。\n初期パスワード: " + initialPassword + "（次回ログイン時に変更が必要です）");
             log.info("管理者がユーザーのパスワードを初期化: userId={}", userId);
         } catch (Exception e) {
             logActionError(e, "パスワード初期化に失敗");

@@ -6,6 +6,7 @@ import com.attendance.app.entity.UserRole;
 import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.mapper.WorkScheduleClassMapper;
+import com.attendance.app.mapper.AttendanceApproverAssignmentMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -50,6 +51,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
     private final SystemSettingMapper systemSettingMapper;
+    private final AttendanceApproverAssignmentMapper approverAssignmentMapper;
 
     /**
      * 指定されたユーザーIDでユーザー情報を取得します。
@@ -202,6 +204,17 @@ public class UserService {
         user.setUpdatedAt(Instant.now());
 
         userMapper.update(user);
+
+        // ログイン失敗カウントとロック状態をクリア（有効・無効化いずれの変更でも、再有効化に備えてクリアしておく）
+        userMapper.resetLoginAttempt(userId);
+
+        // アカウントが無効化された場合、そのユーザーの承認者割り当て（個人・部署）を解除する
+        if (!isActive) {
+            approverAssignmentMapper.deleteUserApproverByApprover(userId);
+            approverAssignmentMapper.deleteDepartmentApproverByApprover(userId);
+            log.info("無効化されたユーザーの承認者割り当てを解除しました: userId={}", userId);
+        }
+
         log.info("ユーザー情報を更新しました: userId={}", userId);
 
         auditLogService.recordUserEvent(

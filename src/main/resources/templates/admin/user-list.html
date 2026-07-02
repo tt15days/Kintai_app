@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org" layout:decorate="~{layout/base}" th:with="activePage='users'">
+
 <head>
     <title>ユーザー一覧</title>
 </head>
+
 <body>
     <h2 layout:fragment="page-title">ユーザー一覧</h2>
 
@@ -13,42 +15,50 @@
 
         <div class="card mb-6">
             <div class="flex gap-3">
-                <a href="/admin/users/create" class="btn btn-success gap-2 text-sm">
-                    <i class="fa-solid fa-user-plus"></i> 新規ユーザー追加
+                <a href="/admin/users/create" class="btn btn-success text-sm">
+                    新規ユーザー追加
                 </a>
             </div>
         </div>
 
         <div class="card">
-            <h4 class="text-base font-bold text-txt-primary flex items-center gap-1.5 pb-4 mb-4 border-b border-glass-border/30"><i class="fa-solid fa-users text-primary"></i> ユーザー一覧 <span class="badge badge-warning ml-2 font-mono" th:text="${userCount} + ' 名'"></span></h4>
+            <h4
+                class="text-base font-bold text-txt-primary flex items-center pb-4 mb-4 border-b border-glass-border/30">
+                ユーザー一覧 <span class="text-sm font-normal text-txt-secondary ml-2"
+                    th:text="'(' + ${userCount} + ' 名)'"></span></h4>
             <div class="table-container">
                 <table class="table-custom">
                     <thead class="bg-black/10 text-txt-primary">
                         <tr>
-                            <th>氏名 / ID</th>
-                            <th>メールアドレス / 最終ログイン</th>
-                            <th>ロール</th>
-                            <th>操作</th>
+                            <th class="text-center">ID</th>
+                            <th class="text-center">氏名(メールアドレス)</th>
+                            <th class="text-center">ロール</th>
+                            <th class="text-center w-px whitespace-nowrap">操作</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-glass-border/10">
-                        <tr th:each="user : ${users}" th:with="isAdmin=${user.userRole?.name() == 'ADMIN'}" th:classappend="${!user.isActive} ? 'opacity-45 bg-black/5 grayscale' : ''">
-                            <td>
-                                <div class="font-semibold text-txt-primary" th:text="${user.fullName ?: ''}"></div>
-                                <div class="text-xs text-txt-secondary font-mono opacity-80 mt-0.5" th:text="'ID: ' + ${user.userId}"></div>
+                        <tr th:each="user : ${users}" th:with="isAdmin=${user.userRole?.name() == 'ADMIN'}"
+                            th:classappend="${user.isActive == false ? 'bg-black/5' : ''}">
+                            <td class="text-center" th:classappend="${user.isActive == false ? 'opacity-50 grayscale' : ''}">
+                                <div class="text-txt-primary font-mono"
+                                    th:text="${#numbers.formatInteger(user.userId, 3)}"></div>
                             </td>
-                            <td>
-                                <div class="font-mono text-sm text-txt-primary" th:text="${user.email}"></div>
-                                <div class="text-xs text-txt-secondary font-mono mt-0.5" th:text="${user.lastLoginAt != null ? '最終ログイン: ' + #temporals.format(user.lastLoginAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy-MM-dd HH:mm') : '最終ログイン: -'}"></div>
+                            <td class="text-center" th:classappend="${user.isActive == false ? 'opacity-50 grayscale' : ''}">
+                                <div class="text-txt-primary">
+                                    <a th:href="'mailto:' + ${user.email}" class="hover:underline text-primary"
+                                        th:text="${user.fullName ?: ''}"></a>
+                                </div>
+                                <div class="text-xs text-txt-secondary font-mono mt-0.5"
+                                    th:text="${user.lastLoginAt != null ? '最終ログイン:' + #temporals.format(user.lastLoginAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy/MM/dd-HH:mm') : '最終ログイン:-'}">
+                                </div>
                             </td>
-                            <td>
+                            <td class="text-center" th:classappend="${user.isActive == false ? 'opacity-50 grayscale' : ''}">
                                 <span th:if="${isAdmin}" class="badge badge-danger">管理者</span>
                                 <span th:unless="${isAdmin}" class="badge badge-primary">一般</span>
                             </td>
-                            <td>
-                                <a th:href="@{/admin/users/{userId}(userId=${user.userId})}" class="btn btn-primary gap-1.5 px-3 py-1.5 rounded-lg text-xs">
-                                    <i class="fa-solid fa-cog"></i> 詳細・設定
-                                </a>
+                            <td class="text-center w-px whitespace-nowrap">
+                                <a th:href="@{/admin/users/{userId}(userId=${user.userId})}"
+                                    class="btn btn-primary px-3 py-1.5 rounded-lg text-xs w-max">設定</a>
                             </td>
                         </tr>
                         <tr th:if="${users.isEmpty()}">
@@ -63,4 +73,5 @@
         </div>
     </div>
 </body>
+
 </html>
