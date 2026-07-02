@@ -176,11 +176,16 @@ public class UserService {
             String notes,
             boolean canApproveAttendance,
             java.time.LocalDate hireDate,
+            boolean isActive,
             Long actorUserId) {
         User user = findUserOrThrow(userId);
 
         if (userId.equals(actorUserId) && user.getUserRole() == UserRole.ADMIN && role == UserRole.USER) {
             throw new IllegalArgumentException("自分自身の管理者ロールを一般ユーザーに降格することはできません。");
+        }
+
+        if (userId.equals(actorUserId) && !isActive) {
+            throw new IllegalArgumentException("自分自身のアカウントを無効にすることはできません。");
         }
 
         user.setEmail(email);
@@ -193,6 +198,7 @@ public class UserService {
         user.setNotes(normalizeOptionalText(notes));
         user.setCanApproveAttendance(role == UserRole.USER && canApproveAttendance);
         user.setHireDate(hireDate);
+        user.setIsActive(isActive);
         user.setUpdatedAt(Instant.now());
 
         userMapper.update(user);

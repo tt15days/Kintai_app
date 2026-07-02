@@ -23,12 +23,12 @@
 </head>
 
 <body>
-    <div id="mobile-overlay" class="mobile-overlay hidden fixed inset-0 bg-black/50 z-[999]"></div>
-    <div class="flex flex-1 relative overflow-hidden h-screen p-4 box-border gap-5"
+    <div id="mobile-overlay" class="mobile-overlay fixed inset-0 bg-black/50 z-[999]"></div>
+    <div class="flex flex-1 relative overflow-hidden h-screen md:p-4 p-1 box-border md:gap-5 gap-1.5"
         th:classappend="${hideSidebar == true} ? 'h-screen w-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-200 p-0 m-0' : ''">
         <!-- Sidebar -->
         <aside id="sidebar"
-            class="sidebar w-[260px] border border-glass-border bg-glass/70 rounded-[24px] shadow-glass flex flex-col py-6 z-[1000] h-full box-border overflow-y-auto"
+            class="sidebar w-[260px] border border-glass-border bg-white md:bg-glass/70 rounded-[24px] shadow-glass flex flex-col py-6 z-[1000] h-full box-border overflow-y-auto"
             th:if="${hideSidebar != true}">
             <div class="flex flex-col items-start gap-1 pt-2 px-6 pb-5 border-b border-glass-border mb-4">
                 <div class="flex items-center gap-3">
@@ -165,8 +165,17 @@
 
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col overflow-hidden h-full box-border">
+            <!-- Mobile Header -->
+            <header th:if="${hideSidebar != true}" class="flex md:hidden items-center justify-between px-4 py-3 bg-glass/70 border-b border-glass-border backdrop-blur-glass z-50">
+                <button id="menu-toggle" class="text-txt-primary p-2 focus:outline-none cursor-pointer">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <span class="font-bold text-lg text-txt-primary" th:text="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</span>
+                <div class="w-9"></div>
+            </header>
+
             <!-- Main Content -->
-            <main class="flex-1 py-2 px-4 pb-4 overflow-y-auto h-full box-border"
+            <main class="flex-1 md:py-2 md:px-4 md:pb-4 py-1 px-1 pb-1 overflow-y-auto h-full box-border"
                 th:classappend="${hideSidebar == true} ? '!p-0 !overflow-hidden flex items-center justify-center h-full w-full' : ''">
                 <div class="flex flex-col min-h-full">
                     <div class="flex flex-col flex-grow">

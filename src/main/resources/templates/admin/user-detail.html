@@ -111,6 +111,21 @@
                                 </select>
                             </div>
 
+                            <div class="flex items-start gap-2 pt-2 pb-2">
+                                <input
+                                    class="w-4 h-4 mt-0.5 text-primary bg-glass border-glass-border rounded focus:ring-primary/50 cursor-pointer"
+                                    type="checkbox" id="isActive" name="isActive"
+                                    th:checked="${user.isActive}">
+                                <div>
+                                    <label class="text-sm font-semibold text-txt-primary cursor-pointer"
+                                        for="isActive">
+                                        アカウントを有効にする
+                                    </label>
+                                    <div class="text-xs text-txt-secondary opacity-70 block mt-1">
+                                        チェックを外すと、このユーザーはシステムにログインできなくなります。</div>
+                                </div>
+                            </div>
+
                             <div class="flex items-start gap-2 pt-2 pb-4">
                                 <input
                                     class="w-4 h-4 mt-0.5 text-primary bg-glass border-glass-border rounded focus:ring-primary/50 cursor-pointer"

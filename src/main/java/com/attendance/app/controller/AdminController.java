@@ -277,7 +277,8 @@ public class AdminController {
             @RequestParam(required = false) BigDecimal paidLeaveDays,
             @RequestParam(required = false) String notes,
             @RequestParam(defaultValue = "false") boolean canApproveAttendance,
-            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM-dd") java.time.LocalDate hireDate) {
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM-dd") java.time.LocalDate hireDate,
+            @RequestParam(defaultValue = "false") boolean isActive) {
         try {
             userService.updateUser(
                     userId,
@@ -291,6 +292,7 @@ public class AdminController {
                     notes,
                     canApproveAttendance,
                     hireDate,
+                    isActive,
                     securityUtil.getCurrentUserId());
             log.info("ユーザー情報を更新: userId={}", userId);
             return ADMIN_USERS_REDIRECT;

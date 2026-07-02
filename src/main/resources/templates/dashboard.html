@@ -11,16 +11,16 @@
     <div layout:fragment="content">
         <!-- 1. ウェルカムヘッダーパネル -->
         <div
-            class="card flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 animate-fade-in">
+            class="card flex flex-col md:flex-row justify-between items-start md:items-center md:mb-6 mb-4 md:gap-4 gap-3 animate-fade-in">
             <div>
-                <h2 class="m-0 text-[1.6rem] font-bold flex items-center gap-2 text-txt-primary">
+                <h2 class="m-0 text-[0.9rem] md:text-[1.6rem] font-bold text-txt-primary leading-tight">
                     お疲れ様です、<span th:text="${currentUser != null ? currentUser.fullName : 'ユーザー'}">管理者 太郎</span>さん
                 </h2>
                 <p class="mt-2 mb-0 text-[0.9rem] text-txt-secondary font-medium">
                     本日は <span th:text="${todayFormatted}">2026年6月17日水曜日</span> です。今日も安全第一でお願いいたします。
                 </p>
             </div>
-            <div>
+            <div class="w-full flex justify-center md:w-auto">
                 <a th:href="@{/attendance/quick}" class="btn btn-primary px-6 py-3.5 text-sm gap-2">
                     <i class="fa-regular fa-clock text-[1.1rem]"></i>
                     打刻をする
@@ -29,7 +29,7 @@
         </div>
 
         <!-- 2. ステータスカードグリッド -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6 animate-fade-in">
+        <div class="grid grid-cols-2 lg:grid-cols-4 md:gap-5 gap-3 md:mb-6 mb-4 animate-fade-in">
             <!-- 実労働時間 -->
             <div class="card-sm flex flex-col items-start gap-2">
                 <span class="text-[0.8rem] text-txt-secondary font-semibold">今月の実労働時間</span>
@@ -79,7 +79,7 @@
         </div>
 
         <!-- 3. 中段レイアウト (2列2行: 上段に通知/お知らせ、下段に本日の出勤概要) -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 animate-fade-in">
+        <div class="grid grid-cols-1 lg:grid-cols-2 md:gap-6 gap-4 md:mb-6 mb-4 animate-fade-in">
             <!-- 通知カード -->
             <div class="card flex flex-col min-h-[300px]">
                 <div class="flex justify-between items-center mb-4">
@@ -150,33 +150,33 @@
 
             <!-- 本日の出勤概要 -->
             <div class="card lg:col-span-2">
-                <h3 class="mb-5 text-[1.15rem] font-bold text-txt-primary text-left">本日の出勤概要</h3>
+                <h3 class="mb-2 text-[1.15rem] font-bold text-txt-primary text-left">本日の出勤概要</h3>
                 <div th:if="${todayRecord == null}"
                     class="text-center text-txt-secondary py-12 px-8 bg-black/5 rounded-2xl border border-dashed border-glass-border text-sm">
                     本日はまだ打刻レコードがありません。
                 </div>
                 <div th:if="${todayRecord != null}" class="table-container">
-                    <table class="table-custom mt-4">
+                    <table class="table-custom mt-0">
                         <thead>
                             <tr>
-                                <th>日付</th>
-                                <th>出勤時間</th>
-                                <th>退勤時間</th>
-                                <th>ステータス</th>
+                                <th class="text-center">日付</th>
+                                <th class="text-center">出勤時間</th>
+                                <th class="text-center">退勤時間</th>
+                                <th class="text-center">ステータス</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td class="font-mono"
-                                    th:text="${todayRecord.attendanceDate != null ? #temporals.format(todayRecord.attendanceDate, 'MM月dd日') : '-'}">
-                                    10月12日</td>
-                                <td class="font-mono"
+                                <td class="font-mono text-center"
+                                    th:text="${todayRecord.attendanceDate != null ? #temporals.format(todayRecord.attendanceDate, 'MM/dd(E)') : '-'}">
+                                    10/12(金)</td>
+                                <td class="font-mono text-center"
                                     th:text="${todayRecord.startTime != null ? #temporals.format(todayRecord.startTime.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'HH:mm') : '--:--'}">
                                     08:55</td>
-                                <td class="font-mono"
+                                <td class="font-mono text-center"
                                     th:text="${todayRecord.endTime != null ? #temporals.format(todayRecord.endTime.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'HH:mm') : '--:--'}">
                                     --:--</td>
-                                <td>
+                                <td class="text-center">
                                     <span class="badge badge-success" th:if="${todayRecord.endTime != null}">記録済み</span>
                                     <span class="badge badge-warning"
                                         th:if="${todayRecord.startTime != null && todayRecord.endTime == null}">勤務中</span>
@@ -189,7 +189,7 @@
         </div>
 
         <!-- 4. 勤務・健康アドバイザー -->
-        <div class="card mb-8 animate-fade-in">
+        <div class="card md:mb-8 mb-4 animate-fade-in">
             <div class="flex justify-between items-start mb-6">
                 <div class="flex items-center gap-3">
                     <div

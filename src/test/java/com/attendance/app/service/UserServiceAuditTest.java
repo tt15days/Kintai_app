@@ -24,7 +24,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * {@link UserService} における監査ログ呼び出しの単体テスト。
+ * {@link UserService} における監査ログ呼び出しの単体テスト。 
  *
  * <p>
  * ユーザー作成・更新・削除・パスワード初期化の各操作で
@@ -133,7 +133,7 @@ class UserServiceAuditTest {
             userService.updateUser(
                     TARGET_ID, "user@example.com", "更新ユーザー",
                     UserRole.USER, null, null, null,
-                    new BigDecimal("10.0"), null, false, null, ACTOR_ID);
+                    new BigDecimal("10.0"), null, false, null, true, ACTOR_ID);
 
             verify(auditLogService).recordUserEvent(
                     eq(AuditEventType.USER_UPDATED),

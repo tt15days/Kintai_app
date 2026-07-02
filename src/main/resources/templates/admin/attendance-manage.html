@@ -57,9 +57,9 @@
                                  </a>
                                  <span th:unless="${user.isActive}" class="text-xs text-red-500 font-normal ml-1">(無効)</span>
                              </td>
-                            <td class="font-mono" th:with="wh=${workingSumByUserMap[user.userId]}" th:text="${wh != null ? #numbers.formatDecimal(wh, 1, 1) + 'h' : '0.0h'}">160h 00m</td>
-                            <td class="font-mono" th:with="ot=${overtimeSumByUserMap[user.userId]}" th:text="${ot != null ? #numbers.formatDecimal(ot, 1, 1) + 'h' : '0.0h'}">12h 30m</td>
-                            <td class="font-mono" th:with="ns=${nightShiftSumByUserMap[user.userId]}" th:text="${ns != null ? #numbers.formatDecimal(ns, 1, 1) + 'h' : '0.0h'}">0.0h</td>
+                            <td class="font-mono" th:with="wh=${workingSumByUserMap[user.userId]}" th:text="${wh != null ? #numbers.formatDecimal(wh, 1, 1) + '時間' : '0.0時間'}">160時間</td>
+                            <td class="font-mono" th:with="ot=${overtimeSumByUserMap[user.userId]}" th:text="${ot != null ? #numbers.formatDecimal(ot, 1, 1) + '時間' : '0.0時間'}">12時間</td>
+                            <td class="font-mono" th:with="ns=${nightShiftSumByUserMap[user.userId]}" th:text="${ns != null ? #numbers.formatDecimal(ns, 1, 1) + '時間' : '0.0時間'}">0.0時間</td>
                             <td>
                                 <span th:if="${submissionByUserMap[user.userId] == null}" class="badge bg-black/5 text-txt-secondary border-glass-border">未提出</span>
                                 <span th:if="${submissionByUserMap[user.userId] != null and submissionByUserMap[user.userId].status == submissionStatusPending}" class="badge badge-warning animate-pulse">承認待ち</span>

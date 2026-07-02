@@ -6,9 +6,8 @@
 <body>
     <h2 layout:fragment="page-title">勤怠詳細 - 管理者</h2>
 
-    <div layout:fragment="content">
-    <div class="container mx-auto px-4 py-6">
-        <div class="max-w-5xl mx-auto">
+    <div layout:fragment="content" class="w-full py-4 animate-fade-in">
+        <div>
             <div class="card">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 mb-6 border-b border-glass-border/30 gap-4">
                     <h4 class="text-lg font-bold text-txt-primary flex items-center gap-1.5"><i class="fas fa-user-check text-primary"></i> 勤怠詳細ビュー</h4>
@@ -137,36 +136,32 @@
                         <input type="hidden" name="yearMonth" th:value="${yearMonth}" />
                         <input type="hidden" name="from" th:value="${from}" th:if="${from != null}" />
                         <div class="table-container mb-6">
-                            <table class="table-custom mb-0">
+                            <table class="table-custom mb-0 text-[0.75rem] md:text-sm">
                                 <thead class="bg-black/10 text-txt-primary">
                                     <tr>
-                                        <th><i class="fas fa-calendar"></i> 日付</th>
-                                        <th><i class="fas fa-calendar-alt"></i> 曜日</th>
-                                        <th>開始時刻</th>
-                                        <th>終了時刻</th>
-                                        <th>事由</th>
-                                        <th><i class="fas fa-clock"></i> 勤務時間</th>
-                                        <th><i class="fas fa-hourglass-end"></i> 残業時間</th>
-                                        <th><i class="fas fa-comment"></i> 備考</th>
+                                        <th class="w-[20%] md:w-[18%]"><i class="fas fa-calendar"></i> 日付 / 曜日</th>
+                                        <th class="w-[15%]">開始時刻</th>
+                                        <th class="w-[15%]">終了時刻</th>
+                                        <th class="w-[17%]">事由</th>
+                                        <th class="w-[33%] md:w-[35%]"><i class="fas fa-comment"></i> 備考</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-glass-border/10">
                                     <tr th:each="record : ${records}"
                                         th:with="recDate=${recordDateMap != null ? recordDateMap[record.recordId] : null}"
                                         th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'table-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'table-primary' : '')}">
-                                        <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'text-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${recDate != null ? #temporals.format(recDate, 'yyyy-MM-dd') : '-'}"></td>
-                                        <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'text-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${recDate != null ? #temporals.format(recDate, 'E') : '-'}"></td>
+                                        <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'text-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${recDate != null ? #temporals.format(recDate, 'MM-dd (E)') : '-'}"></td>
                                         <td>
                                             <input type="hidden" name="attendanceDate" th:value="${recDate}">
-                                            <input type="time" name="startTime" class="form-input max-w-[120px] p-2 font-mono"
+                                            <input type="time" name="startTime" class="form-input md:max-w-[120px] max-w-[80px] md:p-2 p-1 font-mono text-center text-xs md:text-sm"
                                                    th:value="${recordStartTimeMap != null ? recordStartTimeMap[record.recordId] : ''}">
                                         </td>
                                         <td>
-                                            <input type="time" name="endTime" class="form-input max-w-[120px] p-2 font-mono"
+                                            <input type="time" name="endTime" class="form-input md:max-w-[120px] max-w-[80px] md:p-2 p-1 font-mono text-center text-xs md:text-sm"
                                                    th:value="${recordEndTimeMap != null ? recordEndTimeMap[record.recordId] : ''}">
                                         </td>
                                         <td>
-                                            <select name="eventTypeId" class="form-select max-w-[120px] p-2">
+                                            <select name="eventTypeId" class="form-select md:max-w-[120px] max-w-[85px] md:p-2 p-1 text-xs md:text-sm">
                                                 <option th:each="et : ${eventTypes}"
                                                         th:value="${et.eventTypeId}"
                                                         th:text="${et.displayName}"
@@ -174,15 +169,8 @@
                                                 </option>
                                             </select>
                                         </td>
-                                        <td class="font-mono" th:text="${record.workingHours != null ? (#numbers.formatDecimal(record.workingHours, 1, 2) + '時間') : '-'}"></td>
                                         <td>
-                                            <span th:if="${recordOvertimeHoursMap != null and recordOvertimeHoursMap[record.recordId] != null and recordOvertimeHoursMap[record.recordId] > 0}" class="text-danger font-bold font-mono">
-                                                <span th:text="${#numbers.formatDecimal(recordOvertimeHoursMap[record.recordId], 1, 2)}"></span>時間
-                                            </span>
-                                            <span th:unless="${recordOvertimeHoursMap != null and recordOvertimeHoursMap[record.recordId] != null and recordOvertimeHoursMap[record.recordId] > 0}" class="text-txt-secondary opacity-65 font-mono">-</span>
-                                        </td>
-                                        <td>
-                                            <input type="text" name="remarks" class="form-input p-2 w-full text-sm font-semibold text-txt-primary" 
+                                            <input type="text" name="remarks" class="form-input md:p-2 p-1 w-full text-xs md:text-sm font-semibold text-txt-primary" 
                                                    th:value="${record.remarks != null ? record.remarks : ''}" placeholder="例) 会議参加">
                                         </td>
                                     </tr>
@@ -204,35 +192,24 @@
 
                     <!-- 管理者以外の場合（閲覧専用テーブル） -->
                     <div th:unless="${#authorization.expression('hasRole(''ADMIN'')')}" class="table-container mb-6">
-                        <table class="table-custom">
+                        <table class="table-custom text-[0.75rem] md:text-sm">
                             <thead class="bg-black/10 text-txt-primary">
                                 <tr>
-                                    <th><i class="fas fa-calendar"></i> 日付</th>
-                                    <th><i class="fas fa-calendar-alt"></i> 曜日</th>
-                                    <th>開始時刻</th>
-                                    <th>終了時刻</th>
-                                    <th>事由</th>
-                                    <th><i class="fas fa-clock"></i> 勤務時間</th>
-                                    <th><i class="fas fa-hourglass-end"></i> 残業時間</th>
-                                    <th><i class="fas fa-comment"></i> 備考</th>
+                                    <th class="w-[20%] md:w-[18%]"><i class="fas fa-calendar"></i> 日付 / 曜日</th>
+                                    <th class="w-[15%]">開始時刻</th>
+                                    <th class="w-[15%]">終了時刻</th>
+                                    <th class="w-[17%]">事由</th>
+                                    <th class="w-[33%] md:w-[35%]"><i class="fas fa-comment"></i> 備考</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-glass-border/10">
                                 <tr th:each="record : ${records}"
                                     th:with="recDate=${recordDateMap != null ? recordDateMap[record.recordId] : null}"
                                     th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'table-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'table-primary' : '')}">
-                                    <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'text-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${recDate != null ? #temporals.format(recDate, 'yyyy-MM-dd') : '-'}"></td>
-                                    <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'text-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${recDate != null ? #temporals.format(recDate, 'E') : '-'}"></td>
+                                    <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'text-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${recDate != null ? #temporals.format(recDate, 'MM-dd (E)') : '-'}"></td>
                                     <td class="font-mono" th:text="${recordStartTimeMap != null and recordStartTimeMap[record.recordId] != null ? recordStartTimeMap[record.recordId] : '-'}"></td>
                                     <td class="font-mono" th:text="${recordEndTimeMap != null and recordEndTimeMap[record.recordId] != null ? recordEndTimeMap[record.recordId] : '-'}"></td>
                                     <td th:text="${eventTypeMap != null and record.eventTypeId != null ? eventTypeMap[record.eventTypeId] : '-'}"></td>
-                                    <td class="font-mono" th:text="${record.workingHours != null ? (#numbers.formatDecimal(record.workingHours, 1, 2) + '時間') : '-'}"></td>
-                                    <td>
-                                        <span th:if="${recordOvertimeHoursMap != null and recordOvertimeHoursMap[record.recordId] != null and recordOvertimeHoursMap[record.recordId] > 0}" class="text-danger font-bold font-mono">
-                                            <span th:text="${#numbers.formatDecimal(recordOvertimeHoursMap[record.recordId], 1, 2)}"></span>時間
-                                        </span>
-                                        <span th:unless="${recordOvertimeHoursMap != null and recordOvertimeHoursMap[record.recordId] != null and recordOvertimeHoursMap[record.recordId] > 0}" class="text-txt-secondary opacity-65 font-mono">-</span>
-                                    </td>
                                     <td th:text="${record.remarks != null ? record.remarks : '-'}"></td>
                                 </tr>
                                 <tr th:if="${records == null or records.isEmpty()}">
@@ -248,8 +225,9 @@
                     <!-- 今月の集計 -->
                     <hr class="border-glass-border/30 my-6">
                     <h5 class="text-sm font-bold text-txt-secondary mb-3 flex items-center gap-1.5"><i class="fas fa-chart-pie text-txt-secondary/80"></i> 今月の集計</h5>
-                    <div class="table-container mb-6">
-                        <table class="table-custom">
+                    <!-- PC用テーブル表示 -->
+                    <div class="table-container mb-6 hidden md:block">
+                        <table class="table-custom text-[0.75rem] md:text-sm">
                             <thead class="bg-black/10 text-txt-primary">
                                 <tr>
                                     <th class="text-center">記録日数</th>
@@ -275,6 +253,44 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- モバイル用複数行グリッド表示 -->
+                    <div class="grid grid-cols-2 gap-2 md:hidden mb-6 text-xs animate-fade-in">
+                        <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
+                            <span class="text-txt-secondary font-semibold">記録日数</span>
+                            <span class="font-bold font-mono" th:text="${records.size()} + ' 日'">0 日</span>
+                        </div>
+                        <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
+                            <span class="text-txt-secondary font-semibold">労働時間</span>
+                            <span class="font-bold font-mono" th:text="${#numbers.formatDecimal(totalWorkingHours, 1, 2)} + ' 時間'">0.00 時間</span>
+                        </div>
+                        <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
+                            <span class="text-txt-secondary font-semibold">残業時間</span>
+                            <span class="font-bold font-mono text-danger" th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 2)} + ' 時間'">0.00 時間</span>
+                        </div>
+                        <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
+                            <span class="text-txt-secondary font-semibold">土曜休出</span>
+                            <span class="font-bold font-mono" th:text="${#numbers.formatDecimal(totalSaturdayWorkHours, 1, 2)} + ' 時間'">0.00 時間</span>
+                        </div>
+                        <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
+                            <span class="text-txt-secondary font-semibold">日祝休出</span>
+                            <span class="font-bold font-mono" th:text="${#numbers.formatDecimal(totalHolidayWorkHours, 1, 2)} + ' 時間'">0.00 時間</span>
+                        </div>
+                        <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex flex-col items-start gap-1 col-span-2">
+                            <div class="w-full flex justify-between items-center">
+                                <span class="text-txt-secondary font-semibold">有給利用</span>
+                                <span class="font-bold font-mono" th:text="${totalPaidLeaveDays} + ' 日 / ' + ${#numbers.formatDecimal(totalPaidLeaveHours, 1, 2)} + ' 時間'">0 日 / 0.00 時間</span>
+                            </div>
+                        </div>
+                        <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
+                            <span class="text-txt-secondary font-semibold">無給休暇</span>
+                            <span class="font-bold font-mono" th:text="${totalUnpaidLeaveDays} + ' 日'">0 日</span>
+                        </div>
+                        <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
+                            <span class="text-txt-secondary font-semibold">欠勤</span>
+                            <span class="font-bold font-mono" th:text="${totalAbsenceDays} + ' 日'">0 日</span>
+                        </div>
                     </div>
 
                     <!-- 有給日数サマリー -->
@@ -306,7 +322,6 @@
                 </div>
             </div>
         </div>
-    </div>
 
     <style th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
         .row-modified {

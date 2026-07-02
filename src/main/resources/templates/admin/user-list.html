@@ -25,37 +25,26 @@
                 <table class="table-custom">
                     <thead class="bg-black/10 text-txt-primary">
                         <tr>
-                            <th><i class="fa-solid fa-hashtag"></i> ID</th>
-                            <th><i class="fa-solid fa-envelope"></i> メールアドレス</th>
-                            <th><i class="fa-solid fa-user"></i> 氏名</th>
-                            <th><i class="fa-solid fa-tag"></i> ロール</th>
-                            <th><i class="fa-solid fa-toggle-on"></i> ステータス</th>
-                            <th><i class="fa-solid fa-calendar"></i> 最終ログイン</th>
-                            <th><i class="fa-solid fa-tools"></i> 操作</th>
+                            <th>氏名 / ID</th>
+                            <th>メールアドレス / 最終ログイン</th>
+                            <th>ロール</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-glass-border/10">
-                        <tr th:each="user : ${users}" th:with="isAdmin=${user.userRole?.name() == 'ADMIN'}">
-                            <td class="font-mono" th:text="${user.userId}"></td>
-                            <td class="font-mono" th:text="${user.email}"></td>
-                            <td class="font-semibold" th:text="${user.fullName ?: ''}"></td>
+                        <tr th:each="user : ${users}" th:with="isAdmin=${user.userRole?.name() == 'ADMIN'}" th:classappend="${!user.isActive} ? 'opacity-45 bg-black/5 grayscale' : ''">
                             <td>
-                                <span th:if="${isAdmin}" class="badge badge-danger">
-                                    <i class="fa-solid fa-shield-alt"></i> 管理者
-                                </span>
-                                <span th:unless="${isAdmin}" class="badge badge-primary">
-                                    <i class="fa-solid fa-user"></i> 一般ユーザー
-                                </span>
+                                <div class="font-semibold text-txt-primary" th:text="${user.fullName ?: ''}"></div>
+                                <div class="text-xs text-txt-secondary font-mono opacity-80 mt-0.5" th:text="'ID: ' + ${user.userId}"></div>
                             </td>
                             <td>
-                                <span th:if="${user.isActive}" class="badge badge-success">
-                                    <i class="fa-solid fa-check-circle"></i> 有効
-                                </span>
-                                <span th:unless="${user.isActive}" class="badge badge-danger">
-                                    <i class="fa-solid fa-times-circle"></i> 無効
-                                </span>
+                                <div class="font-mono text-sm text-txt-primary" th:text="${user.email}"></div>
+                                <div class="text-xs text-txt-secondary font-mono mt-0.5" th:text="${user.lastLoginAt != null ? '最終ログイン: ' + #temporals.format(user.lastLoginAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy-MM-dd HH:mm') : '最終ログイン: -'}"></div>
                             </td>
-                            <td class="font-mono" th:text="${user.lastLoginAt != null ? #temporals.format(user.lastLoginAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
+                            <td>
+                                <span th:if="${isAdmin}" class="badge badge-danger">管理者</span>
+                                <span th:unless="${isAdmin}" class="badge badge-primary">一般</span>
+                            </td>
                             <td>
                                 <a th:href="@{/admin/users/{userId}(userId=${user.userId})}" class="btn btn-primary gap-1.5 px-3 py-1.5 rounded-lg text-xs">
                                     <i class="fa-solid fa-cog"></i> 詳細・設定
@@ -63,7 +52,7 @@
                             </td>
                         </tr>
                         <tr th:if="${users.isEmpty()}">
-                            <td colspan="7" class="text-center py-12 text-txt-secondary opacity-80">
+                            <td colspan="4" class="text-center py-12 text-txt-secondary opacity-80">
                                 <i class="fa-solid fa-inbox fa-2x mb-2 text-txt-secondary/50"></i>
                                 <p class="text-sm font-medium">ユーザーがありません</p>
                             </td>
