@@ -10,32 +10,32 @@
 
     <div layout:fragment="content">
         <!-- メッセージ表示 -->
-        <div th:if="${successMessage}" class="alert alert-success">
-            <span class="flex items-center gap-2">
-                <i class="fa-solid fa-check-circle"></i> 
+        <div th:if="${successMessage}" class="alert alert-success items-start gap-4">
+            <span class="flex items-start gap-2 flex-1 min-w-0 break-all">
+                <i class="fa-solid fa-check-circle mt-0.5 shrink-0"></i> 
                 <span th:text="${successMessage}"></span>
             </span>
-            <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity" onclick="this.parentElement.remove()">
+            <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity shrink-0 mt-0.5" onclick="this.parentElement.remove()">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
-        <div th:if="${errorMessage}" class="alert alert-danger">
-            <span class="flex items-center gap-2">
-                <i class="fa-solid fa-exclamation-circle"></i> 
+        <div th:if="${errorMessage}" class="alert alert-danger items-start gap-4">
+            <span class="flex items-start gap-2 flex-1 min-w-0 break-all">
+                <i class="fa-solid fa-exclamation-circle mt-0.5 shrink-0"></i> 
                 <span th:text="${errorMessage}"></span>
             </span>
-            <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity" onclick="this.parentElement.remove()">
+            <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity shrink-0 mt-0.5" onclick="this.parentElement.remove()">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
 
         <div class="space-y-6">
             <!-- 登録済み勤務クラス一覧のヘッダー -->
-            <div class="flex flex-wrap justify-between items-center gap-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h3 class="text-lg font-bold text-txt-primary flex items-center gap-2">
                     <i class="fa-solid fa-list text-primary"></i> 登録済み勤務クラス一覧
                 </h3>
-                <button type="button" onclick="openCreateModal()" class="btn btn-primary gap-2 text-sm">
+                <button type="button" onclick="openCreateModal()" class="btn btn-primary gap-2 text-sm w-full sm:w-auto">
                     <i class="fa-solid fa-plus-circle"></i> 新規登録
                 </button>
             </div>
@@ -120,7 +120,7 @@
                             最寄り駅: <span th:text="${schedule.station != null and !schedule.station.isEmpty() ? schedule.station : '未指定'}">六本木駅</span>
                         </div>
                         <div>
-                            <i class="fa-regular fa-clock mr-2 w-5 text-center inline-block text-txt-secondary/60 font-semibold text-primary font-bold"></i> 
+                            <i class="fa-regular fa-clock mr-2 w-5 text-center inline-block text-txt-secondary/60"></i> 
                             勤務時間: <span class="font-mono text-txt-primary font-bold" th:text="${#temporals.format(schedule.startTime, 'HH:mm')} + ' - ' + ${#temporals.format(schedule.endTime, 'HH:mm')}">09:00 - 18:00</span>
                         </div>
                     </div>
@@ -159,11 +159,11 @@
         <div id="scheduleModal" class="absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300" onclick="cancelEditMode(); closeModal()">
             <div class="flex min-h-full items-center justify-center p-4">
                 <div id="modalContent" class="card-heavy w-full max-w-2xl transform scale-95 transition-all duration-300" onclick="event.stopPropagation()">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 id="formTitle" class="text-lg font-bold text-txt-primary flex items-center gap-2">
-                            <i class="fa-solid fa-plus-circle text-primary"></i> 勤務クラス新規登録
+                    <div class="flex justify-between items-start mb-6 gap-4">
+                        <h3 id="formTitle" class="text-base sm:text-lg font-bold text-txt-primary flex items-center gap-2 flex-1 min-w-0 break-words">
+                            <i class="fa-solid fa-plus-circle text-primary shrink-0"></i> 勤務クラス新規登録
                         </h3>
-                        <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity" onclick="cancelEditMode(); closeModal()">
+                        <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity shrink-0 mt-0.5" onclick="cancelEditMode(); closeModal()">
                             <i class="fa-solid fa-xmark text-xl"></i>
                         </button>
                     </div>
@@ -175,83 +175,83 @@
                             <label class="text-sm font-semibold text-txt-secondary flex items-center gap-1" for="name">
                                 勤務クラス名 <span class="text-danger">*</span>
                             </label>
-                            <input type="text" id="name" name="name" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 本社標準勤務、テレワーク勤務" required>
+                            <input type="text" id="name" name="name" class="form-input" placeholder="例) 本社標準勤務、テレワーク勤務" required>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="folderName">フォルダ分類</label>
-                                <input type="text" id="folderName" name="folderName" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 本社、開発部">
+                                <input type="text" id="folderName" name="folderName" class="form-input" placeholder="例) 本社、開発部">
                             </div>
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="tags">タグ (カンマ区切り)</label>
-                                <input type="text" id="tags" name="tags" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 時短,シフト">
+                                <input type="text" id="tags" name="tags" class="form-input" placeholder="例) 時短,シフト">
                             </div>
                         </div>
 
                         <div class="flex flex-col gap-1.5">
                             <label class="text-sm font-semibold text-txt-secondary" for="workLocation">勤務地</label>
-                            <input type="text" id="workLocation" name="workLocation" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 本社、在宅、支店等">
+                            <input type="text" id="workLocation" name="workLocation" class="form-input" placeholder="例) 本社、在宅、支店等">
                         </div>
 
                         <div class="flex flex-col gap-1.5">
                             <label class="text-sm font-semibold text-txt-secondary" for="address">住所</label>
-                            <input type="text" id="address" name="address" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 東京都港区〇〇1-2-3">
+                            <input type="text" id="address" name="address" class="form-input" placeholder="例) 東京都港区〇〇1-2-3">
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="station">最寄り駅</label>
-                                <input type="text" id="station" name="station" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 六本木駅">
+                                <input type="text" id="station" name="station" class="form-input" placeholder="例) 六本木駅">
                             </div>
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="telephone">電話番号</label>
-                                <input type="tel" id="telephone" name="telephone" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 03-1234-5678">
+                                <input type="tel" id="telephone" name="telephone" class="form-input" placeholder="例) 03-1234-5678">
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="sectionName">所属部署</label>
-                                <input type="text" id="sectionName" name="sectionName" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 営業部">
+                                <input type="text" id="sectionName" name="sectionName" class="form-input" placeholder="例) 営業部">
                             </div>
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="isActive">状態</label>
-                                <select id="isActive" name="isActive" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200">
+                                <select id="isActive" name="isActive" class="form-select">
                                     <option value="true" selected>有効</option>
                                     <option value="false">無効</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary flex items-center gap-1" for="startTime">
                                     始業時刻 <span class="text-danger">*</span>
                                 </label>
-                                <input type="time" id="startTime" name="startTime" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" required value="09:00">
+                                <input type="time" id="startTime" name="startTime" class="form-input font-mono" required value="09:00">
                             </div>
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary flex items-center gap-1" for="endTime">
                                     終業時刻 <span class="text-danger">*</span>
                                 </label>
-                                <input type="time" id="endTime" name="endTime" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" required value="18:00">
+                                <input type="time" id="endTime" name="endTime" class="form-input font-mono" required value="18:00">
                             </div>
                         </div>
 
                         <!-- 休憩時間1 (必須) -->
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary flex items-center gap-1" for="breakStartTime">
                                     休憩1開始時刻 <span class="text-danger">*</span>
                                 </label>
-                                <input type="time" id="breakStartTime" name="breakStartTime" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" required value="12:00">
+                                <input type="time" id="breakStartTime" name="breakStartTime" class="form-input font-mono" required value="12:00">
                             </div>
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary flex items-center gap-1" for="breakEndTime">
                                     休憩1終了時刻 <span class="text-danger">*</span>
                                 </label>
-                                <input type="time" id="breakEndTime" name="breakEndTime" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" required value="13:00">
+                                <input type="time" id="breakEndTime" name="breakEndTime" class="form-input font-mono" required value="13:00">
                             </div>
                         </div>
 
@@ -262,56 +262,56 @@
                         </button>
                         <div id="breakAccordion" class="max-h-0 overflow-hidden transition-all duration-300 ease-out px-1 space-y-4">
                             <!-- 休憩2 -->
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="flex flex-col gap-1.5">
                                     <label class="text-sm font-semibold text-txt-secondary" for="breakStartTime2">休憩2開始時刻</label>
-                                    <input type="time" id="breakStartTime2" name="breakStartTime2" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
+                                    <input type="time" id="breakStartTime2" name="breakStartTime2" class="form-input font-mono">
                                 </div>
                                 <div class="flex flex-col gap-1.5">
                                     <label class="text-sm font-semibold text-txt-secondary" for="breakEndTime2">休憩2終了時刻</label>
-                                    <input type="time" id="breakEndTime2" name="breakEndTime2" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
+                                    <input type="time" id="breakEndTime2" name="breakEndTime2" class="form-input font-mono">
                                 </div>
                             </div>
                             <!-- 休憩3 -->
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="flex flex-col gap-1.5">
                                     <label class="text-sm font-semibold text-txt-secondary" for="breakStartTime3">休憩3開始時刻</label>
-                                    <input type="time" id="breakStartTime3" name="breakStartTime3" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
+                                    <input type="time" id="breakStartTime3" name="breakStartTime3" class="form-input font-mono">
                                 </div>
                                 <div class="flex flex-col gap-1.5">
                                     <label class="text-sm font-semibold text-txt-secondary" for="breakEndTime3">休憩3終了時刻</label>
-                                    <input type="time" id="breakEndTime3" name="breakEndTime3" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
+                                    <input type="time" id="breakEndTime3" name="breakEndTime3" class="form-input font-mono">
                                 </div>
                             </div>
                             <!-- 休憩4 -->
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="flex flex-col gap-1.5">
                                     <label class="text-sm font-semibold text-txt-secondary" for="breakStartTime4">休憩4開始時刻</label>
-                                    <input type="time" id="breakStartTime4" name="breakStartTime4" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
+                                    <input type="time" id="breakStartTime4" name="breakStartTime4" class="form-input font-mono">
                                 </div>
                                 <div class="flex flex-col gap-1.5">
                                     <label class="text-sm font-semibold text-txt-secondary" for="breakEndTime4">休憩4終了時刻</label>
-                                    <input type="time" id="breakEndTime4" name="breakEndTime4" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
+                                    <input type="time" id="breakEndTime4" name="breakEndTime4" class="form-input font-mono">
                                 </div>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="maxHours">最大勤務時間</label>
-                                <input type="number" id="maxHours" name="maxHours" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" placeholder="例) 10" min="1" max="24">
+                                <input type="number" id="maxHours" name="maxHours" class="form-input font-mono" placeholder="例) 10" min="1" max="24">
                             </div>
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="minHours">最小勤務時間</label>
-                                <input type="number" id="minHours" name="minHours" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" placeholder="例) 4" min="1" max="24">
+                                <input type="number" id="minHours" name="minHours" class="form-input font-mono" placeholder="例) 4" min="1" max="24">
                             </div>
                         </div>
 
-                        <div class="flex gap-4 mt-4">
-                            <button type="button" onclick="cancelEditMode(); closeModal()" class="btn btn-flat flex-1">
+                        <div class="flex flex-col-reverse sm:flex-row gap-3 mt-4">
+                            <button type="button" onclick="cancelEditMode(); closeModal()" class="btn btn-flat sm:flex-1 w-full">
                                 キャンセル
                             </button>
-                            <button type="submit" id="submitBtn" class="btn btn-primary flex-[2]">
+                            <button type="submit" id="submitBtn" class="btn btn-primary sm:flex-[2] w-full">
                                 <i class="fa-solid fa-save"></i> <span id="submitBtnText">勤務クラスを登録する</span>
                             </button>
                         </div>
