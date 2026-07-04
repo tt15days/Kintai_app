@@ -110,6 +110,33 @@ class LeaveApplicationControllerTest {
     }
 
     @Test
+    @DisplayName("createLeaveApplication: 期間内にロック月が含まれる場合はエラーで作成しない")
+    void createLeaveApplication_lockedMonthInRange_setsError() {
+        Long userId = 5L;
+        LocalDate startDate = LocalDate.of(2026, 5, 28);
+        LocalDate endDate = LocalDate.of(2026, 6, 2);
+
+        when(securityUtil.getCurrentUserId()).thenReturn(userId);
+        when(attendanceSubmissionService.resolvePayrollMonth(LocalDate.of(2026, 5, 28))).thenReturn(YearMonth.of(2026, 5));
+        when(attendanceSubmissionService.resolvePayrollMonth(LocalDate.of(2026, 5, 29))).thenReturn(YearMonth.of(2026, 5));
+        when(attendanceSubmissionService.resolvePayrollMonth(LocalDate.of(2026, 5, 30))).thenReturn(YearMonth.of(2026, 5));
+        when(attendanceSubmissionService.resolvePayrollMonth(LocalDate.of(2026, 5, 31))).thenReturn(YearMonth.of(2026, 5));
+        when(attendanceSubmissionService.resolvePayrollMonth(LocalDate.of(2026, 6, 1))).thenReturn(YearMonth.of(2026, 6));
+        when(attendanceSubmissionService.resolvePayrollMonth(LocalDate.of(2026, 6, 2))).thenReturn(YearMonth.of(2026, 6));
+        when(attendanceSubmissionService.isEditableMonth(userId, YearMonth.of(2026, 5))).thenReturn(true);
+        when(attendanceSubmissionService.isEditableMonth(userId, YearMonth.of(2026, 6))).thenReturn(false);
+
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+        String view = controller.createLeaveApplication(startDate, endDate, LeaveType.SPECIAL_LEAVE, "FULL_DAY", "理由", redirect);
+
+        assertThat(view).isEqualTo("redirect:/leave");
+        verify(leaveApplicationService, never()).createApplication(any(), any(), any(), any(), any(), any());
+        assertThat((String) redirect.getFlashAttributes().get("error"))
+                .contains("2026-06")
+                .contains("申請中または承認済み");
+    }
+
+    @Test
     @DisplayName("deleteLeaveApplication: ロック月の場合は削除せずエラーを返す")
     void deleteLeaveApplication_lockedMonth_doesNotDelete() {
         Long userId = 4L;

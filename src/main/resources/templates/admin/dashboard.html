@@ -87,6 +87,14 @@
                             <i class="fa-solid fa-paper-plane"></i> リマインド送信を実行
                         </button>
                     </form>
+                    <!-- 有給一括付与 -->
+                    <form method="post" th:action="@{/admin/batch/annual-leave-grant}">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <button type="submit" class="btn btn-danger px-5 py-3 text-sm h-[48px] gap-2"
+                                onclick="return confirm('全従業員に年次有給休暇を一括付与します。よろしいですか？')">
+                            <i class="fa-solid fa-umbrella-beach"></i> 有給一括付与を実行
+                        </button>
+                    </form>
                 </div>
             </div>
 

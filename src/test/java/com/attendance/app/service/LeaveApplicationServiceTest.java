@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,6 +56,7 @@ class LeaveApplicationServiceTest {
         void validPeriod_createsPendingApplication() {
             LocalDate start = LocalDate.of(2026, 6, 1);
             LocalDate end   = LocalDate.of(2026, 6, 3);
+            when(paidLeaveBalanceService.getTotalRemainingDays(2L)).thenReturn(new BigDecimal("10"));
 
             service.createApplication(2L, start, end, LeaveType.PAID_LEAVE, "年休消化");
 
@@ -90,6 +92,78 @@ class LeaveApplicationServiceTest {
         void sameStartEnd_createsSuccessfully() {
             LocalDate sameDay = LocalDate.of(2026, 6, 10);
             service.createApplication(2L, sameDay, sameDay, LeaveType.SPECIAL_LEAVE, null);
+            verify(leaveApplicationMapper).insert(any());
+        }
+
+        @Test
+        @DisplayName("有給休暇で残日数が不足している場合は例外を送出する")
+        void paidLeave_insufficientBalance_throwsException() {
+            LocalDate start = LocalDate.of(2026, 6, 1);
+            LocalDate end   = LocalDate.of(2026, 6, 5);
+            when(paidLeaveBalanceService.getTotalRemainingDays(2L)).thenReturn(new BigDecimal("2"));
+
+            assertThatThrownBy(() ->
+                    service.createApplication(2L, start, end, LeaveType.PAID_LEAVE, "年休消化"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("不足");
+
+            verify(leaveApplicationMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("半休は開始日と終了日が異なる場合は例外を送出する")
+        void halfDay_multiDay_throwsException() {
+            assertThatThrownBy(() ->
+                    service.createApplication(2L,
+                            LocalDate.of(2026, 6, 1),
+                            LocalDate.of(2026, 6, 2),
+                            "AM_HALF", LeaveType.PAID_LEAVE, "半休"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("半休");
+
+            verify(leaveApplicationMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("既存の有効な申請と期間が重複する場合は例外を送出する")
+        void overlappingApplication_throwsException() {
+            LocalDate start = LocalDate.of(2026, 6, 1);
+            LocalDate end   = LocalDate.of(2026, 6, 3);
+            LeaveApplication existing = LeaveApplication.builder()
+                    .applicationId(99L)
+                    .userId(2L)
+                    .leaveStartDate(LocalDate.of(2026, 6, 2))
+                    .leaveEndDate(LocalDate.of(2026, 6, 2))
+                    .status(LeaveStatus.APPROVED)
+                    .build();
+            when(leaveApplicationMapper.selectByUserAndDateRange(2L, start, end))
+                    .thenReturn(List.of(existing));
+
+            assertThatThrownBy(() ->
+                    service.createApplication(2L, start, end, LeaveType.SPECIAL_LEAVE, "重複"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("既に休暇申請が存在します");
+
+            verify(leaveApplicationMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("却下済みの申請とは重複判定されず正常に作成される")
+        void rejectedApplication_doesNotBlockCreation() {
+            LocalDate start = LocalDate.of(2026, 6, 1);
+            LocalDate end   = LocalDate.of(2026, 6, 3);
+            LeaveApplication rejected = LeaveApplication.builder()
+                    .applicationId(98L)
+                    .userId(2L)
+                    .leaveStartDate(LocalDate.of(2026, 6, 2))
+                    .leaveEndDate(LocalDate.of(2026, 6, 2))
+                    .status(LeaveStatus.REJECTED)
+                    .build();
+            when(leaveApplicationMapper.selectByUserAndDateRange(2L, start, end))
+                    .thenReturn(List.of(rejected));
+
+            service.createApplication(2L, start, end, LeaveType.SPECIAL_LEAVE, "OK");
+
             verify(leaveApplicationMapper).insert(any());
         }
     }
@@ -183,6 +257,48 @@ class LeaveApplicationServiceTest {
 
             // 3日間（6/1, 6/2, 6/3）なので 3 日分を控除
             verify(paidLeaveBalanceService).deductBalance(3L, BigDecimal.valueOf(3L), LocalDate.of(2026, 6, 1));
+        }
+
+        @Test
+        @DisplayName("半休（AM_HALF）の承認時は 0.5 日分のみ控除される")
+        void halfDayPaidLeaveApproval_deductsHalfDay() {
+            LeaveApplication app = LeaveApplication.builder()
+                    .applicationId(7L)
+                    .userId(3L)
+                    .leaveType(LeaveType.PAID_LEAVE)
+                    .leaveDurationType("AM_HALF")
+                    .leaveStartDate(LocalDate.of(2026, 6, 1))
+                    .leaveEndDate(LocalDate.of(2026, 6, 1))
+                    .status(LeaveStatus.PENDING)
+                    .build();
+            when(leaveApplicationMapper.selectByIdForUpdate(7L)).thenReturn(Optional.of(app));
+
+            service.approveApplication(7L, 10L);
+
+            verify(paidLeaveBalanceService).deductBalance(3L, new BigDecimal("0.5"), LocalDate.of(2026, 6, 1));
+        }
+
+        @Test
+        @DisplayName("残高不足の場合は例外が伝播しステータスが更新されない")
+        void insufficientBalance_propagatesExceptionAndDoesNotUpdate() {
+            LeaveApplication app = LeaveApplication.builder()
+                    .applicationId(8L)
+                    .userId(3L)
+                    .leaveType(LeaveType.PAID_LEAVE)
+                    .leaveStartDate(LocalDate.of(2026, 6, 1))
+                    .leaveEndDate(LocalDate.of(2026, 6, 1))
+                    .status(LeaveStatus.PENDING)
+                    .build();
+            when(leaveApplicationMapper.selectByIdForUpdate(8L)).thenReturn(Optional.of(app));
+            org.mockito.Mockito.doThrow(new IllegalArgumentException("有給休暇の残日数が不足しています（不足: 1日）"))
+                    .when(paidLeaveBalanceService).deductBalance(any(), any(), any());
+
+            assertThatThrownBy(() -> service.approveApplication(8L, 10L))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("不足");
+
+            assertThat(app.getStatus()).isEqualTo(LeaveStatus.PENDING);
+            verify(leaveApplicationMapper, never()).update(any());
         }
 
         @Test
@@ -294,6 +410,26 @@ class LeaveApplicationServiceTest {
             // 3日間（6/1, 6/2, 6/3）なので 3 日分を返還
             verify(paidLeaveBalanceService).refundBalance(3L, BigDecimal.valueOf(3L), LocalDate.of(2026, 6, 1));
             verify(leaveApplicationMapper).deleteById(6L);
+        }
+
+        @Test
+        @DisplayName("承認済みの半休（PM_HALF）申請を削除した場合は 0.5 日分のみ返還される")
+        void approvedHalfDayPaidLeaveDelete_refundsHalfDay() {
+            LeaveApplication app = LeaveApplication.builder()
+                    .applicationId(9L)
+                    .userId(3L)
+                    .leaveType(LeaveType.PAID_LEAVE)
+                    .leaveDurationType("PM_HALF")
+                    .leaveStartDate(LocalDate.of(2026, 6, 1))
+                    .leaveEndDate(LocalDate.of(2026, 6, 1))
+                    .status(LeaveStatus.APPROVED)
+                    .build();
+            when(leaveApplicationMapper.selectByIdForUpdate(9L)).thenReturn(Optional.of(app));
+
+            service.deleteApplication(9L);
+
+            verify(paidLeaveBalanceService).refundBalance(3L, new BigDecimal("0.5"), LocalDate.of(2026, 6, 1));
+            verify(leaveApplicationMapper).deleteById(9L);
         }
     }
 

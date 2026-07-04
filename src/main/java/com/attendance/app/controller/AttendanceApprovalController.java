@@ -13,7 +13,9 @@ import com.attendance.app.security.SecurityUtil;
 import com.attendance.app.service.AttendanceCorrectionRequestService;
 import com.attendance.app.service.AttendanceRecordService;
 import com.attendance.app.service.AttendanceSubmissionService;
+import com.attendance.app.service.BatchSettingService;
 import com.attendance.app.service.LeaveApplicationService;
+import com.attendance.app.service.PaidLeaveBalanceService;
 import com.attendance.app.service.UserNotificationService;
 import com.attendance.app.service.UserService;
 import com.attendance.app.service.WorkScheduleClassService;
@@ -69,6 +71,8 @@ public class AttendanceApprovalController {
     private final WorkScheduleClassService workScheduleClassService;
     private final EventTypeService eventTypeService;
     private final HolidayService holidayService;
+    private final PaidLeaveBalanceService paidLeaveBalanceService;
+    private final BatchSettingService batchSettingService;
 
     /**
      * 現在ユーザーが承認可能な勤怠申請一覧を表示します。
@@ -79,9 +83,13 @@ public class AttendanceApprovalController {
             User currentUser = securityUtil.getCurrentUser();
             List<AttendanceSubmission> pendingSubmissions = attendanceSubmissionService.getPendingSubmissions(currentUser);
 
+            // N+1対策: 申請者IDをdistinctに収集し、ユーザー取得はID単位で1回のみ行う
             Map<Long, User> applicantUsers = new HashMap<>();
-            for (AttendanceSubmission submission : pendingSubmissions) {
-                userService.getUserById(submission.getUserId())
+            Set<Long> applicantUserIds = pendingSubmissions.stream()
+                    .map(AttendanceSubmission::getUserId)
+                    .collect(java.util.stream.Collectors.toSet());
+            for (Long applicantUserId : applicantUserIds) {
+                userService.getUserById(applicantUserId)
                         .ifPresent(user -> applicantUsers.put(user.getUserId(), user));
             }
 
@@ -165,9 +173,13 @@ public class AttendanceApprovalController {
             List<AttendanceCorrectionRequest> pendingRequests =
                     correctionRequestService.getPendingRequests(currentUser);
 
+            // N+1対策: 申請者IDをdistinctに収集し、ユーザー取得はID単位で1回のみ行う
             Map<Long, User> applicantUsers = new HashMap<>();
-            for (AttendanceCorrectionRequest req : pendingRequests) {
-                userService.getUserById(req.getUserId())
+            Set<Long> applicantUserIds = pendingRequests.stream()
+                    .map(AttendanceCorrectionRequest::getUserId)
+                    .collect(java.util.stream.Collectors.toSet());
+            for (Long applicantUserId : applicantUserIds) {
+                userService.getUserById(applicantUserId)
                         .ifPresent(user -> applicantUsers.put(user.getUserId(), user));
             }
 
@@ -261,12 +273,12 @@ public class AttendanceApprovalController {
         double totalOvertimeHours = 0.0;
         double totalSaturdayWorkHours = 0.0;
         double totalHolidayWorkHours = 0.0;
-        long totalPaidLeaveDays = 0;
+        java.math.BigDecimal totalPaidLeaveDays = java.math.BigDecimal.ZERO;
         double totalPaidLeaveHours = 0.0;
         long totalUnpaidLeaveDays = 0;
         long totalAbsenceDays = 0;
         AttendanceSubmission submission = null;
-        long yearlyUsedPaidLeaveDays = 0;
+        java.math.BigDecimal yearlyUsedPaidLeaveDays = java.math.BigDecimal.ZERO;
         java.math.BigDecimal remainingPaidLeaveDays = java.math.BigDecimal.ZERO;
         String article36Status = "NORMAL";
 
@@ -313,7 +325,8 @@ public class AttendanceApprovalController {
                 for (LeaveApplication la : leaveMap.values()) {
                     if (la.getStatus() == LeaveStatus.APPROVED) {
                         if (la.getLeaveType() == LeaveType.PAID_LEAVE) {
-                            totalPaidLeaveDays++;
+                            totalPaidLeaveDays = totalPaidLeaveDays.add(
+                                    leaveApplicationService.calculateDailyConsumedDays(la.getLeaveDurationType()));
                         } else if (la.getLeaveType() == LeaveType.UNPAID_LEAVE) {
                             totalUnpaidLeaveDays++;
                         } else if (la.getLeaveType() == LeaveType.ABSENCE) {
@@ -322,15 +335,12 @@ public class AttendanceApprovalController {
                     }
                 }
             }
-            totalPaidLeaveHours = totalPaidLeaveDays * attendanceRecordService.getStandardWorkingHours(userId, currentMonth);
+            totalPaidLeaveHours = totalPaidLeaveDays.doubleValue() * attendanceRecordService.getStandardWorkingHours(userId, currentMonth);
 
             // 当年の有給使用日数と残日数を計算
             int currentYear = LocalDate.now().getYear();
             yearlyUsedPaidLeaveDays = leaveApplicationService.calculateYearlyUsedPaidLeaveDays(userId, currentYear);
-            if (user != null && user.getPaidLeaveDays() != null) {
-                remainingPaidLeaveDays = user.getPaidLeaveDays()
-                        .subtract(new java.math.BigDecimal(yearlyUsedPaidLeaveDays));
-            }
+            remainingPaidLeaveDays = paidLeaveBalanceService.getTotalRemainingDays(userId);
             article36Status = attendanceRecordService.checkArticle36(totalOvertimeHours);
 
             submission = attendanceSubmissionService
@@ -358,8 +368,8 @@ public class AttendanceApprovalController {
         model.addAttribute("yearlyUsedPaidLeaveDays", yearlyUsedPaidLeaveDays);
         model.addAttribute("remainingPaidLeaveDays", remainingPaidLeaveDays);
         model.addAttribute("article36Status", article36Status);
-        model.addAttribute("article36MonthlyLimit", AttendanceRecordService.ARTICLE36_MONTHLY_LIMIT_HOURS);
-        model.addAttribute("article36MonthlyWarning", AttendanceRecordService.ARTICLE36_MONTHLY_WARNING_HOURS);
+        model.addAttribute("article36MonthlyLimit", batchSettingService.getAlertArticle36Limit2());
+        model.addAttribute("article36MonthlyWarning", batchSettingService.getAlertArticle36Limit1());
         model.addAttribute("currentYear", LocalDate.now().getYear());
         model.addAttribute("submissionStatusPending", AttendanceSubmissionService.STATUS_PENDING);
         model.addAttribute("submissionStatusApproved", AttendanceSubmissionService.STATUS_APPROVED);
@@ -448,14 +458,19 @@ public class AttendanceApprovalController {
             RedirectAttributes redirectAttributes) {
 
         try {
-            Integer codeDoyou = eventTypeService.getAllActiveEventTypes().stream()
+            // N+1対策: event_typesマスタは1回のみ取得
+            List<com.attendance.app.entity.EventType> activeEventTypes = eventTypeService.getAllActiveEventTypes();
+            Integer codeDoyou = activeEventTypes.stream()
                     .filter(et -> "土出".equals(et.getCode()))
                     .map(e -> e.getEventTypeId())
                     .findFirst().orElse(-1);
-            Integer codeKyujitsu = eventTypeService.getAllActiveEventTypes().stream()
+            Integer codeKyujitsu = activeEventTypes.stream()
                     .filter(et -> "休出".equals(et.getCode()))
                     .map(e -> e.getEventTypeId())
                     .findFirst().orElse(-1);
+
+            // N+1対策: 対象日付範囲の休暇申請を1回にまとめて取得し、休暇日をSetに展開しておく
+            Set<LocalDate> leaveDateSet = buildLeaveDateSet(userId, attendanceDateStrs);
 
             Set<LocalDate> holidayWorkDateSet = new HashSet<>();
             List<LocalDate> dates = new ArrayList<>();
@@ -472,9 +487,7 @@ public class AttendanceApprovalController {
 
                 LocalDate date = LocalDate.parse(dateStr);
 
-                List<LeaveApplication> existingLeaves = leaveApplicationService
-                        .getApplicationsByUserAndDateRange(userId, date, date);
-                if (existingLeaves != null && !existingLeaves.isEmpty()) {
+                if (leaveDateSet.contains(date)) {
                     log.info("休暇申請済みのため保存をスキップ: date={}", date);
                     continue;
                 }
@@ -545,6 +558,54 @@ public class AttendanceApprovalController {
             redirectUrl += "?" + String.join("&", queryParams);
         }
         return redirectUrl;
+    }
+
+    /**
+     * N+1対策: 対象日付リストの最小〜最大日付の範囲で休暇申請を1回だけ取得し、
+     * 各申請の期間（leaveStartDate〜leaveEndDate）を展開して休暇日のSetを構築します。
+     *
+     * @param userId             対象ユーザーID
+     * @param attendanceDateStrs 対象日付文字列のリスト（yyyy-MM-dd）
+     * @return 休暇が存在する日付のSet
+     */
+    private Set<LocalDate> buildLeaveDateSet(Long userId, List<String> attendanceDateStrs) {
+        LocalDate minDate = null;
+        LocalDate maxDate = null;
+        for (String dateStr : attendanceDateStrs) {
+            if (dateStr == null || dateStr.isEmpty()) {
+                continue;
+            }
+            LocalDate date;
+            try {
+                date = LocalDate.parse(dateStr);
+            } catch (Exception ex) {
+                continue;
+            }
+            if (minDate == null || date.isBefore(minDate)) {
+                minDate = date;
+            }
+            if (maxDate == null || date.isAfter(maxDate)) {
+                maxDate = date;
+            }
+        }
+
+        Set<LocalDate> leaveDateSet = new HashSet<>();
+        if (minDate == null) {
+            return leaveDateSet;
+        }
+
+        List<LeaveApplication> leaveApplications = leaveApplicationService
+                .getApplicationsByUserAndDateRange(userId, minDate, maxDate);
+        if (leaveApplications != null) {
+            for (LeaveApplication la : leaveApplications) {
+                LocalDate d = la.getLeaveStartDate();
+                while (!d.isAfter(la.getLeaveEndDate())) {
+                    leaveDateSet.add(d);
+                    d = d.plusDays(1);
+                }
+            }
+        }
+        return leaveDateSet;
     }
 
     private void checkViewPermission(Long targetUserId) {

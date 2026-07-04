@@ -7,6 +7,7 @@ import com.attendance.app.service.AttendanceCorrectionRequestService;
 import com.attendance.app.service.AttendancePeriodSettingService;
 import com.attendance.app.service.AttendanceRecordService;
 import com.attendance.app.service.AttendanceSubmissionService;
+import com.attendance.app.service.BatchSettingService;
 import com.attendance.app.service.HolidayService;
 import com.attendance.app.service.LeaveApplicationService;
 import com.attendance.app.service.PaidLeaveBalanceService;
@@ -68,6 +69,9 @@ public class AttendanceRecordControllerTest {
     @Mock
     private EventTypeService eventTypeService;
 
+    @Mock
+    private BatchSettingService batchSettingService;
+
     @InjectMocks
     private AttendanceRecordController controller;
 
@@ -99,6 +103,8 @@ public class AttendanceRecordControllerTest {
         when(attendanceRecordService.checkArticle36(any(Double.class)))
                 .thenReturn("NORMAL");
         lenient().when(eventTypeService.getAllActiveEventTypes()).thenReturn(Collections.emptyList());
+        lenient().when(batchSettingService.getAlertArticle36Limit1()).thenReturn(36);
+        lenient().when(batchSettingService.getAlertArticle36Limit2()).thenReturn(45);
     }
 
     @Test

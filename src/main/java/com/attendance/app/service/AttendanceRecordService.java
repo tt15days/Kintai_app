@@ -536,14 +536,29 @@ public class AttendanceRecordService {
 
     /**
      * 36協定チェック: 月次残業時間に対する警告レベルを返します。
-     * NORMAL  : 36時間未満（問題なし）
-     * WARNING : 36時間以上45時間未満（注意）
-     * ALERT   : 45時間以上（法定上限超過）
+     * システム設定（アラート閾値設定）に警告・上限値が設定されている場合はその値を、
+     * 未設定の場合は既定値（警告36時間・上限45時間）を使用します。
+     * NORMAL  : 警告閾値未満（問題なし）
+     * WARNING : 警告閾値以上、上限閾値未満（注意）
+     * ALERT   : 上限閾値以上（法定上限超過）
      */
     public String checkArticle36(double totalOvertimeHours) {
-        if (totalOvertimeHours >= ARTICLE36_MONTHLY_LIMIT_HOURS) {
+        double warningHours = batchSettingService.getAlertArticle36Limit1();
+        double limitHours = batchSettingService.getAlertArticle36Limit2();
+        return checkArticle36(totalOvertimeHours, warningHours, limitHours);
+    }
+
+    /**
+     * 36協定チェック: 指定した警告・上限閾値を用いて月次残業時間の警告レベルを返します。
+     *
+     * @param totalOvertimeHours 月次残業時間
+     * @param warningHours       警告閾値（時間）
+     * @param limitHours         上限閾値（時間）
+     */
+    public String checkArticle36(double totalOvertimeHours, double warningHours, double limitHours) {
+        if (totalOvertimeHours >= limitHours) {
             return "ALERT";
-        } else if (totalOvertimeHours >= ARTICLE36_MONTHLY_WARNING_HOURS) {
+        } else if (totalOvertimeHours >= warningHours) {
             return "WARNING";
         }
         return "NORMAL";

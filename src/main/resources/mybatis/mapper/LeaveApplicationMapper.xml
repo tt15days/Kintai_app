@@ -48,11 +48,13 @@
     </select>
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <!-- 期間が重なる申請を取得する（申請期間 [leave_start_date, leave_end_date] と [#{startDate}, #{endDate}] が重複するもの） -->
     <select id="selectByUserAndDateRange" resultMap="leaveApplicationResultMap">
         SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
-        FROM leave_applications 
-        WHERE user_id = #{userId} 
-        AND leave_start_date BETWEEN #{startDate} AND #{endDate}
+        FROM leave_applications
+        WHERE user_id = #{userId}
+        AND leave_start_date &lt;= #{endDate}
+        AND leave_end_date &gt;= #{startDate}
         AND is_deleted = false
         ORDER BY leave_start_date ASC
     </select>
@@ -91,8 +93,14 @@
     </update>
 
     <!-- クエリ最適化: EXTRACT関数によるフルスキャンを回避し、範囲検索でインデックスを利用 -->
-    <select id="countApprovedPaidLeaveDays" resultType="long">
-        SELECT COALESCE(SUM(leave_end_date - leave_start_date + 1), 0)
+    <!-- 半休（AM_HALF/PM_HALF）は0.5日として集計する -->
+    <select id="countApprovedPaidLeaveDays" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(
+            CASE
+                WHEN leave_duration_type IN ('AM_HALF', 'PM_HALF') THEN 0.5
+                ELSE (leave_end_date - leave_start_date + 1)
+            END
+        ), 0)
         FROM leave_applications
         WHERE user_id = #{userId}
           AND leave_type = 'PAID_LEAVE'

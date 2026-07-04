@@ -76,10 +76,11 @@ public class PaidLeaveBalanceService {
     /**
      * 有給休暇の使用日数を残高から減算します。
      * 失効日が最も早い有効残高から順に消化します（先入れ先出し方式）。
-     * 残高が不足している場合でも、使用可能な分だけ減算して警告ログを出力します。
+     * 残高が不足している場合は例外を送出し、呼び出し元のトランザクションをロールバックさせます。
      *
      * @param userId        ユーザーID
      * @param daysToDeduct  減算する日数
+     * @throws IllegalArgumentException 有効残高が不足している場合
      */
     public void deductBalance(Long userId, BigDecimal daysToDeduct, LocalDate targetDate) {
         if (daysToDeduct == null || daysToDeduct.compareTo(BigDecimal.ZERO) <= 0 || targetDate == null) {
@@ -110,6 +111,8 @@ public class PaidLeaveBalanceService {
 
         if (remaining.compareTo(BigDecimal.ZERO) > 0) {
             log.warn("有給残高が不足: userId={}, 不足日数={}", userId, remaining);
+            throw new IllegalArgumentException(
+                    "有給休暇の残日数が不足しています（不足: " + remaining.stripTrailingZeros().toPlainString() + "日）");
         }
     }
 

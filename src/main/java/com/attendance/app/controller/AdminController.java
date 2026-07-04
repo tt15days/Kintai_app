@@ -373,7 +373,7 @@ public class AdminController {
                 users = users.stream()
                         .filter(u -> (u.getFullName() != null && u.getFullName().toLowerCase().contains(lowerKeyword))
                                 ||
-                                (u.getUserId().toString().contains(lowerKeyword)))
+                                (u.getEmpNo() != null && u.getEmpNo().toLowerCase().contains(lowerKeyword)))
                         .collect(Collectors.toList());
             }
 
@@ -413,8 +413,8 @@ public class AdminController {
             model.addAttribute("workingSumByUserMap", workingSumByUserMap);
             model.addAttribute("nightShiftSumByUserMap", nightShiftSumByUserMap);
             model.addAttribute("article36ByUserMap", article36ByUserMap);
-            model.addAttribute("article36MonthlyLimit", AttendanceRecordService.ARTICLE36_MONTHLY_LIMIT_HOURS);
-            model.addAttribute("article36MonthlyWarning", AttendanceRecordService.ARTICLE36_MONTHLY_WARNING_HOURS);
+            model.addAttribute("article36MonthlyLimit", batchSettingService.getAlertArticle36Limit2());
+            model.addAttribute("article36MonthlyWarning", batchSettingService.getAlertArticle36Limit1());
 
             model.addAttribute("submissionStatusPending", AttendanceSubmissionService.STATUS_PENDING);
             model.addAttribute("submissionStatusApproved", AttendanceSubmissionService.STATUS_APPROVED);
@@ -462,6 +462,24 @@ public class AdminController {
         } catch (Exception e) {
             logActionError(e, "手動リマインド送信に失敗");
             redirectAttributes.addFlashAttribute("errorMessage", "リマインドの送信に失敗しました");
+        }
+        return "redirect:/admin/dashboard";
+    }
+
+    /**
+     * 手動で全従業員への年次有給一括付与を実行します。
+     */
+    @PostMapping("/batch/annual-leave-grant")
+    public String runManualAnnualLeaveGrant(RedirectAttributes redirectAttributes) {
+        try {
+            BatchSchedulerService.AnnualLeaveGrantResult result = batchSchedulerService.executeAnnualLeaveGrant();
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "有給一括付与を実行しました（付与: " + result.grantedCount() + "名、"
+                            + "スキップ（当年付与済み）: " + result.skippedCount() + "名）");
+            log.info("手動有給一括付与を実行: granted={}, skipped={}", result.grantedCount(), result.skippedCount());
+        } catch (Exception e) {
+            logActionError(e, "手動有給一括付与に失敗");
+            redirectAttributes.addFlashAttribute("errorMessage", "有給一括付与の実行に失敗しました");
         }
         return "redirect:/admin/dashboard";
     }
@@ -902,8 +920,8 @@ public class AdminController {
         model.addAttribute("monthEntries", monthEntries);
         model.addAttribute("overtimeCellMap", overtimeCellMap);
         model.addAttribute("article36StatusCellMap", article36StatusCellMap);
-        model.addAttribute("article36MonthlyLimit", AttendanceRecordService.ARTICLE36_MONTHLY_LIMIT_HOURS);
-        model.addAttribute("article36MonthlyWarning", AttendanceRecordService.ARTICLE36_MONTHLY_WARNING_HOURS);
+        model.addAttribute("article36MonthlyLimit", batchSettingService.getAlertArticle36Limit2());
+        model.addAttribute("article36MonthlyWarning", batchSettingService.getAlertArticle36Limit1());
         model.addAttribute("alertCount", alertCount);
         model.addAttribute("warningCount", warningCount);
         model.addAttribute("normalCount", normalCount);
@@ -935,8 +953,8 @@ public class AdminController {
                                 + "月の残業時間（" + String.format("%.1f", ot) + "時間）は注意水準に達していないため通知できません（NORMAL）");
             }
             String statusLabel = "ALERT".equals(status)
-                    ? "36協定上限超過（月" + AttendanceRecordService.ARTICLE36_MONTHLY_LIMIT_HOURS + "時間超）"
-                    : "36協定注意レベル（月" + AttendanceRecordService.ARTICLE36_MONTHLY_WARNING_HOURS + "時間超）";
+                    ? "36協定上限超過（月" + batchSettingService.getAlertArticle36Limit2() + "時間超）"
+                    : "36協定注意レベル（月" + batchSettingService.getAlertArticle36Limit1() + "時間超）";
             String msg = ym.getYear() + "年" + ym.getMonthValue() + "月の残業時間が"
                     + String.format("%.1f", ot) + "時間に達し、"
                     + statusLabel + "に該当しています。残業時間の管理にご注意ください。";

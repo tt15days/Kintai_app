@@ -82,6 +82,10 @@
                                     表示
                                 </button>
                             </form>
+                            <a th:href="@{/attendance/export(yearMonth=${yearMonth})}"
+                                class="btn btn-flat py-1.5 px-3 text-sm cursor-pointer whitespace-nowrap">
+                                CSVダウンロード
+                            </a>
                             <div class="flex items-center gap-2">
                                 <span class="text-txt-secondary text-xs font-medium">提出ステータス:</span>
                                 <span class="badge badge-primary text-xs"

@@ -6,17 +6,24 @@ import com.attendance.app.entity.AttendanceSubmission;
 import com.attendance.app.entity.LeaveApplication;
 import com.attendance.app.entity.LeaveStatus;
 import com.attendance.app.entity.LeaveType;
+import com.attendance.app.entity.User;
 import com.attendance.app.security.SecurityUtil;
 import com.attendance.app.service.AttendanceCorrectionRequestService;
 import com.attendance.app.service.AttendanceRecordService;
 import com.attendance.app.service.AttendanceSubmissionService;
 import com.attendance.app.service.AttendancePeriodSettingService;
+import com.attendance.app.service.BatchSettingService;
+import com.attendance.app.service.CsvFilenamePatternService;
 import com.attendance.app.service.EventTypeService;
 import com.attendance.app.service.HolidayService;
 import com.attendance.app.service.LeaveApplicationService;
 import com.attendance.app.service.PaidLeaveBalanceService;
+import com.attendance.app.service.ReportService;
 import com.attendance.app.service.UserNotificationService;
 import com.attendance.app.service.UserService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,8 +32,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.time.Duration;
 import java.time.Instant;
@@ -64,6 +74,9 @@ public class AttendanceRecordController {
     private final UserNotificationService userNotificationService;
     private final PaidLeaveBalanceService paidLeaveBalanceService;
     private final EventTypeService eventTypeService;
+    private final ReportService reportService;
+    private final CsvFilenamePatternService csvFilenamePatternService;
+    private final BatchSettingService batchSettingService;
 
     /**
      * 勤怠画面（通常）を表示します。
@@ -96,7 +109,7 @@ public class AttendanceRecordController {
         double totalOvertimeHours = 0.0;
         double totalHolidayWorkHours = 0.0;
         double totalSaturdayWorkHours = 0.0;
-        long totalPaidLeaveDays = 0;
+        java.math.BigDecimal totalPaidLeaveDays = java.math.BigDecimal.ZERO;
         double totalPaidLeaveHours = 0.0;
         long totalUnpaidLeaveDays = 0;
         long totalAbsenceDays = 0;
@@ -104,7 +117,7 @@ public class AttendanceRecordController {
         boolean monthEditable = true;
         boolean canApproveAttendance = false;
         Long userId = null;
-        long yearlyUsedPaidLeaveDays = 0;
+        java.math.BigDecimal yearlyUsedPaidLeaveDays = java.math.BigDecimal.ZERO;
         java.math.BigDecimal remainingPaidLeaveDays = java.math.BigDecimal.ZERO;
 
         try {
@@ -183,7 +196,8 @@ public class AttendanceRecordController {
             for (Map.Entry<LocalDate, LeaveApplication> entry : leaveMap.entrySet()) {
                 LeaveApplication la = entry.getValue();
                 if (la.getLeaveType() == LeaveType.PAID_LEAVE && la.getStatus() == LeaveStatus.APPROVED) {
-                    totalPaidLeaveDays++;
+                    totalPaidLeaveDays = totalPaidLeaveDays.add(
+                            leaveApplicationService.calculateDailyConsumedDays(la.getLeaveDurationType()));
                 }
                 if (la.getLeaveType() == LeaveType.UNPAID_LEAVE && la.getStatus() == LeaveStatus.APPROVED) {
                     totalUnpaidLeaveDays++;
@@ -192,15 +206,11 @@ public class AttendanceRecordController {
                     totalAbsenceDays++;
                 }
             }
-            totalPaidLeaveHours = totalPaidLeaveDays * attendanceRecordService.getStandardWorkingHours(userId, current);
+            totalPaidLeaveHours = totalPaidLeaveDays.doubleValue() * attendanceRecordService.getStandardWorkingHours(userId, current);
 
             int currentYear = LocalDate.now().getYear();
             yearlyUsedPaidLeaveDays = leaveApplicationService.calculateYearlyUsedPaidLeaveDays(userId, currentYear);
-            com.attendance.app.entity.User currentUser = userService.getUserById(userId).orElse(null);
-            if (currentUser != null && currentUser.getPaidLeaveDays() != null) {
-                remainingPaidLeaveDays = currentUser.getPaidLeaveDays()
-                        .subtract(new java.math.BigDecimal(yearlyUsedPaidLeaveDays));
-            }
+            remainingPaidLeaveDays = paidLeaveBalanceService.getTotalRemainingDays(userId);
 
             // today's record
             todayRecord = attendanceRecordService.getRecordByUserAndDate(userId, LocalDate.now());
@@ -246,8 +256,8 @@ public class AttendanceRecordController {
                 ? paidLeaveBalanceService.getTotalRemainingDays(userId)
                 : java.math.BigDecimal.ZERO);
         model.addAttribute("article36Status", attendanceRecordService.checkArticle36(totalOvertimeHours));
-        model.addAttribute("article36MonthlyLimit", AttendanceRecordService.ARTICLE36_MONTHLY_LIMIT_HOURS);
-        model.addAttribute("article36MonthlyWarning", AttendanceRecordService.ARTICLE36_MONTHLY_WARNING_HOURS);
+        model.addAttribute("article36MonthlyLimit", batchSettingService.getAlertArticle36Limit2());
+        model.addAttribute("article36MonthlyWarning", batchSettingService.getAlertArticle36Limit1());
         model.addAttribute("currentYear", LocalDate.now().getYear());
         model.addAttribute("submissionStatusPending", AttendanceSubmissionService.STATUS_PENDING);
         model.addAttribute("submissionStatusApproved", AttendanceSubmissionService.STATUS_APPROVED);
@@ -256,6 +266,45 @@ public class AttendanceRecordController {
         model.addAttribute("userId", userId);
 
         return ATTENDANCE_VIEW;
+    }
+
+    /**
+     * ログイン中ユーザー自身の月次勤怠CSVをダウンロードします。
+     * 他ユーザーの指定は不可で、常にログイン中ユーザー自身のデータのみを出力します。
+     *
+     * @param yearMonth 対象年月（YYYY-MM形式、省略可）
+     * @return CSVファイルレスポンス
+     */
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> exportOwnAttendanceCsv(@RequestParam(required = false) String yearMonth) {
+        try {
+            Long userId = securityUtil.getCurrentUserId();
+            User user = userService.getUserById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("ユーザーが見つかりません: userId=" + userId));
+            YearMonth targetMonth = parseYearMonthOrDefault(yearMonth, resolveDefaultTargetMonth());
+            byte[] csvBytes = reportService.generateUserAttendanceCsv(user, targetMonth);
+            OffsetDateTime downloadedAt = com.attendance.app.util.DateTimeUtil
+                    .toOffsetDateTime(com.attendance.app.util.DateTimeUtil.now());
+            String filename = csvFilenamePatternService.buildCsvFilename(user, targetMonth, downloadedAt);
+            log.info("月次勤怠CSVをダウンロード（本人）: userId={}, yearMonth={}, filename={}", userId, targetMonth, filename);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodeFilename(filename))
+                    .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                    .body(csvBytes);
+        } catch (IllegalArgumentException e) {
+            log.warn("月次勤怠CSVダウンロード（本人）に失敗: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            logError(e, "月次勤怠CSVダウンロード（本人）に失敗");
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * RFC 5987 に準拠した Content-Disposition filename* 用のパーセントエンコードを行います。
+     */
+    private String encodeFilename(String filename) {
+        return URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     /**
@@ -285,15 +334,19 @@ public class AttendanceRecordController {
             Long userId = securityUtil.getCurrentUserId();
             attendanceSubmissionService.assertEditableMonth(userId, selectedMonth);
 
-            // event_types マスタから「土出」「休出」のIDを取得
-            Integer codeDoyou = eventTypeService.getAllActiveEventTypes().stream()
+            // event_types マスタから「土出」「休出」のIDを取得（N+1対策: 1回のみ取得）
+            List<com.attendance.app.entity.EventType> activeEventTypes = eventTypeService.getAllActiveEventTypes();
+            Integer codeDoyou = activeEventTypes.stream()
                     .filter(et -> "土出".equals(et.getCode()))
                     .map(e -> e.getEventTypeId())
                     .findFirst().orElse(-1);
-            Integer codeKyujitsu = eventTypeService.getAllActiveEventTypes().stream()
+            Integer codeKyujitsu = activeEventTypes.stream()
                     .filter(et -> "休出".equals(et.getCode()))
                     .map(e -> e.getEventTypeId())
                     .findFirst().orElse(-1);
+
+            // N+1対策: 対象日付範囲の休暇申請を1回にまとめて取得し、休暇日をSetに展開しておく
+            Set<LocalDate> leaveDateSet = buildLeaveDateSet(userId, attendanceDateStrs);
 
             Set<LocalDate> holidayWorkDateSet = new HashSet<>();
             List<LocalDate> dates = new ArrayList<>();
@@ -320,9 +373,7 @@ public class AttendanceRecordController {
                 }
 
                 // Skip dates that already have leave
-                List<LeaveApplication> existingLeaves = leaveApplicationService
-                        .getApplicationsByUserAndDateRange(userId, date, date);
-                if (existingLeaves != null && !existingLeaves.isEmpty()) {
+                if (leaveDateSet.contains(date)) {
                     log.info("休暇申請済みのため保存をスキップ: date={}", date);
                     // 休暇日行は disabled のため startTime/endTime/remarks/eventTypeId は送信されない。j
                     // はインクリメントしない。
@@ -563,6 +614,54 @@ public class AttendanceRecordController {
 
     private String redirectToMonth(YearMonth yearMonth) {
         return ATTENDANCE_REDIRECT + "?yearMonth=" + yearMonth;
+    }
+
+    /**
+     * N+1対策: 対象日付リストの最小〜最大日付の範囲で休暇申請を1回だけ取得し、
+     * 各申請の期間（leaveStartDate〜leaveEndDate）を展開して休暇日のSetを構築します。
+     *
+     * @param userId           対象ユーザーID
+     * @param attendanceDateStrs 対象日付文字列のリスト（yyyy-MM-dd）
+     * @return 休暇が存在する日付のSet
+     */
+    private Set<LocalDate> buildLeaveDateSet(Long userId, List<String> attendanceDateStrs) {
+        LocalDate minDate = null;
+        LocalDate maxDate = null;
+        for (String dateStr : attendanceDateStrs) {
+            if (dateStr == null || dateStr.isEmpty()) {
+                continue;
+            }
+            LocalDate date;
+            try {
+                date = LocalDate.parse(dateStr);
+            } catch (DateTimeParseException ex) {
+                continue;
+            }
+            if (minDate == null || date.isBefore(minDate)) {
+                minDate = date;
+            }
+            if (maxDate == null || date.isAfter(maxDate)) {
+                maxDate = date;
+            }
+        }
+
+        Set<LocalDate> leaveDateSet = new HashSet<>();
+        if (minDate == null) {
+            return leaveDateSet;
+        }
+
+        List<LeaveApplication> leaveApplications = leaveApplicationService
+                .getApplicationsByUserAndDateRange(userId, minDate, maxDate);
+        if (leaveApplications != null) {
+            for (LeaveApplication la : leaveApplications) {
+                LocalDate d = la.getLeaveStartDate();
+                while (!d.isAfter(la.getLeaveEndDate())) {
+                    leaveDateSet.add(d);
+                    d = d.plusDays(1);
+                }
+            }
+        }
+        return leaveDateSet;
     }
 
     /**

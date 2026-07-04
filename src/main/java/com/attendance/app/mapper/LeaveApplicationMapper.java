@@ -4,6 +4,7 @@ import com.attendance.app.entity.LeaveApplication;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -110,11 +111,12 @@ public interface LeaveApplicationMapper {
     int reject(@Param("applicationId") Long applicationId);
 
     /**
-     * 指定年の承認済み有給使用日数を集計（ユーザー別）
+     * 指定年の承認済み有給使用日数を集計（ユーザー別）。
+     * 半休（AM_HALF/PM_HALF）は0.5日として集計されます。
      *
      * @param userId ユーザーID
      * @param year 年
      * @return 使用日数
      */
-    long countApprovedPaidLeaveDays(@Param("userId") Long userId, @Param("year") int year);
+    BigDecimal countApprovedPaidLeaveDays(@Param("userId") Long userId, @Param("year") int year);
 }

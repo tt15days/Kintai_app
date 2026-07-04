@@ -75,6 +75,8 @@ class AttendanceRecordServiceTest {
                 attendanceSubmissionMapper,
                 userNotificationService,
                 batchSettingService);
+        lenient().when(batchSettingService.getAlertArticle36Limit1()).thenReturn(36);
+        lenient().when(batchSettingService.getAlertArticle36Limit2()).thenReturn(45);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -126,6 +128,25 @@ class AttendanceRecordServiceTest {
         @DisplayName("パラメータ化: 各時間帯のステータスが正しい")
         void parameterized_allBoundaries(double hours, String expectedStatus) {
             assertThat(service.checkArticle36(hours)).isEqualTo(expectedStatus);
+        }
+
+        @Test
+        @DisplayName("システム設定のアラート閾値が変更されている場合はその値で判定する")
+        void usesConfiguredThresholds() {
+            when(batchSettingService.getAlertArticle36Limit1()).thenReturn(20);
+            when(batchSettingService.getAlertArticle36Limit2()).thenReturn(30);
+
+            assertThat(service.checkArticle36(19.9)).isEqualTo("NORMAL");
+            assertThat(service.checkArticle36(20.0)).isEqualTo("WARNING");
+            assertThat(service.checkArticle36(30.0)).isEqualTo("ALERT");
+        }
+
+        @Test
+        @DisplayName("明示的な閾値を指定するオーバーロードは指定値で判定する")
+        void explicitThresholds_usesGivenValues() {
+            assertThat(service.checkArticle36(10.0, 15.0, 20.0)).isEqualTo("NORMAL");
+            assertThat(service.checkArticle36(15.0, 15.0, 20.0)).isEqualTo("WARNING");
+            assertThat(service.checkArticle36(20.0, 15.0, 20.0)).isEqualTo("ALERT");
         }
     }
 

@@ -247,7 +247,7 @@
                                     <td class="text-center font-bold font-mono" th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 2)} + ' 時間'">0.00 時間</td>
                                     <td class="text-center font-bold font-mono" th:text="${#numbers.formatDecimal(totalSaturdayWorkHours, 1, 2)} + ' 時間'">0.00 時間</td>
                                     <td class="text-center font-bold font-mono" th:text="${#numbers.formatDecimal(totalHolidayWorkHours, 1, 2)} + ' 時間'">0.00 時間</td>
-                                    <td class="text-center font-bold font-mono" th:text="${totalPaidLeaveDays} + ' 日 / ' + ${#numbers.formatDecimal(totalPaidLeaveHours, 1, 2)} + ' 時間'">0 日 / 0.00 時間</td>
+                                    <td class="text-center font-bold font-mono" th:text="${#numbers.formatDecimal(totalPaidLeaveDays, 1, 1)} + ' 日 / ' + ${#numbers.formatDecimal(totalPaidLeaveHours, 1, 2)} + ' 時間'">0.0 日 / 0.00 時間</td>
                                     <td class="text-center font-bold font-mono" th:text="${totalUnpaidLeaveDays} + ' 日'">0 日</td>
                                     <td class="text-center font-bold font-mono" th:text="${totalAbsenceDays} + ' 日'">0 日</td>
                                 </tr>
@@ -280,7 +280,7 @@
                         <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex flex-col items-start gap-1 col-span-2">
                             <div class="w-full flex justify-between items-center">
                                 <span class="text-txt-secondary font-semibold">有給利用</span>
-                                <span class="font-bold font-mono" th:text="${totalPaidLeaveDays} + ' 日 / ' + ${#numbers.formatDecimal(totalPaidLeaveHours, 1, 2)} + ' 時間'">0 日 / 0.00 時間</span>
+                                <span class="font-bold font-mono" th:text="${#numbers.formatDecimal(totalPaidLeaveDays, 1, 1)} + ' 日 / ' + ${#numbers.formatDecimal(totalPaidLeaveHours, 1, 2)} + ' 時間'">0.0 日 / 0.00 時間</span>
                             </div>
                         </div>
                         <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
