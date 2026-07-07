@@ -57,7 +57,7 @@
                     <span
                         class="text-[0.75rem] px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 inline-flex items-center gap-1 font-bold">
                         <i class="fa-solid fa-shield-halved"></i>
-                        <span th:text="${currentUser.userRole.name() == 'ADMIN' ? 'システム管理者' : '一般ユーザー'}">システム管理者</span>
+                        <span th:text="${currentUser.userRole.displayName}">システム管理者</span>
                     </span>
                 </div>
             </div>
@@ -93,7 +93,7 @@
                 </a>
 
                 <!-- 承認メニュー -->
-                <div th:if="${currentUser != null && (currentUser.canApproveAttendance == true || currentUser.userRole.name() == 'ADMIN')}"
+                <div th:if="${currentUser != null && (currentUser.canApproveAttendance == true || currentUser.userRole.name() == 'ADMIN' || currentUser.userRole.name() == 'MANAGER')}"
                     class="contents">
                     <div class="pt-3 px-4 pb-1 text-[0.75rem] text-txt-secondary font-bold uppercase tracking-wider">
                         承認メニュー</div>

@@ -162,7 +162,10 @@
                                 <span th:if="${user.userRole?.name() == 'ADMIN'}" class="badge badge-danger text-[0.75rem] px-2.5 py-1">
                                     <i class="fa-solid fa-shield-alt"></i> 管理者
                                 </span>
-                                <span th:unless="${user.userRole?.name() == 'ADMIN'}" class="badge badge-success text-[0.75rem] px-2.5 py-1">
+                                <span th:if="${user.userRole?.name() == 'MANAGER'}" class="badge badge-warning text-[0.75rem] px-2.5 py-1">
+                                    <i class="fa-solid fa-users"></i> 一般管理者
+                                </span>
+                                <span th:if="${user.userRole?.name() == 'USER'}" class="badge badge-success text-[0.75rem] px-2.5 py-1">
                                     <i class="fa-solid fa-user"></i> 一般ユーザー
                                 </span>
                             </td>

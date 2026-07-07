@@ -36,7 +36,10 @@
                                     <span th:if="${user != null and user.userRole != null and user.userRole.name() == 'ADMIN'}" class="badge badge-danger">
                                         <i class="fas fa-shield-alt"></i> 管理者
                                     </span>
-                                    <span th:if="${user == null or user.userRole == null or user.userRole.name() != 'ADMIN'}" class="badge badge-primary">
+                                    <span th:if="${user != null and user.userRole != null and user.userRole.name() == 'MANAGER'}" class="badge badge-warning">
+                                        <i class="fas fa-users"></i> 一般管理者
+                                    </span>
+                                    <span th:if="${user == null or user.userRole == null or user.userRole.name() == 'USER'}" class="badge badge-primary">
                                         <i class="fas fa-user"></i> 一般ユーザー
                                     </span>
                                 </p>

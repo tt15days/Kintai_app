@@ -69,7 +69,7 @@
                             <td>
                                 <a th:href="@{/admin/attendance/{userId}(userId=${user.userId}, yearMonth=${baseMonthKey})}" th:text="${user.fullName}" class="text-primary hover:underline font-semibold">Alice Johnson</a>
                             </td>
-                            <td th:text="${user.userRole?.name() == 'ADMIN' ? '管理者' : '一般ユーザー'}">一般ユーザー</td>
+                            <td th:text="${user.userRole?.displayName}">一般ユーザー</td>
                             <td class="font-mono" th:with="ot=${overtimeCellMap[baseMonthKey + '_' + user.userId]}" 
                                 th:text="${ot != null ? #numbers.formatDecimal(ot, 1, 1) + '時間' : '0.0時間'}"
                                 th:classappend="${article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'ALERT' ? 'text-danger font-bold' : (article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'WARNING' ? 'text-warning font-bold' : 'text-txt-primary')}">

@@ -70,7 +70,7 @@
                                 <select class="form-select" id="userRole" name="userRole" required>
                                     <option value="">-- ロールを選択してください --</option>
                                     <option th:each="role : ${roles}" th:value="${role}"
-                                        th:text="${role.name() == 'ADMIN' ? '管理者' : '一般ユーザー'}">
+                                        th:text="${role.displayName}">
                                     </option>
                                 </select>
                                 <small class="text-xs text-txt-secondary opacity-70 block mt-1.5">

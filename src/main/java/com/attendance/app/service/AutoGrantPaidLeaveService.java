@@ -56,18 +56,8 @@ public class AutoGrantPaidLeaveService {
                         ? BigDecimal.valueOf(user.getAnnualLeaveGrantDays())
                         : defaultGrantDays;
 
-                PaidLeaveBalance balance = new PaidLeaveBalance();
-                balance.setUserId(user.getUserId());
-                balance.setGrantYear(today.getYear());
-                balance.setGrantedDays(grantDays);
-                balance.setUsedDays(BigDecimal.ZERO);
-                // 付与日と有効期限(2年後)をセット
-                balance.setGrantDate(today);
-                balance.setExpiryDate(today.plusYears(2).minusDays(1));
-                
-                paidLeaveBalanceService.insert(balance);
-                
                 // ユーザーテーブルの有給残日数の加算更新と次回付与日数のインクリメントを同期
+                // （内部で paid_leave_balance テーブルへのインサートおよび同期処理も実行されます）
                 userService.grantAnnualPaidLeave(user.getUserId());
                 
                 log.info("ユーザー {} に有給休暇 {} 日を付与しました。", user.getUserId(), grantDays);

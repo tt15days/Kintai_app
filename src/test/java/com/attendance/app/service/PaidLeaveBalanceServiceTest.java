@@ -2,6 +2,7 @@ package com.attendance.app.service;
 
 import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.mapper.PaidLeaveBalanceMapper;
+import com.attendance.app.mapper.UserMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,9 @@ class PaidLeaveBalanceServiceTest {
 
     @Mock
     private PaidLeaveBalanceMapper paidLeaveBalanceMapper;
+
+    @Mock
+    private UserMapper userMapper;
 
     @InjectMocks
     private PaidLeaveBalanceService service;

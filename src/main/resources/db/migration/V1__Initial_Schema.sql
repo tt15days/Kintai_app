@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS users (
     department              VARCHAR(100),
     employment_type         VARCHAR(50),
     hire_date               DATE,
-    CONSTRAINT check_user_role CHECK (user_role IN ('ADMIN', 'USER'))
+    CONSTRAINT check_user_role CHECK (user_role IN ('ADMIN', 'MANAGER', 'USER'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_user_role ON users(user_role);

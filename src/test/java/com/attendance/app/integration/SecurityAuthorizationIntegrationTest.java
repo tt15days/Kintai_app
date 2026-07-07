@@ -82,4 +82,28 @@ class SecurityAuthorizationIntegrationTest {
         mockMvc.perform(get("/admin/article36"))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    @WithMockUser(username = "manager@example.com", roles = "MANAGER")
+    @DisplayName("MANAGER権限を持つユーザーが管理者ダッシュボードへアクセスした際、403 Forbidden になること")
+    void managerAccessToAdminDashboard_isForbidden() throws Exception {
+        mockMvc.perform(get("/admin/dashboard"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "manager@example.com", roles = "MANAGER")
+    @DisplayName("MANAGER権限を持つユーザーが一般のダッシュボードへ正常にアクセスできること")
+    void managerAccessToDashboard_isOk() throws Exception {
+        mockMvc.perform(get("/dashboard"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "manager@example.com", roles = "MANAGER")
+    @DisplayName("MANAGER権限を持つユーザーが勤怠承認画面へ正常にアクセスできること")
+    void managerAccessToApproval_isOk() throws Exception {
+        mockMvc.perform(get("/attendance/approval"))
+                .andExpect(status().isOk());
+    }
 }

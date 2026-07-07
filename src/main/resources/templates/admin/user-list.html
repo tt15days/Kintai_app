@@ -53,8 +53,9 @@
                                 </div>
                             </td>
                             <td class="text-center" th:classappend="${user.isActive == false ? 'opacity-50 grayscale' : ''}">
-                                <span th:if="${isAdmin}" class="badge badge-danger">管理者</span>
-                                <span th:unless="${isAdmin}" class="badge badge-primary">一般</span>
+                                <span th:if="${user.userRole?.name() == 'ADMIN'}" class="badge badge-danger">管理者</span>
+                                <span th:if="${user.userRole?.name() == 'MANAGER'}" class="badge badge-warning">一般管理者</span>
+                                <span th:if="${user.userRole?.name() == 'USER'}" class="badge badge-primary">一般</span>
                             </td>
                             <td class="text-center w-px whitespace-nowrap">
                                 <a th:href="@{/admin/users/{userId}(userId=${user.userId})}"

@@ -105,7 +105,7 @@
                                 <select class="form-select h-11" id="userRole" name="userRole" required>
                                     <option th:each="role : ${roles}" th:value="${role}"
                                         th:selected="${user.userRole == role}"
-                                        th:text="${role.name() == 'ADMIN' ? '管理者' : '一般ユーザー'}">
+                                        th:text="${role.displayName}">
                                     </option>
                                 </select>
                             </div>
@@ -162,7 +162,7 @@
                                             th:value="${candidate.userId}"
                                             th:data-fullname="${candidate.fullName}"
                                             th:data-email="${candidate.email}"
-                                            th:data-role="${candidate.userRole != null ? (candidate.userRole.name() == 'ADMIN' ? '管理者' : '一般') : ''}"
+                                            th:data-role="${candidate.userRole != null ? (candidate.userRole.name() == 'ADMIN' ? '管理者' : (candidate.userRole.name() == 'MANAGER' ? '一般管理者' : '一般')) : ''}"
                                             th:text="${candidate.fullName + ' (' + candidate.email + ')'}">
                                     </option>
                                 </select>
@@ -182,7 +182,8 @@
                                         <span class="text-sm text-txt-primary" th:text="${candidate.fullName}"></span>
                                         <span class="text-xs text-txt-secondary opacity-80" th:text="${' (' + candidate.email + ')'}"></span>
                                         <span class="badge badge-danger text-xs" th:if="${candidate.userRole != null and candidate.userRole.name() == 'ADMIN'}">管理者</span>
-                                        <span class="badge badge-primary text-xs" th:if="${candidate.userRole != null and candidate.userRole.name() != 'ADMIN'}">一般</span>
+                                        <span class="badge badge-warning text-xs" th:if="${candidate.userRole != null and candidate.userRole.name() == 'MANAGER'}">一般管理者</span>
+                                        <span class="badge badge-primary text-xs" th:if="${candidate.userRole != null and candidate.userRole.name() == 'USER'}">一般</span>
                                     </div>
                                     <button type="button" class="btn btn-flat text-danger text-xs p-1" th:onclick="'removeApprover(' + ${candidate.userId} + ')'">
                                         削除
@@ -224,8 +225,10 @@
                                             th:text="${' (' + candidate.email + ')'}"></span>
                                         <span class="badge badge-danger"
                                             th:if="${candidate.userRole != null and candidate.userRole.name() == 'ADMIN'}">管理者</span>
+                                        <span class="badge badge-warning"
+                                            th:if="${candidate.userRole != null and candidate.userRole.name() == 'MANAGER'}">一般管理者</span>
                                         <span class="badge badge-primary"
-                                            th:if="${candidate.userRole != null and candidate.userRole.name() != 'ADMIN'}">一般</span>
+                                            th:if="${candidate.userRole != null and candidate.userRole.name() == 'USER'}">一般</span>
                                     </label>
                                 </div>
                                 <div class="text-txt-secondary text-sm opacity-80 py-2"
@@ -339,6 +342,8 @@
                         let roleBadge = "";
                         if (role === "管理者") {
                             roleBadge = '<span class="badge badge-danger text-xs">管理者</span>';
+                        } else if (role === "一般管理者") {
+                            roleBadge = '<span class="badge badge-warning text-xs">一般管理者</span>';
                         } else if (role === "一般") {
                             roleBadge = '<span class="badge badge-primary text-xs">一般</span>';
                         }

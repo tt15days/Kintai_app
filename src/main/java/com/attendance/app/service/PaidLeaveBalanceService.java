@@ -2,6 +2,7 @@ package com.attendance.app.service;
 
 import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.mapper.PaidLeaveBalanceMapper;
+import com.attendance.app.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,12 @@ import java.util.Optional;
 public class PaidLeaveBalanceService {
 
     private final PaidLeaveBalanceMapper paidLeaveBalanceMapper;
+    private final UserMapper userMapper;
+
+    private void syncUserPaidLeaveDays(Long userId) {
+        BigDecimal remainingDays = getTotalRemainingDays(userId);
+        userMapper.updatePaidLeaveDays(userId, remainingDays);
+    }
 
     /**
      * ユーザーの全有給残高を付与年度降順で取得します。
@@ -114,6 +121,8 @@ public class PaidLeaveBalanceService {
             throw new IllegalArgumentException(
                     "有給休暇の残日数が不足しています（不足: " + remaining.stripTrailingZeros().toPlainString() + "日）");
         }
+
+        syncUserPaidLeaveDays(userId);
     }
 
     /**
@@ -158,6 +167,8 @@ public class PaidLeaveBalanceService {
         if (remaining.compareTo(BigDecimal.ZERO) > 0) {
             log.warn("返還する有給使用履歴が不足しています: userId={}, 未返還日数={}", userId, remaining);
         }
+
+        syncUserPaidLeaveDays(userId);
     }
 
     /**
@@ -171,6 +182,7 @@ public class PaidLeaveBalanceService {
         paidLeaveBalanceMapper.insert(balance);
         log.info("有給残高を付与: userId={}, grantYear={}, grantedDays={}",
                 balance.getUserId(), balance.getGrantYear(), balance.getGrantedDays());
+        syncUserPaidLeaveDays(balance.getUserId());
         return balance;
     }
 }

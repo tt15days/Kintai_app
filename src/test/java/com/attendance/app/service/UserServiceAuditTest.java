@@ -3,6 +3,7 @@ package com.attendance.app.service;
 import com.attendance.app.entity.AuditEventType;
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserRole;
+import com.attendance.app.mapper.PaidLeaveBalanceMapper;
 import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.mapper.WorkScheduleClassMapper;
@@ -49,6 +50,9 @@ class UserServiceAuditTest {
 
     @Mock
     private SystemSettingMapper systemSettingMapper;
+
+    @Mock
+    private PaidLeaveBalanceMapper paidLeaveBalanceMapper;
 
     @InjectMocks
     private UserService userService;

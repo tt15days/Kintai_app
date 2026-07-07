@@ -6,6 +6,8 @@ package com.attendance.app.entity;
 public enum UserRole {
     /** 管理者 */
     ADMIN("管理者"),
+    /** 一般管理者 */
+    MANAGER("一般管理者"),
     /** 一般ユーザー */
     USER("一般ユーザー");
 
