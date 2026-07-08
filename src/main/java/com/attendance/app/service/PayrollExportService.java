@@ -10,7 +10,9 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.math.BigDecimal;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.HashMap;
@@ -47,6 +49,11 @@ public class PayrollExportService {
         try (GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
              OutputStreamWriter osw = new OutputStreamWriter(gzipOut, charset);
              CSVPrinter csvPrinter = new CSVPrinter(osw, CSVFormat.EXCEL)) {
+
+            // UTF-8 の場合はBOMを先頭に1回書き出す (Excel等での文字化け防止)
+            if (StandardCharsets.UTF_8.equals(charset) || charset.name().toUpperCase().contains("UTF-8")) {
+                osw.write('﻿');
+            }
 
             // ヘッダー書き込み (フォーマットに関わらず標準的な汎用ヘッダーとする)
             csvPrinter.printRecord(
@@ -89,9 +96,9 @@ public class PayrollExportService {
                     }
                 }
 
-                int paidLeaveDays = 0;
-                int unpaidLeaveDays = 0;
-                int absenceDays = 0;
+                BigDecimal paidLeaveDays = BigDecimal.ZERO;
+                BigDecimal unpaidLeaveDays = BigDecimal.ZERO;
+                BigDecimal absenceDays = BigDecimal.ZERO;
 
                 if (leaveApplications != null) {
                     Map<LocalDate, LeaveApplication> leaveMap = new HashMap<>();
@@ -104,12 +111,13 @@ public class PayrollExportService {
                     }
                     for (LeaveApplication la : leaveMap.values()) {
                         if (la.getStatus() == LeaveStatus.APPROVED) {
+                            BigDecimal consumed = leaveApplicationService.calculateDailyConsumedDays(la.getLeaveDurationType());
                             if (la.getLeaveType() == LeaveType.PAID_LEAVE) {
-                                paidLeaveDays++;
+                                paidLeaveDays = paidLeaveDays.add(consumed);
                             } else if (la.getLeaveType() == LeaveType.UNPAID_LEAVE) {
-                                unpaidLeaveDays++;
+                                unpaidLeaveDays = unpaidLeaveDays.add(consumed);
                             } else if (la.getLeaveType() == LeaveType.ABSENCE) {
-                                absenceDays++;
+                                absenceDays = absenceDays.add(consumed);
                             }
                         }
                     }
@@ -120,8 +128,8 @@ public class PayrollExportService {
                         user.getEmpNo() != null ? user.getEmpNo() : user.getUserId().toString(),
                         user.getFullName(),
                         workingDays,
-                        absenceDays + unpaidLeaveDays,
-                        paidLeaveDays,
+                        formatDays(absenceDays.add(unpaidLeaveDays)),
+                        formatDays(paidLeaveDays),
                         com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalWorkingHours),
                         com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalOvertimeHours),
                         com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalNightShiftHours),
@@ -132,5 +140,18 @@ public class PayrollExportService {
 
         log.info("給与連携CSV(GZIP)生成完了: yearMonth={}, format={}, users={}", yearMonth, format, users.size());
         return baos.toByteArray();
+    }
+
+    /**
+     * 日数を小数許容の文字列に整形します。整数なら "1"、半休を含む場合は "0.5"/"1.5" 等になります。
+     */
+    private String formatDays(BigDecimal days) {
+        if (days == null) {
+            return "0";
+        }
+        if (days.compareTo(BigDecimal.ZERO) == 0) {
+            return "0";
+        }
+        return days.stripTrailingZeros().toPlainString();
     }
 }
