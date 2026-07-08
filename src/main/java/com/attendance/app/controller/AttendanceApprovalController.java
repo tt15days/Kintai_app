@@ -34,8 +34,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
@@ -58,7 +56,6 @@ public class AttendanceApprovalController {
     private static final String APPROVAL_REDIRECT = "redirect:/attendance/approval";
     private static final String CORRECTION_APPROVAL_REDIRECT = "redirect:/attendance/approval/corrections";
     private static final String USER_ATTENDANCE_DETAIL_VIEW = "admin/user-attendance-detail";
-    private static final LocalTime DEFAULT_STANDARD_END_TIME = LocalTime.of(18, 0);
     private static final String INVALID_YEAR_MONTH_LOG = "yearMonth形式が不正: {}";
 
     private final AttendanceSubmissionService attendanceSubmissionService;
@@ -650,27 +647,7 @@ public class AttendanceApprovalController {
     }
 
     private double resolveOvertimeHours(AttendanceRecord record) {
-        if (record == null) {
-            return 0.0;
-        }
-        if (record.getOvertimeHours() != null) {
-            return record.getOvertimeHours();
-        }
-        if (record.getAttendanceDate() == null || record.getEndTime() == null) {
-            return 0.0;
-        }
-
-        LocalDate attendanceDate = DateTimeUtil.toLocalDate(record.getAttendanceDate());
-        Instant standardEndInstant = DateTimeUtil.toInstant(attendanceDate, DEFAULT_STANDARD_END_TIME);
-        if (standardEndInstant == null || !record.getEndTime().isAfter(standardEndInstant)) {
-            return 0.0;
-        }
-
-        long minutes = Duration.between(standardEndInstant, record.getEndTime()).toMinutes();
-        if (minutes <= 0) {
-            return 0.0;
-        }
-        return minutes / 60.0;
+        return attendanceRecordService.resolveOvertimeHours(record);
     }
 }
 

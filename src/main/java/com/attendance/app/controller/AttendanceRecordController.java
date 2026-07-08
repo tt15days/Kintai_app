@@ -39,7 +39,6 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
@@ -61,7 +60,6 @@ public class AttendanceRecordController {
     private static final String CORRECTION_CREATE_VIEW = "user/correction-request-create";
     private static final String CORRECTION_LIST_REDIRECT = "redirect:/attendance/corrections";
     private static final String INVALID_YEAR_MONTH_LOG = "yearMonth形式が不正: {}";
-    private static final LocalTime DEFAULT_STANDARD_END_TIME = LocalTime.of(18, 0);
 
     private final AttendanceRecordService attendanceRecordService;
     private final AttendanceSubmissionService attendanceSubmissionService;
@@ -694,28 +692,7 @@ public class AttendanceRecordController {
      * 既存データ互換のため、overtimeHours が未設定の場合は基準終了時刻と終了時刻から算出する。
      */
     private double resolveOvertimeHours(AttendanceRecord record) {
-        if (record == null) {
-            return 0.0;
-        }
-        if (record.getOvertimeHours() != null) {
-            return record.getOvertimeHours();
-        }
-        if (record.getAttendanceDate() == null || record.getEndTime() == null) {
-            return 0.0;
-        }
-
-        LocalDate attendanceDate = com.attendance.app.util.DateTimeUtil.toLocalDate(record.getAttendanceDate());
-        LocalTime standardEndTime = DEFAULT_STANDARD_END_TIME;
-        Instant standardEndInstant = com.attendance.app.util.DateTimeUtil.toInstant(attendanceDate, standardEndTime);
-        if (standardEndInstant == null || !record.getEndTime().isAfter(standardEndInstant)) {
-            return 0.0;
-        }
-
-        long minutes = Duration.between(standardEndInstant, record.getEndTime()).toMinutes();
-        if (minutes <= 0) {
-            return 0.0;
-        }
-        return minutes / 60.0;
+        return attendanceRecordService.resolveOvertimeHours(record);
     }
 
     /**

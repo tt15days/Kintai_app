@@ -478,6 +478,40 @@ public class AttendanceRecordService {
     }
 
     /**
+     * 勤怠記録から残業時間を返します。
+     * overtime_hours が未設定の場合、記録に紐づく勤務クラス（未設定時はデフォルトスケジュール）の
+     * 所定終業時刻を基準に超過分をフォールバック算出します。
+     *
+     * @param record 対象の勤怠記録
+     * @return 残業時間（時間単位の小数）
+     */
+    public double resolveOvertimeHours(AttendanceRecord record) {
+        if (record == null) {
+            return 0.0;
+        }
+        if (record.getOvertimeHours() != null) {
+            return record.getOvertimeHours();
+        }
+        if (record.getAttendanceDate() == null || record.getEndTime() == null) {
+            return 0.0;
+        }
+
+        LocalDate attendanceDate = DateTimeUtil.toLocalDate(record.getAttendanceDate());
+        WorkScheduleDefinition schedule = resolveScheduleForRecord(record);
+        Double overtime = calculateExcessOvertime(attendanceDate, schedule, record.getEndTime());
+        return overtime != null ? overtime : 0.0;
+    }
+
+    private WorkScheduleDefinition resolveScheduleForRecord(AttendanceRecord record) {
+        if (record.getClassId() != null) {
+            return workScheduleClassMapper.selectById(record.getClassId())
+                    .map(o -> this.toWorkScheduleDefinition(o))
+                    .orElseGet(() -> WorkScheduleDefinition.defaultSchedule());
+        }
+        return WorkScheduleDefinition.defaultSchedule();
+    }
+
+    /**
      * デフォルトのスケジュールに基づく規定勤務時間を取得します。
      *
      * @return デフォルトスケジュールの規定勤務時間（時間単位）
@@ -618,29 +652,11 @@ public class AttendanceRecordService {
 
     /**
      * 勤怠記録から残業時間を返します。
-     * overtime_hours が null（未設定）の場合のみ基準終了時刻(18:00)との差分でフォールバック算出します。
+     * overtime_hours が null（未設定）の場合のみ勤務クラスの所定終業時刻との差分でフォールバック算出します。
      * overtime_hours=0.0 は「残業なし確定」として扱い、フォールバック算出は行いません。
      */
     private double resolveOvertimeHoursForRecord(AttendanceRecord record) {
-        if (record == null) {
-            return 0.0;
-        }
-        if (record.getOvertimeHours() != null) {
-            return record.getOvertimeHours();
-        }
-        if (record.getAttendanceDate() == null || record.getEndTime() == null) {
-            return 0.0;
-        }
-        LocalDate attendanceDate = DateTimeUtil.toLocalDate(record.getAttendanceDate());
-        Instant standardEndInstant = DateTimeUtil.toInstant(attendanceDate, LocalTime.of(18, 0));
-        if (standardEndInstant == null || !record.getEndTime().isAfter(standardEndInstant)) {
-            return 0.0;
-        }
-        long minutes = java.time.Duration.between(standardEndInstant, record.getEndTime()).toMinutes();
-        if (minutes <= 0) {
-            return 0.0;
-        }
-        return minutes / 60.0;
+        return resolveOvertimeHours(record);
     }
 
     /**
