@@ -359,7 +359,7 @@ public class AdminController {
             @RequestParam(required = false) String keyword,
             Model model) {
         try {
-            List<User> users = userService.getAllUsers();
+            List<User> users = userService.getActiveUsers();
             YearMonth currentMonth = parseYearMonthOrNow(yearMonth);
 
             // Filter users based on department and keyword

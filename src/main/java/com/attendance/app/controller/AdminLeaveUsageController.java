@@ -28,7 +28,7 @@ public class AdminLeaveUsageController {
 
     @GetMapping
     public String showLeaveUsage(Model model) {
-        List<User> users = userService.getAllUsers();
+        List<User> users = userService.getActiveUsers();
         
         int currentYear = LocalDate.now().getYear();
         
