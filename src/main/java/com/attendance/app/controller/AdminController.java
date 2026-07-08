@@ -33,6 +33,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -885,6 +886,7 @@ public class AdminController {
         List<Map<String, String>> monthEntries = Collections.emptyList();
         Map<String, Double> overtimeCellMap = Collections.emptyMap();
         Map<String, String> article36StatusCellMap = Collections.emptyMap();
+        List<Map<String, Object>> article36MonthlyTrend = Collections.emptyList();
         long alertCount = 0;
         long warningCount = 0;
         long normalCount = 0;
@@ -914,6 +916,24 @@ public class AdminController {
                 }
             }
 
+            // 月別時間外労働の平均推移（直近3ヶ月）
+            double article36Warning = batchSettingService.getAlertArticle36Limit1();
+            article36MonthlyTrend = new ArrayList<>();
+            for (YearMonth ym : months) {
+                double sum = 0.0;
+                for (User u : users) {
+                    sum += overtimeCellMap.getOrDefault(ym + "_" + u.getUserId(), 0.0);
+                }
+                double average = users.isEmpty() ? 0.0 : Math.round(sum / users.size() * 10.0) / 10.0;
+                double barPercent = Math.min(100.0, average / 45.0 * 100.0);
+                Map<String, Object> trendEntry = new HashMap<>();
+                trendEntry.put("label", ym.getMonthValue() + "月");
+                trendEntry.put("average", average);
+                trendEntry.put("barPercent", barPercent);
+                trendEntry.put("isWarning", average >= article36Warning);
+                article36MonthlyTrend.add(trendEntry);
+            }
+
             final String baseKey = baseMonth.toString();
             final Map<String, String> statusMap = article36StatusCellMap;
             alertCount = users.stream()
@@ -937,6 +957,7 @@ public class AdminController {
         model.addAttribute("monthEntries", monthEntries);
         model.addAttribute("overtimeCellMap", overtimeCellMap);
         model.addAttribute("article36StatusCellMap", article36StatusCellMap);
+        model.addAttribute("article36MonthlyTrend", article36MonthlyTrend);
         model.addAttribute("article36MonthlyLimit", batchSettingService.getAlertArticle36Limit2());
         model.addAttribute("article36MonthlyWarning", batchSettingService.getAlertArticle36Limit1());
         model.addAttribute("alertCount", alertCount);
