@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="_csrf" th:content="${_csrf.token}" />
     <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <meta name="context-path" th:content="@{/}" />
     <title layout:title-pattern="$LAYOUT_TITLE - $CONTENT_TITLE" th:text="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
