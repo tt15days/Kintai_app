@@ -210,6 +210,12 @@ public class PayrollExportServiceTest {
         when(leaveApplicationService.getApplicationsByUserAndDateRange(eq(2L), any(), any()))
                 .thenReturn(List.of(paidLeave, unpaidLeave, absence, rejectedPaidLeave));
 
+        when(leaveApplicationService.calculateDailyConsumedDays(any()))
+                .thenAnswer(inv -> {
+                    String dt = inv.getArgument(0);
+                    return ("AM_HALF".equals(dt) || "PM_HALF".equals(dt)) ? new java.math.BigDecimal("0.5") : java.math.BigDecimal.ONE;
+                });
+
         // Execute
         byte[] gzipBytes = payrollExportService.generatePayrollCsvGzip(testYearMonth, PayrollExportFormat.MONEYFORWARD, java.nio.charset.StandardCharsets.UTF_8);
 
@@ -226,6 +232,10 @@ public class PayrollExportServiceTest {
         }
 
         String csvString = decodedContent.toString();
+        // UTF-8出力では先頭にBOMが付与される(#20)ため除去してからヘッダを検証する
+        if (!csvString.isEmpty() && csvString.charAt(0) == '﻿') {
+            csvString = csvString.substring(1);
+        }
         String[] lines = csvString.split("\r\n");
         assertThat(lines).hasSize(3); // Header + User1 + User2
 
