@@ -34,8 +34,10 @@ public class AdminLeaveUsageController {
         
         Map<Long, PaidLeaveBalance> balanceMap = new HashMap<>();
         Map<Long, Boolean> obligationMetMap = new HashMap<>();
+        Map<Long, BigDecimal> remainingTotalMap = new HashMap<>();
 
         for (User user : users) {
+            remainingTotalMap.put(user.getUserId(), paidLeaveBalanceService.getTotalRemainingDays(user.getUserId()));
             // 現在の年の有給休暇残高を取得
             paidLeaveBalanceService.getByUserAndYear(user.getUserId(), currentYear)
                 .ifPresentOrElse(balance -> {
@@ -56,6 +58,7 @@ public class AdminLeaveUsageController {
         model.addAttribute("users", users);
         model.addAttribute("balanceMap", balanceMap);
         model.addAttribute("obligationMetMap", obligationMetMap);
+        model.addAttribute("remainingTotalMap", remainingTotalMap);
         model.addAttribute("currentYear", currentYear);
         
         return "admin/leave-usage";
