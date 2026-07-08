@@ -56,12 +56,11 @@ public class ProfileController {
             List<WorkScheduleClass> workScheduleClasses = workScheduleClassService.getAllClasses();
 
             int currentYear = java.time.LocalDate.now().getYear();
-            long yearlyUsedPaidLeaveDays = leaveApplicationService.calculateYearlyUsedPaidLeaveDays(
+            java.math.BigDecimal yearlyUsedPaidLeaveDays = leaveApplicationService.calculateYearlyUsedPaidLeaveDays(
                     currentUser.getUserId(), currentYear);
-            java.math.BigDecimal paidLeaveDays = currentUser.getPaidLeaveDays() != null
-                    ? currentUser.getPaidLeaveDays() : java.math.BigDecimal.ZERO;
-            java.math.BigDecimal remainingPaidLeaveDays = paidLeaveDays.subtract(
-                    new java.math.BigDecimal(yearlyUsedPaidLeaveDays));
+            // 有給残日数は paid_leave_balance テーブル（年度別残高）を正とする
+            java.math.BigDecimal remainingPaidLeaveDays =
+                    paidLeaveBalanceService.getTotalRemainingDays(currentUser.getUserId());
 
             model.addAttribute("currentUser", currentUser);
             model.addAttribute("workScheduleClasses", workScheduleClasses);
@@ -69,7 +68,7 @@ public class ProfileController {
             model.addAttribute("remainingPaidLeaveDays", remainingPaidLeaveDays);
             // 有給残高年次一覧
             model.addAttribute("paidLeaveBalances", paidLeaveBalanceService.getBalancesByUserId(currentUser.getUserId()));
-            model.addAttribute("totalRemainingPaidLeaveDays", paidLeaveBalanceService.getTotalRemainingDays(currentUser.getUserId()));
+            model.addAttribute("totalRemainingPaidLeaveDays", remainingPaidLeaveDays);
             log.info("プロフィール画面を表示: userId={}", currentUser.getUserId());
         } catch (Exception e) {
             log.error("プロフィール画面表示に失敗: {}", e.getMessage());

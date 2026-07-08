@@ -3,6 +3,7 @@ package com.attendance.app.service;
 import com.attendance.app.entity.AuditEventType;
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserRole;
+import com.attendance.app.mapper.PaidLeaveBalanceMapper;
 import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.mapper.WorkScheduleClassMapper;
@@ -24,7 +25,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * {@link UserService} における監査ログ呼び出しの単体テスト。
+ * {@link UserService} における監査ログ呼び出しの単体テスト。 
  *
  * <p>
  * ユーザー作成・更新・削除・パスワード初期化の各操作で
@@ -49,6 +50,9 @@ class UserServiceAuditTest {
 
     @Mock
     private SystemSettingMapper systemSettingMapper;
+
+    @Mock
+    private PaidLeaveBalanceMapper paidLeaveBalanceMapper;
 
     @InjectMocks
     private UserService userService;
@@ -133,7 +137,7 @@ class UserServiceAuditTest {
             userService.updateUser(
                     TARGET_ID, "user@example.com", "更新ユーザー",
                     UserRole.USER, null, null, null,
-                    new BigDecimal("10.0"), null, false, null, ACTOR_ID);
+                    new BigDecimal("10.0"), null, false, null, true, ACTOR_ID);
 
             verify(auditLogService).recordUserEvent(
                     eq(AuditEventType.USER_UPDATED),

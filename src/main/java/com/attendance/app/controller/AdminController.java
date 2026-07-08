@@ -1,13 +1,8 @@
 package com.attendance.app.controller;
 
-import com.attendance.app.entity.AttendanceRecord;
 import com.attendance.app.entity.AttendanceSubmission;
-import com.attendance.app.entity.LeaveApplication;
-import com.attendance.app.entity.LeaveStatus;
-import com.attendance.app.entity.LeaveType;
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserRole;
-import com.attendance.app.entity.WorkScheduleClass;
 import com.attendance.app.security.SecurityUtil;
 import com.attendance.app.service.AttendanceApproverAssignmentService;
 import com.attendance.app.service.BatchSchedulerService;
@@ -15,7 +10,6 @@ import com.attendance.app.service.BatchSettingService;
 import com.attendance.app.service.AttendanceRecordService;
 import com.attendance.app.service.AttendanceSubmissionService;
 import com.attendance.app.service.CsvFilenamePatternService;
-import com.attendance.app.service.LeaveApplicationService;
 import com.attendance.app.service.ReportService;
 import com.attendance.app.service.UserService;
 import com.attendance.app.service.WorkScheduleClassService;
@@ -35,12 +29,11 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -64,13 +57,11 @@ import java.util.stream.Collectors;
 public class AdminController {
 
     private static final String INVALID_YEAR_MONTH_LOG = "yearMonth形式が不正: {}";
-    private static final LocalTime DEFAULT_STANDARD_END_TIME = LocalTime.of(18, 0);
     private static final String ADMIN_DASHBOARD_VIEW = "admin/dashboard";
     private static final String USER_CREATE_VIEW = "admin/user-create";
     private static final String USER_LIST_VIEW = "admin/user-list";
     private static final String USER_DETAIL_VIEW = "admin/user-detail";
     private static final String ATTENDANCE_DASHBOARD_VIEW = "admin/attendance-manage";
-    private static final String USER_ATTENDANCE_DETAIL_VIEW = "admin/user-attendance-detail";
     private static final String ADMIN_USERS_REDIRECT = "redirect:/admin/users";
     private static final String ADMIN_DASHBOARD_SUCCESS_REDIRECT = "redirect:/admin/dashboard?success=true";
     private static final String ADMIN_USER_DETAIL_REDIRECT_PREFIX = "redirect:/admin/users/";
@@ -84,7 +75,6 @@ public class AdminController {
     private final AttendanceRecordService attendanceRecordService;
     private final AttendanceApproverAssignmentService approverAssignmentService;
     private final AttendanceSubmissionService attendanceSubmissionService;
-    private final LeaveApplicationService leaveApplicationService;
     private final SecurityUtil securityUtil;
     private final WorkScheduleClassService workScheduleClassService;
     private final ReportService reportService;
@@ -288,7 +278,8 @@ public class AdminController {
             @RequestParam(required = false) BigDecimal paidLeaveDays,
             @RequestParam(required = false) String notes,
             @RequestParam(defaultValue = "false") boolean canApproveAttendance,
-            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM-dd") java.time.LocalDate hireDate) {
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM-dd") java.time.LocalDate hireDate,
+            @RequestParam(defaultValue = "false") boolean isActive) {
         try {
             userService.updateUser(
                     userId,
@@ -302,6 +293,7 @@ public class AdminController {
                     notes,
                     canApproveAttendance,
                     hireDate,
+                    isActive,
                     securityUtil.getCurrentUserId());
             log.info("ユーザー情報を更新: userId={}", userId);
             return ADMIN_USERS_REDIRECT;
@@ -343,7 +335,7 @@ public class AdminController {
             String initialPassword = userService.resetPasswordByAdmin(userId, securityUtil.getCurrentUserId());
             redirectAttributes.addFlashAttribute(
                     "successMessage",
-                    "パスワードを初期化しました。初期パスワード: " + initialPassword + "（次回ログイン時に変更が必要です）");
+                    "パスワードを初期化しました。\n初期パスワード: " + initialPassword + "（次回ログイン時に変更が必要です）");
             log.info("管理者がユーザーのパスワードを初期化: userId={}", userId);
         } catch (Exception e) {
             logActionError(e, "パスワード初期化に失敗");
@@ -368,7 +360,7 @@ public class AdminController {
             @RequestParam(required = false) String keyword,
             Model model) {
         try {
-            List<User> users = userService.getAllUsers();
+            List<User> users = userService.getActiveUsers();
             YearMonth currentMonth = parseYearMonthOrNow(yearMonth);
 
             // Filter users based on department and keyword
@@ -382,7 +374,7 @@ public class AdminController {
                 users = users.stream()
                         .filter(u -> (u.getFullName() != null && u.getFullName().toLowerCase().contains(lowerKeyword))
                                 ||
-                                (u.getUserId().toString().contains(lowerKeyword)))
+                                (u.getEmpNo() != null && u.getEmpNo().toLowerCase().contains(lowerKeyword)))
                         .collect(Collectors.toList());
             }
 
@@ -422,8 +414,8 @@ public class AdminController {
             model.addAttribute("workingSumByUserMap", workingSumByUserMap);
             model.addAttribute("nightShiftSumByUserMap", nightShiftSumByUserMap);
             model.addAttribute("article36ByUserMap", article36ByUserMap);
-            model.addAttribute("article36MonthlyLimit", AttendanceRecordService.ARTICLE36_MONTHLY_LIMIT_HOURS);
-            model.addAttribute("article36MonthlyWarning", AttendanceRecordService.ARTICLE36_MONTHLY_WARNING_HOURS);
+            model.addAttribute("article36MonthlyLimit", batchSettingService.getAlertArticle36Limit2());
+            model.addAttribute("article36MonthlyWarning", batchSettingService.getAlertArticle36Limit1());
 
             model.addAttribute("submissionStatusPending", AttendanceSubmissionService.STATUS_PENDING);
             model.addAttribute("submissionStatusApproved", AttendanceSubmissionService.STATUS_APPROVED);
@@ -460,22 +452,6 @@ public class AdminController {
     }
 
     /**
-     * 手動で年次有給付与を実行します。
-     */
-    @PostMapping("/batch/annual-leave-grant")
-    public String runManualAnnualLeaveGrant(RedirectAttributes redirectAttributes) {
-        try {
-            batchSchedulerService.executeAnnualPaidLeaveGrant();
-            redirectAttributes.addFlashAttribute("successMessage", "年次有給付与を実行しました");
-            log.info("手動年次有給付与を実行");
-        } catch (Exception e) {
-            logActionError(e, "手動年次有給付与に失敗");
-            redirectAttributes.addFlashAttribute("errorMessage", "年次有給付与の実行に失敗しました");
-        }
-        return "redirect:/admin/dashboard";
-    }
-
-    /**
      * 手動で勤怠提出リマインドを送信します。
      */
     @PostMapping("/batch/reminder")
@@ -487,6 +463,24 @@ public class AdminController {
         } catch (Exception e) {
             logActionError(e, "手動リマインド送信に失敗");
             redirectAttributes.addFlashAttribute("errorMessage", "リマインドの送信に失敗しました");
+        }
+        return "redirect:/admin/dashboard";
+    }
+
+    /**
+     * 手動で全従業員への年次有給一括付与を実行します。
+     */
+    @PostMapping("/batch/annual-leave-grant")
+    public String runManualAnnualLeaveGrant(RedirectAttributes redirectAttributes) {
+        try {
+            BatchSchedulerService.AnnualLeaveGrantResult result = batchSchedulerService.executeAnnualLeaveGrant();
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "有給一括付与を実行しました（付与: " + result.grantedCount() + "名、"
+                            + "スキップ（当年付与済み）: " + result.skippedCount() + "名）");
+            log.info("手動有給一括付与を実行: granted={}, skipped={}", result.grantedCount(), result.skippedCount());
+        } catch (Exception e) {
+            logActionError(e, "手動有給一括付与に失敗");
+            redirectAttributes.addFlashAttribute("errorMessage", "有給一括付与の実行に失敗しました");
         }
         return "redirect:/admin/dashboard";
     }
@@ -529,9 +523,9 @@ public class AdminController {
     public String showUserAttendanceRecords(
             @PathVariable Long userId,
             @RequestParam(required = false) String yearMonth) {
-        String redirect = "redirect:/attendance/approval/" + userId + "/detail";
+        String redirect = "redirect:/attendance/approval/" + userId + "/detail?from=admin";
         if (yearMonth != null && !yearMonth.isEmpty()) {
-            redirect += "?yearMonth=" + yearMonth;
+            redirect += "&yearMonth=" + yearMonth;
         }
         return redirect;
     }
@@ -627,34 +621,6 @@ public class AdminController {
         }
     }
 
-    /**
-     * 既存データ互換のため、overtimeHours が null（未設定）の場合のみ基準終了時刻と終了時刻から算出します。
-     * overtime_hours=0.0 は「残業なし確定」として扱い、フォールバック算出は行いません。
-     */
-    private double resolveOvertimeHours(AttendanceRecord record) {
-        if (record == null) {
-            return 0.0;
-        }
-        if (record.getOvertimeHours() != null) {
-            return record.getOvertimeHours();
-        }
-        if (record.getAttendanceDate() == null || record.getEndTime() == null) {
-            return 0.0;
-        }
-
-        LocalDate attendanceDate = DateTimeUtil.toLocalDate(record.getAttendanceDate());
-        Instant standardEndInstant = DateTimeUtil.toInstant(attendanceDate, DEFAULT_STANDARD_END_TIME);
-        if (standardEndInstant == null || !record.getEndTime().isAfter(standardEndInstant)) {
-            return 0.0;
-        }
-
-        long minutes = Duration.between(standardEndInstant, record.getEndTime()).toMinutes();
-        if (minutes <= 0) {
-            return 0.0;
-        }
-        return minutes / 60.0;
-    }
-
     // ============================================================
     // 勤務クラス管理（所定時間マスタ）
     // ============================================================
@@ -691,16 +657,29 @@ public class AdminController {
             @RequestParam(required = false) Short minHours,
             @RequestParam String startTime,
             @RequestParam String endTime,
-            @RequestParam(required = false) String breakStartTime,
-            @RequestParam(required = false) String breakEndTime,
-            @RequestParam(required = false) String breakStartTime2,
-            @RequestParam(required = false) String breakEndTime2,
-            @RequestParam(required = false) String breakStartTime3,
-            @RequestParam(required = false) String breakEndTime3,
-            @RequestParam(required = false) String breakStartTime4,
-            @RequestParam(required = false) String breakEndTime4,
+            @RequestParam(required = false) List<String> breakStartTimes,
+            @RequestParam(required = false) List<String> breakEndTimes,
             RedirectAttributes redirectAttributes) {
         try {
+            List<com.attendance.app.entity.WorkScheduleClassBreak> breaks = new java.util.ArrayList<>();
+            if (breakStartTimes != null && breakEndTimes != null) {
+                int size = Math.min(breakStartTimes.size(), breakEndTimes.size());
+                for (int i = 0; i < size; i++) {
+                    String start = breakStartTimes.get(i);
+                    String end = breakEndTimes.get(i);
+                    boolean startPresent = start != null && !start.isBlank();
+                    boolean endPresent = end != null && !end.isBlank();
+                    if (startPresent && endPresent) {
+                        breaks.add(com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                .breakStartTime(LocalTime.parse(start))
+                                .breakEndTime(LocalTime.parse(end))
+                                .build());
+                    } else if (startPresent || endPresent) {
+                        throw new IllegalArgumentException("休憩の開始時刻と終了時刻は両方入力してください");
+                    }
+                }
+            }
+
             workScheduleClassService.createClass(
                     name,
                     workLocation,
@@ -715,14 +694,7 @@ public class AdminController {
                     minHours,
                     LocalTime.parse(startTime),
                     LocalTime.parse(endTime),
-                    parseOptionalTime(breakStartTime),
-                    parseOptionalTime(breakEndTime),
-                    parseOptionalTime(breakStartTime2),
-                    parseOptionalTime(breakEndTime2),
-                    parseOptionalTime(breakStartTime3),
-                    parseOptionalTime(breakEndTime3),
-                    parseOptionalTime(breakStartTime4),
-                    parseOptionalTime(breakEndTime4));
+                    breaks);
             redirectAttributes.addFlashAttribute("successMessage", "勤務クラスを作成しました: " + name);
             log.info("勤務クラスを作成: name={}", name);
         } catch (IllegalArgumentException e) {
@@ -754,16 +726,29 @@ public class AdminController {
             @RequestParam(required = false) Short minHours,
             @RequestParam String startTime,
             @RequestParam String endTime,
-            @RequestParam(required = false) String breakStartTime,
-            @RequestParam(required = false) String breakEndTime,
-            @RequestParam(required = false) String breakStartTime2,
-            @RequestParam(required = false) String breakEndTime2,
-            @RequestParam(required = false) String breakStartTime3,
-            @RequestParam(required = false) String breakEndTime3,
-            @RequestParam(required = false) String breakStartTime4,
-            @RequestParam(required = false) String breakEndTime4,
+            @RequestParam(required = false) List<String> breakStartTimes,
+            @RequestParam(required = false) List<String> breakEndTimes,
             RedirectAttributes redirectAttributes) {
         try {
+            List<com.attendance.app.entity.WorkScheduleClassBreak> breaks = new java.util.ArrayList<>();
+            if (breakStartTimes != null && breakEndTimes != null) {
+                int size = Math.min(breakStartTimes.size(), breakEndTimes.size());
+                for (int i = 0; i < size; i++) {
+                    String start = breakStartTimes.get(i);
+                    String end = breakEndTimes.get(i);
+                    boolean startPresent = start != null && !start.isBlank();
+                    boolean endPresent = end != null && !end.isBlank();
+                    if (startPresent && endPresent) {
+                        breaks.add(com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                .breakStartTime(LocalTime.parse(start))
+                                .breakEndTime(LocalTime.parse(end))
+                                .build());
+                    } else if (startPresent || endPresent) {
+                        throw new IllegalArgumentException("休憩の開始時刻と終了時刻は両方入力してください");
+                    }
+                }
+            }
+
             workScheduleClassService.updateClass(
                     classId,
                     name,
@@ -779,14 +764,7 @@ public class AdminController {
                     minHours,
                     LocalTime.parse(startTime),
                     LocalTime.parse(endTime),
-                    parseOptionalTime(breakStartTime),
-                    parseOptionalTime(breakEndTime),
-                    parseOptionalTime(breakStartTime2),
-                    parseOptionalTime(breakEndTime2),
-                    parseOptionalTime(breakStartTime3),
-                    parseOptionalTime(breakEndTime3),
-                    parseOptionalTime(breakStartTime4),
-                    parseOptionalTime(breakEndTime4));
+                    breaks);
             redirectAttributes.addFlashAttribute("successMessage", "勤務クラスを更新しました: " + name);
             log.info("勤務クラスを更新: classId={}, name={}", classId, name);
         } catch (IllegalArgumentException e) {
@@ -799,12 +777,6 @@ public class AdminController {
         return ADMIN_WORK_SCHEDULES_REDIRECT;
     }
 
-    private LocalTime parseOptionalTime(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return LocalTime.parse(value);
-    }
 
     /**
      * 勤務クラスを論理削除（無効化）します。
@@ -842,6 +814,7 @@ public class AdminController {
                     .filter(u -> u.getUserRole() != UserRole.ADMIN)
                     .collect(Collectors.toList());
             model.addAttribute("activeUsers", activeUsers);
+            model.addAttribute("classes", workScheduleClassService.getAllClasses());
             log.info("通知管理画面を表示: activeUserCount={}", activeUsers.size());
         } catch (Exception e) {
             handleAdminViewError(model, e, "通知管理画面表示に失敗", "通知管理画面の表示に失敗しました");
@@ -850,29 +823,39 @@ public class AdminController {
     }
 
     /**
-     * 指定ユーザーまたは全ユーザーにカスタム通知を送信します。
+     * 指定ユーザー、指定勤務クラス、または全ユーザーにカスタム通知を送信します。
      *
      * @param userId  null の場合は全ユーザーに送信
+     * @param classId null の場合は全ユーザーに送信（userIdもnullの場合）
      * @param message 通知メッセージ
      */
     @PostMapping("/notifications/send")
     public String sendNotification(
             @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Long classId,
             @RequestParam String message,
             RedirectAttributes redirectAttributes) {
         try {
+            Long senderUserId = securityUtil.getCurrentUserId();
             if (userId != null) {
                 User target = userService.getUserById(userId)
                         .orElseThrow(() -> new IllegalArgumentException("ユーザーが見つかりません: id=" + userId));
-                userNotificationService.sendCustomNotification(userId, message);
+                userNotificationService.sendCustomNotification(userId, message, senderUserId);
                 redirectAttributes.addFlashAttribute("successMessage",
                         target.getFullName() + " さんに通知を送信しました");
-                log.info("管理者カスタム通知を送信: targetUserId={}", userId);
+                log.info("管理者カスタム通知を送信: targetUserId={}, senderUserId={}", userId, senderUserId);
+            } else if (classId != null) {
+                com.attendance.app.entity.WorkScheduleClass wsc = workScheduleClassService.getClassById(classId)
+                        .orElseThrow(() -> new IllegalArgumentException("勤務クラスが見つかりません: id=" + classId));
+                int count = userNotificationService.sendCustomNotificationToClass(classId, message, senderUserId);
+                redirectAttributes.addFlashAttribute("successMessage",
+                        "勤務クラス「" + wsc.getName() + "」のユーザー（" + count + "名）に通知を送信しました");
+                log.info("管理者クラス一括通知を送信: classId={}, count={}, senderUserId={}", classId, count, senderUserId);
             } else {
-                int count = userNotificationService.sendCustomNotificationToAll(message);
+                int count = userNotificationService.sendCustomNotificationToAll(message, senderUserId);
                 redirectAttributes.addFlashAttribute("successMessage",
                         "全ユーザー（" + count + "名）に通知を送信しました");
-                log.info("管理者一括通知を送信: count={}", count);
+                log.info("管理者一括通知を送信: count={}, senderUserId={}", count, senderUserId);
             }
         } catch (IllegalArgumentException e) {
             log.warn("通知送信に失敗: {}", e.getMessage());
@@ -903,6 +886,7 @@ public class AdminController {
         List<Map<String, String>> monthEntries = Collections.emptyList();
         Map<String, Double> overtimeCellMap = Collections.emptyMap();
         Map<String, String> article36StatusCellMap = Collections.emptyMap();
+        List<Map<String, Object>> article36MonthlyTrend = Collections.emptyList();
         long alertCount = 0;
         long warningCount = 0;
         long normalCount = 0;
@@ -932,6 +916,24 @@ public class AdminController {
                 }
             }
 
+            // 月別時間外労働の平均推移（直近3ヶ月）
+            double article36Warning = batchSettingService.getAlertArticle36Limit1();
+            article36MonthlyTrend = new ArrayList<>();
+            for (YearMonth ym : months) {
+                double sum = 0.0;
+                for (User u : users) {
+                    sum += overtimeCellMap.getOrDefault(ym + "_" + u.getUserId(), 0.0);
+                }
+                double average = users.isEmpty() ? 0.0 : Math.round(sum / users.size() * 10.0) / 10.0;
+                double barPercent = Math.min(100.0, average / 45.0 * 100.0);
+                Map<String, Object> trendEntry = new HashMap<>();
+                trendEntry.put("label", ym.getMonthValue() + "月");
+                trendEntry.put("average", average);
+                trendEntry.put("barPercent", barPercent);
+                trendEntry.put("isWarning", average >= article36Warning);
+                article36MonthlyTrend.add(trendEntry);
+            }
+
             final String baseKey = baseMonth.toString();
             final Map<String, String> statusMap = article36StatusCellMap;
             alertCount = users.stream()
@@ -955,8 +957,9 @@ public class AdminController {
         model.addAttribute("monthEntries", monthEntries);
         model.addAttribute("overtimeCellMap", overtimeCellMap);
         model.addAttribute("article36StatusCellMap", article36StatusCellMap);
-        model.addAttribute("article36MonthlyLimit", AttendanceRecordService.ARTICLE36_MONTHLY_LIMIT_HOURS);
-        model.addAttribute("article36MonthlyWarning", AttendanceRecordService.ARTICLE36_MONTHLY_WARNING_HOURS);
+        model.addAttribute("article36MonthlyTrend", article36MonthlyTrend);
+        model.addAttribute("article36MonthlyLimit", batchSettingService.getAlertArticle36Limit2());
+        model.addAttribute("article36MonthlyWarning", batchSettingService.getAlertArticle36Limit1());
         model.addAttribute("alertCount", alertCount);
         model.addAttribute("warningCount", warningCount);
         model.addAttribute("normalCount", normalCount);
@@ -988,8 +991,8 @@ public class AdminController {
                                 + "月の残業時間（" + String.format("%.1f", ot) + "時間）は注意水準に達していないため通知できません（NORMAL）");
             }
             String statusLabel = "ALERT".equals(status)
-                    ? "36協定上限超過（月" + AttendanceRecordService.ARTICLE36_MONTHLY_LIMIT_HOURS + "時間超）"
-                    : "36協定注意レベル（月" + AttendanceRecordService.ARTICLE36_MONTHLY_WARNING_HOURS + "時間超）";
+                    ? "36協定上限超過（月" + batchSettingService.getAlertArticle36Limit2() + "時間超）"
+                    : "36協定注意レベル（月" + batchSettingService.getAlertArticle36Limit1() + "時間超）";
             String msg = ym.getYear() + "年" + ym.getMonthValue() + "月の残業時間が"
                     + String.format("%.1f", ot) + "時間に達し、"
                     + statusLabel + "に該当しています。残業時間の管理にご注意ください。";

@@ -97,8 +97,8 @@ public class ReportServiceTest {
         assertTrue(csvContent.contains("2026-06-01"));
         assertTrue(csvContent.contains("通常勤務"));
         assertTrue(csvContent.contains("有給休暇"));
-        assertTrue(csvContent.contains("\"8.00\""));
-        assertTrue(csvContent.contains("\"1.50\""));
+        assertTrue(csvContent.contains("\"8時間0分\""));
+        assertTrue(csvContent.contains("\"1時間30分\""));
     }
 
     @Test

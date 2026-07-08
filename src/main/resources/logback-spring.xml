@@ -11,7 +11,7 @@
     <!-- 1. コンソールアペンダー設定 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - [%X{traceId}][%X{userId}] - %msg%n</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
@@ -20,7 +20,7 @@
     <appender name="APPLICATION_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/application.log</file>
         <encoder>
-            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - [%X{traceId}][%X{userId}] - %msg%n</pattern>
             <charset>UTF-8</charset>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -55,6 +55,27 @@
         </rollingPolicy>
     </appender>
 
+    <!-- 4. CONSOLE_JSON アペンダー (リリース用 JSONフォーマット) -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>logstash</format>
+        </encoder>
+    </appender>
+
+    <!-- 5. APPLICATION_JSON_FILE アペンダー (リリース用 JSONフォーマット) -->
+    <appender name="APPLICATION_JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/application.json.log</file>
+        <encoder class="org.springframework.boot.logging.logback.StructuredLogEncoder">
+            <format>logstash</format>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/gzip/application.json.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
 
     <!-- ========================================== -->
     <!-- ロガーレベルとアペンダーのマッピング -->
@@ -79,8 +100,8 @@
     <!-- リリース環境 (release プロファイル) 向けのアクティブ設定 -->
     <springProfile name="release">
         <root level="WARN">
-            <appender-ref ref="CONSOLE" />
-            <appender-ref ref="APPLICATION_FILE" />
+            <appender-ref ref="CONSOLE_JSON" />
+            <appender-ref ref="APPLICATION_JSON_FILE" />
         </root>
     </springProfile>
 

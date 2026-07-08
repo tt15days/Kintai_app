@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.attendance.app.entity.AttendanceRecord;
 import com.attendance.app.entity.WorkScheduleClass;
+import com.attendance.app.entity.UserNotification;
 import com.attendance.app.mapper.AttendanceRecordMapper;
 import com.attendance.app.mapper.EventTypeMapper;
 import com.attendance.app.mapper.UserMapper;
@@ -48,6 +49,8 @@ public class AttendanceRecordService {
     private final AttendancePeriodSettingService attendancePeriodSettingService;
     private final EventTypeMapper eventTypeMapper;
     private final AttendanceSubmissionMapper attendanceSubmissionMapper;
+    private final UserNotificationService userNotificationService;
+    private final BatchSettingService batchSettingService;
 
     private static final LocalTime DEFAULT_STANDARD_START_TIME = LocalTime.of(9, 0);
     private static final LocalTime DEFAULT_STANDARD_END_TIME = LocalTime.of(18, 0);
@@ -82,10 +85,11 @@ public class AttendanceRecordService {
 
     private WorkScheduleDefinition toWorkScheduleDefinition(WorkScheduleClass workScheduleClass) {
         List<BreakWindow> breakWindows = new ArrayList<>();
-        addBreakWindow(breakWindows, workScheduleClass.getBreakStartTime(), workScheduleClass.getBreakEndTime());
-        addBreakWindow(breakWindows, workScheduleClass.getBreakStartTime2(), workScheduleClass.getBreakEndTime2());
-        addBreakWindow(breakWindows, workScheduleClass.getBreakStartTime3(), workScheduleClass.getBreakEndTime3());
-        addBreakWindow(breakWindows, workScheduleClass.getBreakStartTime4(), workScheduleClass.getBreakEndTime4());
+        if (workScheduleClass.getBreaks() != null) {
+            for (com.attendance.app.entity.WorkScheduleClassBreak b : workScheduleClass.getBreaks()) {
+                addBreakWindow(breakWindows, b.getBreakStartTime(), b.getBreakEndTime());
+            }
+        }
 
         return new WorkScheduleDefinition(
                 workScheduleClass.getClassId(),
@@ -204,6 +208,10 @@ public class AttendanceRecordService {
         java.time.Instant startInstant = DateTimeUtil.toInstant(attendanceDate, startTime);
         java.time.Instant endInstant = resolveAttendanceEndInstant(attendanceDate, startTime, endTime);
 
+        if (startInstant != null) {
+            checkIntervalAndNotify(userId, attendanceDate, startInstant);
+        }
+
         Double workingHours = calculateWorkingHoursExcludingBreakOverlaps(startInstant, endInstant, attendanceDate, schedule);
         Double overtimeHours = calculateExcessOvertime(attendanceDate, schedule, endInstant);
         Double holidayWorkHours = isHolidayWork ? workingHours : 0.0;
@@ -280,17 +288,7 @@ public class AttendanceRecordService {
                     });
         }
 
-        // [TODO] 勤務間インターバルのモックチェック（法制化対応用）
-        // 前回の退勤時刻から十分な時間（例: 11時間）が経過しているかチェックする
-        attendanceRecordMapper.selectByUserAndDate(userId, today.minusDays(1))
-                .filter(record -> record.getEndTime() != null)
-                .ifPresent(record -> {
-                    java.time.Duration interval = java.time.Duration.between(record.getEndTime(), DateTimeUtil.toInstant(today, currentTime));
-                    if (interval.toHours() < 11) {
-                        log.warn("【警告】勤務間インターバル不足: userId={}, intervalHours={}", userId, interval.toHours());
-                        // 実際にはここでユーザーへの警告表示や、出勤制限をかけるなどの処理を実装する
-                    }
-                });
+        checkIntervalAndNotify(userId, today, DateTimeUtil.toInstant(today, currentTime));
 
         if (existing.isPresent() && existing.get().getStartTime() != null) {
             throw new IllegalArgumentException("本日は既に勤務開始時刻が記録されています");
@@ -480,6 +478,40 @@ public class AttendanceRecordService {
     }
 
     /**
+     * 勤怠記録から残業時間を返します。
+     * overtime_hours が未設定の場合、記録に紐づく勤務クラス（未設定時はデフォルトスケジュール）の
+     * 所定終業時刻を基準に超過分をフォールバック算出します。
+     *
+     * @param record 対象の勤怠記録
+     * @return 残業時間（時間単位の小数）
+     */
+    public double resolveOvertimeHours(AttendanceRecord record) {
+        if (record == null) {
+            return 0.0;
+        }
+        if (record.getOvertimeHours() != null) {
+            return record.getOvertimeHours();
+        }
+        if (record.getAttendanceDate() == null || record.getEndTime() == null) {
+            return 0.0;
+        }
+
+        LocalDate attendanceDate = DateTimeUtil.toLocalDate(record.getAttendanceDate());
+        WorkScheduleDefinition schedule = resolveScheduleForRecord(record);
+        Double overtime = calculateExcessOvertime(attendanceDate, schedule, record.getEndTime());
+        return overtime != null ? overtime : 0.0;
+    }
+
+    private WorkScheduleDefinition resolveScheduleForRecord(AttendanceRecord record) {
+        if (record.getClassId() != null) {
+            return workScheduleClassMapper.selectById(record.getClassId())
+                    .map(o -> this.toWorkScheduleDefinition(o))
+                    .orElseGet(() -> WorkScheduleDefinition.defaultSchedule());
+        }
+        return WorkScheduleDefinition.defaultSchedule();
+    }
+
+    /**
      * デフォルトのスケジュールに基づく規定勤務時間を取得します。
      *
      * @return デフォルトスケジュールの規定勤務時間（時間単位）
@@ -539,14 +571,29 @@ public class AttendanceRecordService {
 
     /**
      * 36協定チェック: 月次残業時間に対する警告レベルを返します。
-     * NORMAL  : 36時間未満（問題なし）
-     * WARNING : 36時間以上45時間未満（注意）
-     * ALERT   : 45時間以上（法定上限超過）
+     * システム設定（アラート閾値設定）に警告・上限値が設定されている場合はその値を、
+     * 未設定の場合は既定値（警告36時間・上限45時間）を使用します。
+     * NORMAL  : 警告閾値未満（問題なし）
+     * WARNING : 警告閾値以上、上限閾値未満（注意）
+     * ALERT   : 上限閾値以上（法定上限超過）
      */
     public String checkArticle36(double totalOvertimeHours) {
-        if (totalOvertimeHours >= ARTICLE36_MONTHLY_LIMIT_HOURS) {
+        double warningHours = batchSettingService.getAlertArticle36Limit1();
+        double limitHours = batchSettingService.getAlertArticle36Limit2();
+        return checkArticle36(totalOvertimeHours, warningHours, limitHours);
+    }
+
+    /**
+     * 36協定チェック: 指定した警告・上限閾値を用いて月次残業時間の警告レベルを返します。
+     *
+     * @param totalOvertimeHours 月次残業時間
+     * @param warningHours       警告閾値（時間）
+     * @param limitHours         上限閾値（時間）
+     */
+    public String checkArticle36(double totalOvertimeHours, double warningHours, double limitHours) {
+        if (totalOvertimeHours >= limitHours) {
             return "ALERT";
-        } else if (totalOvertimeHours >= ARTICLE36_MONTHLY_WARNING_HOURS) {
+        } else if (totalOvertimeHours >= warningHours) {
             return "WARNING";
         }
         return "NORMAL";
@@ -605,29 +652,11 @@ public class AttendanceRecordService {
 
     /**
      * 勤怠記録から残業時間を返します。
-     * overtime_hours が null（未設定）の場合のみ基準終了時刻(18:00)との差分でフォールバック算出します。
+     * overtime_hours が null（未設定）の場合のみ勤務クラスの所定終業時刻との差分でフォールバック算出します。
      * overtime_hours=0.0 は「残業なし確定」として扱い、フォールバック算出は行いません。
      */
     private double resolveOvertimeHoursForRecord(AttendanceRecord record) {
-        if (record == null) {
-            return 0.0;
-        }
-        if (record.getOvertimeHours() != null) {
-            return record.getOvertimeHours();
-        }
-        if (record.getAttendanceDate() == null || record.getEndTime() == null) {
-            return 0.0;
-        }
-        LocalDate attendanceDate = DateTimeUtil.toLocalDate(record.getAttendanceDate());
-        Instant standardEndInstant = DateTimeUtil.toInstant(attendanceDate, LocalTime.of(18, 0));
-        if (standardEndInstant == null || !record.getEndTime().isAfter(standardEndInstant)) {
-            return 0.0;
-        }
-        long minutes = java.time.Duration.between(standardEndInstant, record.getEndTime()).toMinutes();
-        if (minutes <= 0) {
-            return 0.0;
-        }
-        return minutes / 60.0;
+        return resolveOvertimeHours(record);
     }
 
     /**
@@ -1032,4 +1061,64 @@ public class AttendanceRecordService {
      * @param recordCount   出勤レコード数
      */
     public record MonthlyUserSummary(Long userId, double workingHours, double overtimeHours, int recordCount) {}
+
+    private void checkIntervalAndNotify(Long userId, LocalDate attendanceDate, Instant startTime) {
+        if (startTime == null) {
+            return;
+        }
+        int minIntervalHours = batchSettingService.getAlertMinIntervalHours();
+        if (minIntervalHours <= 0) {
+            // 0時間の場合は警告機能を無効化
+            return;
+        }
+
+        // 前日の退勤レコードを取得
+        attendanceRecordMapper.selectByUserAndDate(userId, attendanceDate.minusDays(1))
+                .filter(record -> record.getEndTime() != null)
+                .ifPresent(record -> {
+                    java.time.Duration interval = java.time.Duration.between(record.getEndTime(), startTime);
+                    long intervalMinutes = interval.toMinutes();
+                    double intervalHours = intervalMinutes / 60.0;
+
+                    if (intervalHours < minIntervalHours) {
+                        log.warn("【警告】勤務間インターバル不足: userId={}, intervalHours={}", userId, String.format("%.1f", intervalHours));
+                        
+                        String dateStr = attendanceDate.toString(); // "yyyy-MM-dd"
+                        
+                        // 1. 本人向け通知の送信と重複チェック
+                        List<UserNotification> unreadNotifications = userNotificationService.getUnreadByUserId(userId);
+                        boolean alreadyNotified = unreadNotifications.stream()
+                                .anyMatch(note -> UserNotificationService.TYPE_INTERVAL_ALERT.equals(note.getNotificationType())
+                                        && note.getMessage() != null && note.getMessage().contains(dateStr));
+                        
+                        if (!alreadyNotified) {
+                            String message = String.format(
+                                    "【警告】%s の勤務開始において、勤務間インターバルが%d時間に満たない状態で記録されました（前回の退勤から %.1f 時間）。十分な休息をとるようにしてください。",
+                                    dateStr, minIntervalHours, intervalHours);
+                            userNotificationService.notifyIntervalAlert(userId, message);
+                        }
+
+                        // 2. 管理者向け通知の送信（ユーザー名付き）と重複チェック
+                        String userName = userMapper.selectById(userId)
+                                .map(user -> user.getFullName())
+                                .orElse("従業員");
+                        String adminMessage = String.format(
+                                "【警告】%s さんの %s の勤務開始において、勤務間インターバルが%d時間に満たない状態で記録されました（前回の退勤から %.1f 時間）。",
+                                userName, dateStr, minIntervalHours, intervalHours);
+
+                        List<com.attendance.app.entity.User> admins = userMapper.selectByRole("ADMIN");
+                        for (com.attendance.app.entity.User admin : admins) {
+                            List<UserNotification> adminUnread = userNotificationService.getUnreadByUserId(admin.getUserId());
+                            boolean adminAlreadyNotified = adminUnread.stream()
+                                    .anyMatch(note -> UserNotificationService.TYPE_INTERVAL_ALERT.equals(note.getNotificationType())
+                                            && note.getMessage() != null
+                                            && note.getMessage().contains(dateStr)
+                                            && note.getMessage().contains(userName));
+                            if (!adminAlreadyNotified) {
+                                userNotificationService.notifyIntervalAlert(admin.getUserId(), adminMessage);
+                            }
+                        }
+                    }
+                });
+    }
 }

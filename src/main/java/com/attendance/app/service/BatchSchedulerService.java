@@ -1,11 +1,13 @@
 package com.attendance.app.service;
 
+import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -36,12 +38,14 @@ public class BatchSchedulerService {
     private static final String BATCH_LOG_START = "バッチ開始: {}";
     private static final String BATCH_LOG_DONE  = "バッチ完了: {}";
     private static final String BATCH_LOG_ERROR = "バッチ異常終了: job={}, error={}";
+    private static final int DEFAULT_ANNUAL_LEAVE_GRANT_DAYS = 10;
 
-    private final UserService userService;
     private final AttendanceRecordService attendanceRecordService;
     private final AttendancePeriodSettingService attendancePeriodSettingService;
     private final BatchSettingService batchSettingService;
     private final UserNotificationService userNotificationService;
+    private final UserService userService;
+    private final PaidLeaveBalanceService paidLeaveBalanceService;
 
     // -------------------------------------------------------
     // 1. 月次集計バッチ
@@ -96,50 +100,6 @@ public class BatchSchedulerService {
         }
     }
 
-    // -------------------------------------------------------
-    // 2. 年次有給付与バッチ
-    //    毎日 02:00（JST）にポーリング実行
-    // -------------------------------------------------------
-
-    /**
-     * 年次有給付与ジョブのポーリングエントリポイント。
-     * 今日が設定した付与月日と一致する場合にのみ実行します。
-     */
-    @Scheduled(cron = "0 0 2 * * ?", zone = "Asia/Tokyo")
-    public void runAnnualPaidLeaveGrantCheck() {
-        LocalDate today = LocalDate.now(JAPAN_ZONE);
-        int grantMonth = batchSettingService.getPaidLeaveGrantMonth();
-        int grantDay   = batchSettingService.getPaidLeaveGrantDay();
-        if (today.getMonthValue() == grantMonth && today.getDayOfMonth() == grantDay) {
-            executeAnnualPaidLeaveGrant();
-        }
-    }
-
-    /**
-     * 年次有給付与を全アクティブユーザーに対して実行します。
-     * 管理者画面からの手動起動でも利用されます。
-     */
-    public void executeAnnualPaidLeaveGrant() {
-        log.info(BATCH_LOG_START, "年次有給付与");
-        int granted = 0;
-        int skipped = 0;
-        try {
-            List<User> activeUsers = userService.getActiveUsers();
-            for (User user : activeUsers) {
-                try {
-                    userService.grantAnnualPaidLeave(user.getUserId());
-                    granted++;
-                } catch (Exception e) {
-                    log.warn("有給付与スキップ: userId={}, reason={}", user.getUserId(), e.getMessage());
-                    skipped++;
-                }
-            }
-            log.info(BATCH_LOG_DONE, "年次有給付与: 付与=" + granted + "名, スキップ=" + skipped + "名");
-            batchSettingService.recordAnnualLeaveGrantExecutedAt(LocalDateTime.now(JAPAN_ZONE));
-        } catch (Exception e) {
-            log.error(BATCH_LOG_ERROR, "年次有給付与", e.getMessage(), e);
-        }
-    }
 
     // -------------------------------------------------------
     // 3. 勤怠提出リマインドバッチ
@@ -176,5 +136,66 @@ public class BatchSchedulerService {
         } catch (Exception e) {
             log.error(BATCH_LOG_ERROR, "勤怠提出リマインド", e.getMessage(), e);
         }
+    }
+
+    // -------------------------------------------------------
+    // 2. 年次有給付与バッチ
+    //    管理者ダッシュボードからの手動実行のみ（自動スケジュール実行は
+    //    AutoGrantPaidLeaveService が担当）
+    // -------------------------------------------------------
+
+    /**
+     * 年次有給付与バッチの実行結果。
+     *
+     * @param grantedCount 付与人数
+     * @param skippedCount 当年付与済みのためスキップした人数
+     */
+    public record AnnualLeaveGrantResult(int grantedCount, int skippedCount) {
+    }
+
+    /**
+     * 全アクティブユーザーに対して年次有給休暇を一括付与します。
+     * ユーザーごとの次回付与日数（{@code annualLeaveGrantDays}）を有給残高として付与し、
+     * {@link UserService#grantAnnualPaidLeave(Long)} により残日数・次回付与日数を更新します。
+     * 当年分がすでに付与済みのユーザーはスキップします（{@code paid_leave_balance} の
+     * {@code UNIQUE(user_id, grant_year)} 制約により二重付与できないため）。
+     * 管理者画面からの手動実行専用です。例外はハンドリングせず呼び出し元に伝播します。
+     *
+     * @return 付与人数・スキップ人数
+     */
+    public AnnualLeaveGrantResult executeAnnualLeaveGrant() {
+        LocalDate today = LocalDate.now(JAPAN_ZONE);
+        log.info(BATCH_LOG_START, "年次有給付与: executedDate=" + today);
+
+        List<User> users = userService.getActiveUsers();
+        int grantedCount = 0;
+        int skippedCount = 0;
+        for (User user : users) {
+            if (paidLeaveBalanceService.getByUserAndYear(user.getUserId(), today.getYear()).isPresent()) {
+                log.info("年次有給付与: userId={} は{}年分を付与済みのためスキップ", user.getUserId(), today.getYear());
+                skippedCount++;
+                continue;
+            }
+
+            BigDecimal grantDays = user.getAnnualLeaveGrantDays() != null
+                    ? BigDecimal.valueOf(user.getAnnualLeaveGrantDays())
+                    : BigDecimal.valueOf(DEFAULT_ANNUAL_LEAVE_GRANT_DAYS);
+
+            PaidLeaveBalance balance = new PaidLeaveBalance();
+            balance.setUserId(user.getUserId());
+            balance.setGrantYear(today.getYear());
+            balance.setGrantedDays(grantDays);
+            balance.setUsedDays(BigDecimal.ZERO);
+            balance.setGrantDate(today);
+            balance.setExpiryDate(today.plusYears(2).minusDays(1));
+            paidLeaveBalanceService.insert(balance);
+
+            // ユーザーテーブルの有給残日数の加算更新と次回付与日数のインクリメントを同期
+            userService.grantAnnualPaidLeave(user.getUserId());
+            grantedCount++;
+        }
+        log.info(BATCH_LOG_DONE, "年次有給付与: 付与" + grantedCount + "名, スキップ" + skippedCount + "名");
+        batchSettingService.recordAnnualLeaveGrantExecutedAt(LocalDateTime.now(JAPAN_ZONE));
+        return new AnnualLeaveGrantResult(grantedCount, skippedCount);
     }
 }

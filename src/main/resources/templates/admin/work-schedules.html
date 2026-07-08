@@ -4,57 +4,41 @@
     <title>勤務クラス設定</title>
 </head>
 <body>
-    <h2 layout:fragment="page-title" class="text-2xl font-bold text-txt-primary flex items-center gap-2">
-        <i class="fa-solid fa-calendar-alt text-primary"></i> 勤務クラス設定
-    </h2>
+    <h2 layout:fragment="page-title" class="text-2xl font-bold text-txt-primary flex items-center gap-2">勤務クラス設定</h2>
 
     <div layout:fragment="content">
         <!-- メッセージ表示 -->
-        <div th:if="${successMessage}" class="alert alert-success">
-            <span class="flex items-center gap-2">
-                <i class="fa-solid fa-check-circle"></i> 
+        <div th:if="${successMessage}" class="alert alert-success items-start gap-4">
+            <span class="flex items-start gap-2 flex-1 min-w-0 break-all">
                 <span th:text="${successMessage}"></span>
             </span>
-            <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity" onclick="this.parentElement.remove()">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+            <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity shrink-0 mt-0.5" onclick="this.parentElement.remove()">×</button>
         </div>
-        <div th:if="${errorMessage}" class="alert alert-danger">
-            <span class="flex items-center gap-2">
-                <i class="fa-solid fa-exclamation-circle"></i> 
+        <div th:if="${errorMessage}" class="alert alert-danger items-start gap-4">
+            <span class="flex items-start gap-2 flex-1 min-w-0 break-all">
                 <span th:text="${errorMessage}"></span>
             </span>
-            <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity" onclick="this.parentElement.remove()">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+            <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity shrink-0 mt-0.5" onclick="this.parentElement.remove()">×</button>
         </div>
 
         <div class="space-y-6">
             <!-- 登録済み勤務クラス一覧のヘッダー -->
-            <div class="flex flex-wrap justify-between items-center gap-4">
-                <h3 class="text-lg font-bold text-txt-primary flex items-center gap-2">
-                    <i class="fa-solid fa-list text-primary"></i> 登録済み勤務クラス一覧
-                </h3>
-                <button type="button" onclick="openCreateModal()" class="btn btn-primary gap-2 text-sm">
-                    <i class="fa-solid fa-plus-circle"></i> 新規登録
-                </button>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h3 class="text-lg font-bold text-txt-primary flex items-center gap-2">登録済み勤務クラス一覧</h3>
+                <button type="button" onclick="openCreateModal()" class="btn btn-primary gap-2 text-sm w-full sm:w-auto">新規登録</button>
             </div>
             
             <!-- 検索・フィルターパネル -->
             <div class="card-sm mb-6 flex flex-wrap gap-4 items-center">
                 <div class="flex flex-col gap-1.5 flex-1 min-w-[200px]">
-                    <label class="text-xs font-bold text-txt-secondary flex items-center gap-1" for="folderFilter">
-                        <i class="fa-solid fa-folder text-primary"></i> フォルダ分類
-                    </label>
+                    <label class="text-xs font-bold text-txt-secondary flex items-center gap-1" for="folderFilter">フォルダ分類</label>
                     <select id="folderFilter" class="form-select py-1.5 text-sm" onchange="filterSchedules()">
                         <option value="">すべて</option>
                         <!-- JSでフォルダ一覧を動的に生成します -->
                     </select>
                 </div>
                 <div class="w-full">
-                    <label class="text-xs font-bold text-txt-secondary flex items-center gap-1 mb-1.5">
-                        <i class="fa-solid fa-tags text-primary"></i> タグで絞り込む
-                    </label>
+                    <label class="text-xs font-bold text-txt-secondary flex items-center gap-1 mb-1.5">タグで絞り込む</label>
                     <div class="flex flex-wrap gap-2 mt-1" id="tagCloud">
                         <!-- JSでタグ一覧を動的に生成します -->
                     </div>
@@ -67,6 +51,7 @@
                      th:each="schedule : ${workScheduleClasses}"
                      th:data-id="${schedule.classId}"
                      th:data-name="${schedule.name}"
+                     th:data-class-code="${schedule.classCode}"
                      th:data-work-location="${schedule.workLocation}"
                      th:data-address="${schedule.address}"
                      th:data-station="${schedule.station}"
@@ -77,20 +62,13 @@
                      th:data-is-active="${schedule.isActive}"
                      th:data-start-time="${#temporals.format(schedule.startTime, 'HH:mm')}"
                      th:data-end-time="${#temporals.format(schedule.endTime, 'HH:mm')}"
-                     th:data-break-start-time="${#temporals.format(schedule.breakStartTime, 'HH:mm')}"
-                     th:data-break-end-time="${#temporals.format(schedule.breakEndTime, 'HH:mm')}"
-                     th:data-break-start-time2="${schedule.breakStartTime2 != null ? #temporals.format(schedule.breakStartTime2, 'HH:mm') : ''}"
-                     th:data-break-end-time2="${schedule.breakEndTime2 != null ? #temporals.format(schedule.breakEndTime2, 'HH:mm') : ''}"
-                     th:data-break-start-time3="${schedule.breakStartTime3 != null ? #temporals.format(schedule.breakStartTime3, 'HH:mm') : ''}"
-                     th:data-break-end-time3="${schedule.breakEndTime3 != null ? #temporals.format(schedule.breakEndTime3, 'HH:mm') : ''}"
-                     th:data-break-start-time4="${schedule.breakStartTime4 != null ? #temporals.format(schedule.breakStartTime4, 'HH:mm') : ''}"
-                     th:data-break-end-time4="${schedule.breakEndTime4 != null ? #temporals.format(schedule.breakEndTime4, 'HH:mm') : ''}"
+                     th:data-breaks="${schedule.breaks != null ? #strings.listJoin(schedule.breaks.![#temporals.format(breakStartTime, 'HH:mm') + '-' + #temporals.format(breakEndTime, 'HH:mm')], ',') : ''}"
                      th:data-max-hours="${schedule.maxHours}"
                      th:data-min-hours="${schedule.minHours}"
                      th:classappend="${schedule.isActive != null and !schedule.isActive} ? 'opacity-60' : ''">
                     
                     <div class="flex justify-between items-center mb-4">
-                        <h4 class="text-base font-bold text-txt-primary" th:text="${schedule.name}">Standard Shift</h4>
+                        <h4 class="text-base font-bold text-txt-primary" th:text="${schedule.name} + ' (' + ${schedule.classCode} + ')'">Standard Shift (W001)</h4>
                         <div>
                             <span th:if="${schedule.isActive == null or schedule.isActive}" class="badge badge-success">有効</span>
                             <span th:if="${schedule.isActive != null and !schedule.isActive}" class="badge badge-danger">無効</span>
@@ -100,55 +78,51 @@
                     <!-- フォルダとタグの表示 -->
                     <div class="flex flex-wrap gap-2 mb-4 items-center">
                         <span th:if="${schedule.folderName != null and !schedule.folderName.trim().isEmpty()}" class="badge bg-black/5 text-txt-secondary border-glass-border">
-                            <i class="fa-solid fa-folder-open text-primary/80"></i> <span th:text="${schedule.folderName}"></span>
+                            <span th:text="${schedule.folderName}"></span>
                         </span>
                         <span th:if="${schedule.tags == null or schedule.tags.trim().isEmpty()}" class="badge border-accent/20 bg-accent/15 text-accent">
-                            <i class="fa-solid fa-tag"></i> <span>未設定</span>
+                            <span>未設定</span>
                         </span>
                         <span th:if="${schedule.tags != null and !schedule.tags.trim().isEmpty()}" th:each="tag : ${#strings.arraySplit(schedule.tags, ',')}" class="badge border-accent/20 bg-accent/15 text-accent">
-                            <i class="fa-solid fa-tag"></i> <span th:text="${tag.trim()}"></span>
+                            <span th:text="${tag.trim()}"></span>
                         </span>
                     </div>
                     
                     <div class="text-txt-secondary mb-6 text-sm flex flex-col gap-2">
                         <div>
-                            <i class="fa-solid fa-location-dot mr-2 w-5 text-center inline-block text-txt-secondary/60"></i> 
                             勤務地: <span th:text="${schedule.workLocation != null and !schedule.workLocation.isEmpty() ? schedule.workLocation : '未指定'}">本社</span>
                         </div>
                         <div>
-                            <i class="fa-solid fa-train mr-2 w-5 text-center inline-block text-txt-secondary/60"></i> 
                             最寄り駅: <span th:text="${schedule.station != null and !schedule.station.isEmpty() ? schedule.station : '未指定'}">六本木駅</span>
                         </div>
                         <div>
-                            <i class="fa-regular fa-clock mr-2 w-5 text-center inline-block text-txt-secondary/60 font-semibold text-primary font-bold"></i> 
                             勤務時間: <span class="font-mono text-txt-primary font-bold" th:text="${#temporals.format(schedule.startTime, 'HH:mm')} + ' - ' + ${#temporals.format(schedule.endTime, 'HH:mm')}">09:00 - 18:00</span>
+                        </div>
+                        <div>
+                            休憩時間: <span class="font-mono text-txt-primary font-bold" th:text="${schedule.breakScheduleSummary} + ' (計' + ${schedule.totalBreakMinutes} + '分)'">12:00〜13:00 (計60分)</span>
                         </div>
                     </div>
 
                     <div class="flex gap-3">
                         <!-- 編集ボタン -->
-                        <button type="button" class="btn btn-flat flex-1 text-sm py-2" th:onclick="'enterEditMode(this, ' + ${schedule.classId} + ')'">
-                            <i class="fa-solid fa-pen-to-square"></i> 編集
-                        </button>
+                        <button type="button" class="btn btn-flat flex-1 text-sm py-2" th:onclick="'enterEditMode(this, ' + ${schedule.classId} + ')'">編集</button>
                         <!-- 削除ボタン -->
                         <form th:action="@{/admin/work-schedules/{classId}/delete(classId=${schedule.classId})}" method="post" class="flex-1 m-0"
                               onclick="return confirm('この勤務クラスを削除しますか？紐づく従業員の時間計算に影響を与える場合があります。')">
                             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                            <button type="submit" class="btn btn-danger w-full text-sm py-2">
-                                <i class="fa-solid fa-trash"></i> 削除
-                            </button>
+                            <button type="submit" class="btn btn-danger w-full text-sm py-2">削除</button>
                         </form>
                     </div>
                 </div>
             </div>
 
             <div th:if="${workScheduleClasses.isEmpty()}" class="card text-center p-12">
-                <p class="text-txt-secondary m-0 flex items-center justify-center gap-2"><i class="fa-solid fa-inbox text-lg"></i> 登録済みの勤務クラスはありません。</p>
+                <p class="text-txt-secondary m-0 flex items-center justify-center gap-2">登録済みの勤務クラスはありません。</p>
             </div>
             
             <!-- 検索結果がゼロの場合のプレースホルダー -->
             <div id="noResults" class="card text-center p-12" style="display: none;">
-                <p class="text-txt-secondary m-0 flex items-center justify-center gap-2"><i class="fa-solid fa-search-minus text-lg"></i> 該当する勤務クラスはありません。</p>
+                <p class="text-txt-secondary m-0 flex items-center justify-center gap-2">該当する勤務クラスはありません。</p>
             </div>
         </div>
 
@@ -159,13 +133,9 @@
         <div id="scheduleModal" class="absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300" onclick="cancelEditMode(); closeModal()">
             <div class="flex min-h-full items-center justify-center p-4">
                 <div id="modalContent" class="card-heavy w-full max-w-2xl transform scale-95 transition-all duration-300" onclick="event.stopPropagation()">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 id="formTitle" class="text-lg font-bold text-txt-primary flex items-center gap-2">
-                            <i class="fa-solid fa-plus-circle text-primary"></i> 勤務クラス新規登録
-                        </h3>
-                        <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity" onclick="cancelEditMode(); closeModal()">
-                            <i class="fa-solid fa-xmark text-xl"></i>
-                        </button>
+                    <div class="flex justify-between items-start mb-6 gap-4">
+                        <h3 id="formTitle" class="text-base sm:text-lg font-bold text-txt-primary flex items-center gap-2 flex-1 min-w-0 break-words">勤務クラス新規登録</h3>
+                        <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity shrink-0 mt-0.5" onclick="cancelEditMode(); closeModal()">×</button>
                     </div>
 
                     <form id="scheduleForm" th:action="@{/admin/work-schedules/create}" method="post" class="space-y-4">
@@ -175,144 +145,96 @@
                             <label class="text-sm font-semibold text-txt-secondary flex items-center gap-1" for="name">
                                 勤務クラス名 <span class="text-danger">*</span>
                             </label>
-                            <input type="text" id="name" name="name" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 本社標準勤務、テレワーク勤務" required>
+                            <input type="text" id="name" name="name" class="form-input" placeholder="例) 本社標準勤務、テレワーク勤務" required>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="folderName">フォルダ分類</label>
-                                <input type="text" id="folderName" name="folderName" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 本社、開発部">
+                                <input type="text" id="folderName" name="folderName" class="form-input" placeholder="例) 本社、開発部">
                             </div>
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="tags">タグ (カンマ区切り)</label>
-                                <input type="text" id="tags" name="tags" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 時短,シフト">
+                                <input type="text" id="tags" name="tags" class="form-input" placeholder="例) 時短,シフト">
                             </div>
                         </div>
 
                         <div class="flex flex-col gap-1.5">
                             <label class="text-sm font-semibold text-txt-secondary" for="workLocation">勤務地</label>
-                            <input type="text" id="workLocation" name="workLocation" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 本社、在宅、支店等">
+                            <input type="text" id="workLocation" name="workLocation" class="form-input" placeholder="例) 本社、在宅、支店等">
                         </div>
 
                         <div class="flex flex-col gap-1.5">
                             <label class="text-sm font-semibold text-txt-secondary" for="address">住所</label>
-                            <input type="text" id="address" name="address" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 東京都港区〇〇1-2-3">
+                            <input type="text" id="address" name="address" class="form-input" placeholder="例) 東京都港区〇〇1-2-3">
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="station">最寄り駅</label>
-                                <input type="text" id="station" name="station" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 六本木駅">
+                                <input type="text" id="station" name="station" class="form-input" placeholder="例) 六本木駅">
                             </div>
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="telephone">電話番号</label>
-                                <input type="tel" id="telephone" name="telephone" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 03-1234-5678">
+                                <input type="tel" id="telephone" name="telephone" class="form-input" placeholder="例) 03-1234-5678">
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="sectionName">所属部署</label>
-                                <input type="text" id="sectionName" name="sectionName" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200" placeholder="例) 営業部">
+                                <input type="text" id="sectionName" name="sectionName" class="form-input" placeholder="例) 営業部">
                             </div>
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="isActive">状態</label>
-                                <select id="isActive" name="isActive" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200">
+                                <select id="isActive" name="isActive" class="form-select">
                                     <option value="true" selected>有効</option>
                                     <option value="false">無効</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary flex items-center gap-1" for="startTime">
                                     始業時刻 <span class="text-danger">*</span>
                                 </label>
-                                <input type="time" id="startTime" name="startTime" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" required value="09:00">
+                                <input type="time" id="startTime" name="startTime" class="form-input font-mono" required value="09:00">
                             </div>
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary flex items-center gap-1" for="endTime">
                                     終業時刻 <span class="text-danger">*</span>
                                 </label>
-                                <input type="time" id="endTime" name="endTime" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" required value="18:00">
+                                <input type="time" id="endTime" name="endTime" class="form-input font-mono" required value="18:00">
                             </div>
                         </div>
 
-                        <!-- 休憩時間1 (必須) -->
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="flex flex-col gap-1.5">
-                                <label class="text-sm font-semibold text-txt-secondary flex items-center gap-1" for="breakStartTime">
-                                    休憩1開始時刻 <span class="text-danger">*</span>
-                                </label>
-                                <input type="time" id="breakStartTime" name="breakStartTime" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" required value="12:00">
+                        <!-- 休憩時間設定（動的追加） -->
+                        <div class="card bg-glass/20 border border-glass-border/30 p-4 space-y-4">
+                            <div class="flex justify-between items-center">
+                                <label class="text-sm font-semibold text-txt-secondary flex items-center gap-1">休憩時間設定 <span class="text-danger">*</span></label>
+                                <button type="button" class="btn btn-secondary text-xs py-1 px-3" onclick="addBreakRow()">追加</button>
                             </div>
-                            <div class="flex flex-col gap-1.5">
-                                <label class="text-sm font-semibold text-txt-secondary flex items-center gap-1" for="breakEndTime">
-                                    休憩1終了時刻 <span class="text-danger">*</span>
-                                </label>
-                                <input type="time" id="breakEndTime" name="breakEndTime" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" required value="13:00">
+                            <div id="breaksContainer" class="space-y-3">
+                                <!-- JSで動的に追加されます -->
                             </div>
                         </div>
 
-                        <!-- 休憩2〜4のアコーディオン (任意) -->
-                        <button type="button" class="w-full flex justify-between items-center p-3 rounded-xl text-sm font-semibold text-txt-primary bg-glass/40 border border-glass-border hover:bg-glass/80 transition-colors mb-4 cursor-pointer" onclick="toggleAccordion('breakAccordion')">
-                            <span class="flex items-center gap-2"><i class="fa-solid fa-clock text-primary"></i> 休憩時間を追加設定 (休憩2〜4)</span>
-                            <i class="fa-solid fa-chevron-down transition-transform duration-200" id="accordionIcon"></i>
-                        </button>
-                        <div id="breakAccordion" class="max-h-0 overflow-hidden transition-all duration-300 ease-out px-1 space-y-4">
-                            <!-- 休憩2 -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="flex flex-col gap-1.5">
-                                    <label class="text-sm font-semibold text-txt-secondary" for="breakStartTime2">休憩2開始時刻</label>
-                                    <input type="time" id="breakStartTime2" name="breakStartTime2" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
-                                </div>
-                                <div class="flex flex-col gap-1.5">
-                                    <label class="text-sm font-semibold text-txt-secondary" for="breakEndTime2">休憩2終了時刻</label>
-                                    <input type="time" id="breakEndTime2" name="breakEndTime2" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
-                                </div>
-                            </div>
-                            <!-- 休憩3 -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="flex flex-col gap-1.5">
-                                    <label class="text-sm font-semibold text-txt-secondary" for="breakStartTime3">休憩3開始時刻</label>
-                                    <input type="time" id="breakStartTime3" name="breakStartTime3" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
-                                </div>
-                                <div class="flex flex-col gap-1.5">
-                                    <label class="text-sm font-semibold text-txt-secondary" for="breakEndTime3">休憩3終了時刻</label>
-                                    <input type="time" id="breakEndTime3" name="breakEndTime3" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
-                                </div>
-                            </div>
-                            <!-- 休憩4 -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="flex flex-col gap-1.5">
-                                    <label class="text-sm font-semibold text-txt-secondary" for="breakStartTime4">休憩4開始時刻</label>
-                                    <input type="time" id="breakStartTime4" name="breakStartTime4" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
-                                </div>
-                                <div class="flex flex-col gap-1.5">
-                                    <label class="text-sm font-semibold text-txt-secondary" for="breakEndTime4">休憩4終了時刻</label>
-                                    <input type="time" id="breakEndTime4" name="breakEndTime4" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="maxHours">最大勤務時間</label>
-                                <input type="number" id="maxHours" name="maxHours" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" placeholder="例) 10" min="1" max="24">
+                                <input type="number" id="maxHours" name="maxHours" class="form-input font-mono" placeholder="例) 10" min="1" max="24">
                             </div>
                             <div class="flex flex-col gap-1.5">
                                 <label class="text-sm font-semibold text-txt-secondary" for="minHours">最小勤務時間</label>
-                                <input type="number" id="minHours" name="minHours" class="w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 font-mono" placeholder="例) 4" min="1" max="24">
+                                <input type="number" id="minHours" name="minHours" class="form-input font-mono" placeholder="例) 4" min="1" max="24">
                             </div>
                         </div>
 
-                        <div class="flex gap-4 mt-4">
-                            <button type="button" onclick="cancelEditMode(); closeModal()" class="btn btn-flat flex-1">
-                                キャンセル
-                            </button>
-                            <button type="submit" id="submitBtn" class="btn btn-primary flex-[2]">
-                                <i class="fa-solid fa-save"></i> <span id="submitBtnText">勤務クラスを登録する</span>
+                        <div class="flex flex-col-reverse sm:flex-row gap-3 mt-4">
+                            <button type="button" onclick="cancelEditMode(); closeModal()" class="btn btn-flat sm:flex-1 w-full">キャンセル</button>
+                            <button type="submit" id="submitBtn" class="btn btn-primary sm:flex-[2] w-full">
+                                <span id="submitBtnText">勤務クラスを登録する</span>
                             </button>
                         </div>
                     </form>
@@ -373,6 +295,44 @@
         const formTitle = document.getElementById('formTitle');
         const submitBtnText = document.getElementById('submitBtnText');
         
+        let breakIndex = 0;
+        function addBreakRow(startTime = '', endTime = '') {
+            const container = document.getElementById('breaksContainer');
+            const rowId = 'break-row-' + breakIndex;
+            
+            const div = document.createElement('div');
+            div.id = rowId;
+            div.className = 'grid grid-cols-12 gap-2 items-center';
+            
+            div.innerHTML = `
+                <div class="col-span-5 flex flex-col gap-1">
+                    <input type="time" name="breakStartTimes" class="form-input font-mono" required value="${startTime}">
+                </div>
+                <div class="col-span-1 text-center text-txt-secondary">〜</div>
+                <div class="col-span-5 flex flex-col gap-1">
+                    <input type="time" name="breakEndTimes" class="form-input font-mono" required value="${endTime}">
+                </div>
+                <div class="col-span-1 text-center">
+                    <button type="button" class="text-danger hover:opacity-75 transition-opacity text-xs" onclick="removeBreakRow('${rowId}')">削除</button>
+                </div>
+            `;
+            
+            container.appendChild(div);
+            breakIndex++;
+        }
+        
+        function removeBreakRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) {
+                const container = document.getElementById('breaksContainer');
+                if (container.children.length > 1) {
+                    row.remove();
+                } else {
+                    alert("休憩時間は少なくとも1つ設定してください");
+                }
+            }
+        }
+
         // 編集モードに入る
         function enterEditMode(button, classId) {
             // 対象のカードからデータを取得
@@ -390,14 +350,7 @@
             
             const startTime = card.getAttribute('data-start-time');
             const endTime = card.getAttribute('data-end-time');
-            const breakStartTime = card.getAttribute('data-break-start-time') || '';
-            const breakEndTime = card.getAttribute('data-break-end-time') || '';
-            const breakStartTime2 = card.getAttribute('data-break-start-time2') || '';
-            const breakEndTime2 = card.getAttribute('data-break-end-time2') || '';
-            const breakStartTime3 = card.getAttribute('data-break-start-time3') || '';
-            const breakEndTime3 = card.getAttribute('data-break-end-time3') || '';
-            const breakStartTime4 = card.getAttribute('data-break-start-time4') || '';
-            const breakEndTime4 = card.getAttribute('data-break-end-time4') || '';
+            const breaksStr = card.getAttribute('data-breaks') || '';
             
             const maxHours = card.getAttribute('data-max-hours') || '';
             const minHours = card.getAttribute('data-min-hours') || '';
@@ -415,36 +368,30 @@
             
             document.getElementById('startTime').value = startTime;
             document.getElementById('endTime').value = endTime;
-            document.getElementById('breakStartTime').value = breakStartTime;
-            document.getElementById('breakEndTime').value = breakEndTime;
-            document.getElementById('breakStartTime2').value = breakStartTime2;
-            document.getElementById('breakEndTime2').value = breakEndTime2;
-            document.getElementById('breakStartTime3').value = breakStartTime3;
-            document.getElementById('breakEndTime3').value = breakEndTime3;
-            document.getElementById('breakStartTime4').value = breakStartTime4;
-            document.getElementById('breakEndTime4').value = breakEndTime4;
+            
+            // 休憩時間のクリアと再生成
+            document.getElementById('breaksContainer').innerHTML = '';
+            if (breaksStr) {
+                breaksStr.split(',').forEach(b => {
+                    const parts = b.split('-');
+                    if (parts.length === 2) {
+                        addBreakRow(parts[0], parts[1]);
+                    }
+                });
+            } else {
+                addBreakRow('12:00', '13:00');
+            }
             
             document.getElementById('maxHours').value = maxHours;
             document.getElementById('minHours').value = minHours;
 
             // アクションとUIの書き換え
             const contextPath = /*[[@{/}]]*/ '/';
-            // ダブルスラッシュを防ぐ正規化
             const cleanContextPath = contextPath.endsWith('/') ? contextPath.slice(0, -1) : contextPath;
             scheduleForm.action = cleanContextPath + '/admin/work-schedules/' + classId + '/update';
             
-            formTitle.innerHTML = '<i class="fa-solid fa-edit text-accent animate-pulse"></i> 勤務クラス編集';
+            formTitle.innerHTML = '勤務クラス編集';
             submitBtnText.innerText = '勤務クラスを更新する';
-
-            // 任意休憩時間に入力があれば自動的にアコーディオンを開く
-            if (breakStartTime2 || breakStartTime3 || breakStartTime4) {
-                const content = document.getElementById('breakAccordion');
-                const icon = document.getElementById('accordionIcon');
-                content.classList.add('open');
-                content.classList.remove('max-h-0');
-                content.classList.add('max-h-[500px]', 'pb-4');
-                icon.style.transform = 'rotate(180deg)';
-            }
 
             // モーダルを開く
             openModal();
@@ -460,16 +407,12 @@
             const cleanContextPath = contextPath.endsWith('/') ? contextPath.slice(0, -1) : contextPath;
             scheduleForm.action = cleanContextPath + '/admin/work-schedules/create';
             
-            formTitle.innerHTML = '<i class="fa-solid fa-plus-circle text-primary"></i> 勤務クラス新規登録';
+            formTitle.innerHTML = '勤務クラス新規登録';
             submitBtnText.innerText = '勤務クラスを登録する';
 
-            // アコーディオンを閉じる
-            const content = document.getElementById('breakAccordion');
-            const icon = document.getElementById('accordionIcon');
-            content.classList.remove('open');
-            content.classList.add('max-h-0');
-            content.classList.remove('max-h-[500px]', 'pb-4');
-            icon.style.transform = 'rotate(0deg)';
+            // 休憩時間のクリアと初期化
+            document.getElementById('breaksContainer').innerHTML = '';
+            addBreakRow('12:00', '13:00');
         }
 
         // リアルタイムフィルタリングロジック
@@ -499,7 +442,6 @@
 
             // フォルダフィルタのドロップダウン生成
             const folderFilter = document.getElementById('folderFilter');
-            // 既存の動的オプションをクリア
             while (folderFilter.options.length > 1) {
                 folderFilter.remove(1);
             }
@@ -552,14 +494,11 @@
                 const folder = card.getAttribute('data-folder') || '';
                 const tagsStr = card.getAttribute('data-tags') || '';
 
-                // 1. フォルダフィルタ
                 const matchFolder = !folderVal || folder === folderVal;
 
-                // 2. タグフィルタ
                 let matchTags = true;
                 if (activeTags.size > 0) {
                     const cardTags = tagsStr.split(',').map(t => t.trim());
-                    // 選択された全てのタグをカードが持っているか確認
                     matchTags = Array.from(activeTags).every(t => cardTags.includes(t));
                 }
 
@@ -582,20 +521,25 @@
         document.addEventListener('DOMContentLoaded', () => {
             initializeFilters();
             
+            // デフォルトの休憩時間を1件追加
+            addBreakRow('12:00', '13:00');
+            
             // フォーム送信時のチェック
             scheduleForm.addEventListener('submit', function(e) {
-                // 休憩時間2〜4の整合性バリデーション
-                for (let i = 2; i <= 4; i++) {
-                    const start = document.getElementById(`breakStartTime${i}`).value;
-                    const end = document.getElementById(`breakEndTime${i}`).value;
+                const startInputs = document.getElementsByName('breakStartTimes');
+                const endInputs = document.getElementsByName('breakEndTimes');
+                
+                for (let i = 0; i < startInputs.length; i++) {
+                    const start = startInputs[i].value;
+                    const end = endInputs[i].value;
                     
-                    if ((start && !end) || (!start && end)) {
-                        alert(`休憩${i}の開始時刻と終了時刻は両方入力するか、両方空欄にしてください。`);
+                    if (!start || !end) {
+                        alert(`休憩${i+1}の開始時刻と終了時刻は両方入力してください。`);
                         e.preventDefault();
                         return;
                     }
-                    if (start && end && start === end) {
-                        alert(`休憩${i}の開始時刻と終了時刻を同じにすることはできません。`);
+                    if (start === end) {
+                        alert(`休憩${i+1}の開始時刻と終了時刻を同じにすることはできません。`);
                         e.preventDefault();
                         return;
                     }

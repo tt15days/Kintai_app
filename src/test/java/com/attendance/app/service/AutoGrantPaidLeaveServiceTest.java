@@ -1,11 +1,9 @@
 package com.attendance.app.service;
 
-import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.entity.User;
 import com.attendance.app.mapper.SystemSettingMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -14,12 +12,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,8 +22,7 @@ public class AutoGrantPaidLeaveServiceTest {
     @Mock
     private SystemSettingMapper systemSettingMapper;
 
-    @Mock
-    private PaidLeaveBalanceService paidLeaveBalanceService;
+
 
     @Mock
     private UserService userService;
@@ -52,17 +45,7 @@ public class AutoGrantPaidLeaveServiceTest {
 
         autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
-        ArgumentCaptor<PaidLeaveBalance> captor = ArgumentCaptor.forClass(PaidLeaveBalance.class);
-        verify(paidLeaveBalanceService).insert(captor.capture());
-
-        PaidLeaveBalance inserted = captor.getValue();
-        assertNotNull(inserted);
-        assertEquals(101L, inserted.getUserId());
-        assertEquals(today.getYear(), inserted.getGrantYear());
-        assertEquals(new BigDecimal("20"), inserted.getGrantedDays());
-        assertEquals(BigDecimal.ZERO, inserted.getUsedDays());
-        assertEquals(today, inserted.getGrantDate());
-        assertEquals(today.plusYears(2).minusDays(1), inserted.getExpiryDate());
+        verify(userService).grantAnnualPaidLeave(101L);
     }
 
     @Test
@@ -77,7 +60,7 @@ public class AutoGrantPaidLeaveServiceTest {
         autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
         verify(userService, never()).getActiveUsers();
-        verify(paidLeaveBalanceService, never()).insert(any());
+        verify(userService, never()).grantAnnualPaidLeave(anyLong());
     }
 
     @Test
@@ -87,7 +70,7 @@ public class AutoGrantPaidLeaveServiceTest {
         autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
         verify(userService, never()).getActiveUsers();
-        verify(paidLeaveBalanceService, never()).insert(any());
+        verify(userService, never()).grantAnnualPaidLeave(anyLong());
     }
 
     @Test
@@ -103,7 +86,7 @@ public class AutoGrantPaidLeaveServiceTest {
         // Should not throw exception out of scheduled method
         autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
-        verify(paidLeaveBalanceService, never()).insert(any());
+        verify(userService, never()).grantAnnualPaidLeave(anyLong());
     }
 
     @Test
@@ -123,18 +106,7 @@ public class AutoGrantPaidLeaveServiceTest {
 
             autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
-            ArgumentCaptor<PaidLeaveBalance> captor = ArgumentCaptor.forClass(PaidLeaveBalance.class);
-            verify(paidLeaveBalanceService).insert(captor.capture());
-
-            PaidLeaveBalance inserted = captor.getValue();
-            assertNotNull(inserted);
-            assertEquals(101L, inserted.getUserId());
-            assertEquals(2024, inserted.getGrantYear());
-            assertEquals(new BigDecimal("20"), inserted.getGrantedDays());
-            assertEquals(BigDecimal.ZERO, inserted.getUsedDays());
-            assertEquals(leapDay, inserted.getGrantDate());
-            // 2024-02-29 + 2 years = 2026-02-28 -> -1 day = 2026-02-27
-            assertEquals(LocalDate.of(2026, 2, 27), inserted.getExpiryDate());
+            verify(userService).grantAnnualPaidLeave(101L);
         }
     }
 }

@@ -47,10 +47,10 @@ CREATE TABLE IF NOT EXISTS users (
     department              VARCHAR(100),
     employment_type         VARCHAR(50),
     hire_date               DATE,
-    CONSTRAINT check_user_role CHECK (user_role IN ('ADMIN', 'USER'))
+    deleted_at              TIMESTAMP WITH TIME ZONE,
+    CONSTRAINT check_user_role CHECK (user_role IN ('ADMIN', 'MANAGER', 'USER', 'OTHER'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_user_role ON users(user_role);
 CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
 
@@ -63,6 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
 -- ============================================================
 CREATE TABLE IF NOT EXISTS work_schedule_classes (
     class_id        BIGSERIAL PRIMARY KEY,
+    class_code      VARCHAR(50) NOT NULL UNIQUE,         -- 勤務クラスコード
     name            VARCHAR(100) NOT NULL UNIQUE,        -- クラス名称
     work_location   VARCHAR(255),                        -- 勤務地
     address         VARCHAR(200),                        -- 住所
@@ -76,39 +77,22 @@ CREATE TABLE IF NOT EXISTS work_schedule_classes (
     min_hours       SMALLINT,                            -- 最小勤務時間
     start_time      TIME NOT NULL DEFAULT '09:00:00',    -- 勤務開始時刻
     end_time        TIME NOT NULL DEFAULT '18:00:00',    -- 勤務終了時刻
-    break_start_time   TIME NOT NULL DEFAULT '12:00:00', -- 休憩1開始時刻
-    break_end_time     TIME NOT NULL DEFAULT '13:00:00', -- 休憩1終了時刻
-    break_start_time_2 TIME DEFAULT NULL,                -- 休憩2開始時刻（任意）
-    break_end_time_2   TIME DEFAULT NULL,                -- 休憩2終了時刻（任意）
-    break_start_time_3 TIME DEFAULT NULL,                -- 休憩3開始時刻（任意）
-    break_end_time_3   TIME DEFAULT NULL,                -- 休憩3終了時刻（任意）
-    break_start_time_4 TIME DEFAULT NULL,                -- 休憩4開始時刻（任意）
-    break_end_time_4   TIME DEFAULT NULL,                -- 休憩4終了時刻（任意）
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_break_time_window_1
-        CHECK (
-            (break_start_time IS NULL AND break_end_time IS NULL)
-            OR (break_start_time IS NOT NULL AND break_end_time IS NOT NULL AND break_start_time <> break_end_time)
-        ),
-    CONSTRAINT chk_break_time_window_2
-        CHECK (
-            (break_start_time_2 IS NULL AND break_end_time_2 IS NULL)
-            OR (break_start_time_2 IS NOT NULL AND break_end_time_2 IS NOT NULL AND break_start_time_2 <> break_end_time_2)
-        ),
-    CONSTRAINT chk_break_time_window_3
-        CHECK (
-            (break_start_time_3 IS NULL AND break_end_time_3 IS NULL)
-            OR (break_start_time_3 IS NOT NULL AND break_end_time_3 IS NOT NULL AND break_start_time_3 <> break_end_time_3)
-        ),
-    CONSTRAINT chk_break_time_window_4
-        CHECK (
-            (break_start_time_4 IS NULL AND break_end_time_4 IS NULL)
-            OR (break_start_time_4 IS NOT NULL AND break_end_time_4 IS NOT NULL AND break_start_time_4 <> break_end_time_4)
-        )
+    updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_work_schedule_classes_name ON work_schedule_classes(name);
+-- ============================================================
+-- work_schedule_class_breaks テーブル（休憩時間マスタ - 縦持ち）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS work_schedule_class_breaks (
+    break_id         BIGSERIAL PRIMARY KEY,
+    class_id         BIGINT NOT NULL,
+    break_start_time TIME NOT NULL,
+    break_end_time   TIME NOT NULL,
+    CONSTRAINT fk_wscb_class FOREIGN KEY (class_id) REFERENCES work_schedule_classes(class_id) ON DELETE CASCADE,
+    CONSTRAINT chk_wscb_time_window CHECK (break_start_time <> break_end_time)
+);
+
 
 -- ============================================================
 -- Event Types テーブル（勤怠事由マスタ）
@@ -172,7 +156,6 @@ CREATE TABLE IF NOT EXISTS attendance_records (
 CREATE INDEX IF NOT EXISTS idx_attendance_records_user_id ON attendance_records(user_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_class_id ON attendance_records(class_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_attendance_date ON attendance_records(attendance_date);
-CREATE INDEX IF NOT EXISTS idx_attendance_records_user_date ON attendance_records(user_id, attendance_date);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_working_hours ON attendance_records(user_id, working_hours);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_overtime ON attendance_records(user_id, overtime_hours);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_event_type ON attendance_records(event_type_id);
@@ -238,7 +221,6 @@ CREATE TABLE IF NOT EXISTS holidays (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(holiday_date);
 
 -- ============================================================
 -- Attendance Submissions テーブル
@@ -265,6 +247,7 @@ CREATE TABLE IF NOT EXISTS attendance_submissions (
 CREATE INDEX IF NOT EXISTS idx_attendance_submissions_status ON attendance_submissions(status);
 CREATE INDEX IF NOT EXISTS idx_attendance_submissions_month ON attendance_submissions(target_year_month);
 
+
 -- ============================================================
 -- Attendance Approver Assignments テーブル
 -- ============================================================
@@ -289,11 +272,6 @@ CREATE TABLE IF NOT EXISTS attendance_user_approvers (
     CONSTRAINT uq_attendance_user_approvers UNIQUE (applicant_user_id, approver_user_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_attendance_department_approvers_department
-    ON attendance_department_approvers(department_name);
-
-CREATE INDEX IF NOT EXISTS idx_attendance_user_approvers_applicant
-    ON attendance_user_approvers(applicant_user_id);
 
 -- ============================================================
 -- system_settings テーブル（システム設定マスタ）
@@ -374,12 +352,15 @@ CREATE INDEX IF NOT EXISTS idx_acr_target_year_month
 CREATE TABLE IF NOT EXISTS user_notifications (
     notification_id   BIGSERIAL PRIMARY KEY,
     user_id           BIGINT        NOT NULL,
+    sender_user_id    BIGINT,
     message           TEXT          NOT NULL,
     is_read           BOOLEAN       NOT NULL DEFAULT false,
     notification_type VARCHAR(50)   NOT NULL DEFAULT 'REMINDER',
     created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_un_user
-        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    CONSTRAINT fk_un_sender
+        FOREIGN KEY (sender_user_id) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id
@@ -417,8 +398,6 @@ CREATE TABLE IF NOT EXISTS paid_leave_balance (
 
 CREATE INDEX IF NOT EXISTS idx_plb_user_id
     ON paid_leave_balance(user_id);
-CREATE INDEX IF NOT EXISTS idx_plb_user_year
-    ON paid_leave_balance(user_id, grant_year);
 CREATE INDEX IF NOT EXISTS idx_plb_expiry_date
     ON paid_leave_balance(expiry_date);
 
@@ -501,6 +480,7 @@ GRANT ALL PRIVILEGES ON TABLE attendance_submissions TO postgres;
 GRANT ALL PRIVILEGES ON TABLE attendance_department_approvers TO postgres;
 GRANT ALL PRIVILEGES ON TABLE attendance_user_approvers TO postgres;
 GRANT ALL PRIVILEGES ON TABLE work_schedule_classes TO postgres;
+GRANT ALL PRIVILEGES ON TABLE work_schedule_class_breaks TO postgres;
 GRANT ALL PRIVILEGES ON TABLE system_settings TO postgres;
 GRANT ALL PRIVILEGES ON TABLE attendance_correction_requests TO postgres;
 GRANT ALL PRIVILEGES ON TABLE user_notifications TO postgres;
@@ -516,6 +496,7 @@ GRANT ALL PRIVILEGES ON SEQUENCE attendance_submissions_submission_id_seq TO pos
 GRANT ALL PRIVILEGES ON SEQUENCE attendance_department_approvers_id_seq TO postgres;
 GRANT ALL PRIVILEGES ON SEQUENCE attendance_user_approvers_id_seq TO postgres;
 GRANT ALL PRIVILEGES ON SEQUENCE work_schedule_classes_class_id_seq TO postgres;
+GRANT ALL PRIVILEGES ON SEQUENCE work_schedule_class_breaks_break_id_seq TO postgres;
 GRANT ALL PRIVILEGES ON SEQUENCE attendance_correction_requests_request_id_seq TO postgres;
 GRANT ALL PRIVILEGES ON SEQUENCE user_notifications_notification_id_seq TO postgres;
 GRANT USAGE, SELECT ON SEQUENCE paid_leave_balance_balance_id_seq TO postgres;

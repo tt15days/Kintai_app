@@ -50,9 +50,14 @@ class AdminLeaveUsageControllerTest {
     @DisplayName("showLeaveUsage - 有給取得状況画面の表示において、ユーザー全員の残高および義務達成状況が正しくモデルに格納されること")
     void testShowLeaveUsage() {
         // 全ユーザーを返す
-        when(userService.getAllUsers()).thenReturn(List.of(user1, user2, user3));
+        when(userService.getActiveUsers()).thenReturn(List.of(user1, user2, user3));
 
         int currentYear = LocalDate.now().getYear();
+
+        // 累計残日数スタブ (#17)
+        when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(new BigDecimal("4.0"));
+        when(paidLeaveBalanceService.getTotalRemainingDays(2L)).thenReturn(new BigDecimal("6.5"));
+        when(paidLeaveBalanceService.getTotalRemainingDays(3L)).thenReturn(BigDecimal.ZERO);
 
         // ユーザー1：5日以上の取得義務を達成している (6.0日取得)
         PaidLeaveBalance balance1 = new PaidLeaveBalance();
@@ -104,5 +109,12 @@ class AdminLeaveUsageControllerTest {
         assertTrue(obligationMetMap.get(1L));  // 6.0 >= 5.0
         assertFalse(obligationMetMap.get(2L)); // 3.5 < 5.0
         assertFalse(obligationMetMap.get(3L)); // レコードなし -> false
+
+        // remainingTotalMapの検証 (#17: 累計残日数)
+        @SuppressWarnings("unchecked")
+        Map<Long, BigDecimal> remainingTotalMap = (Map<Long, BigDecimal>) model.getAttribute("remainingTotalMap");
+        assertNotNull(remainingTotalMap);
+        assertEquals(new BigDecimal("4.0"), remainingTotalMap.get(1L));
+        assertEquals(new BigDecimal("6.5"), remainingTotalMap.get(2L));
     }
 }

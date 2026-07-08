@@ -43,4 +43,14 @@
         VALUES (#{departmentName}, #{approverUserId}, NOW(), NOW())
     </insert>
 
+    <delete id="deleteUserApproverByApprover">
+        DELETE FROM attendance_user_approvers
+        WHERE approver_user_id = #{approverUserId}
+    </delete>
+
+    <delete id="deleteDepartmentApproverByApprover">
+        DELETE FROM attendance_department_approvers
+        WHERE approver_user_id = #{approverUserId}
+    </delete>
+
 </mapper>

@@ -27,8 +27,6 @@ import java.time.format.DateTimeParseException;
 public class BatchSettingService {
 
     public static final String KEY_MONTHLY_SUMMARY_DAYS_AFTER_END = "monthly_summary_days_after_end";
-    public static final String KEY_PAID_LEAVE_GRANT_MONTH         = "paid_leave_grant_month";
-    public static final String KEY_PAID_LEAVE_GRANT_DAY           = "paid_leave_grant_day";
     public static final String KEY_REMINDER_DAY                   = "reminder_day";
     public static final String KEY_REMINDER_HOUR                  = "reminder_hour";
 
@@ -36,14 +34,13 @@ public class BatchSettingService {
     public static final String KEY_ALERT_ARTICLE36_LIMIT2         = "alert_article36_limit2";
     public static final String KEY_ALERT_PAID_LEAVE_MONTHS        = "alert_paid_leave_months";
     public static final String KEY_ALERT_PAID_LEAVE_DAYS          = "alert_paid_leave_days";
+    public static final String KEY_ALERT_MIN_INTERVAL_HOURS       = "alert_min_interval_hours";
 
     public static final String KEY_LAST_MONTHLY_SUMMARY_EXECUTED_AT    = "last_monthly_summary_executed_at";
     public static final String KEY_LAST_ANNUAL_LEAVE_GRANT_EXECUTED_AT = "last_annual_leave_grant_executed_at";
     public static final String KEY_LAST_REMINDER_EXECUTED_AT           = "last_reminder_executed_at";
 
     private static final int DEFAULT_DAYS_AFTER_END  = 5;
-    private static final int DEFAULT_GRANT_MONTH     = 4;
-    private static final int DEFAULT_GRANT_DAY       = 1;
     private static final int DEFAULT_REMINDER_DAY    = 20;
     private static final int DEFAULT_REMINDER_HOUR   = 9;
 
@@ -51,6 +48,7 @@ public class BatchSettingService {
     private static final int DEFAULT_ALERT_ARTICLE36_LIMIT2  = 45;
     private static final int DEFAULT_ALERT_PAID_LEAVE_MONTHS = 9;
     private static final int DEFAULT_ALERT_PAID_LEAVE_DAYS   = 3;
+    private static final int DEFAULT_ALERT_MIN_INTERVAL_HOURS = 11;
 
     private final SystemSettingMapper systemSettingMapper;
 
@@ -59,20 +57,6 @@ public class BatchSettingService {
         return parseIntValue(
                 systemSettingMapper.selectValueByKey(KEY_MONTHLY_SUMMARY_DAYS_AFTER_END),
                 DEFAULT_DAYS_AFTER_END);
-    }
-
-    /** 年次有給付与月（1-12）を返します。 */
-    public int getPaidLeaveGrantMonth() {
-        return parseIntValue(
-                systemSettingMapper.selectValueByKey(KEY_PAID_LEAVE_GRANT_MONTH),
-                DEFAULT_GRANT_MONTH);
-    }
-
-    /** 年次有給付与日（1-28）を返します。 */
-    public int getPaidLeaveGrantDay() {
-        return parseIntValue(
-                systemSettingMapper.selectValueByKey(KEY_PAID_LEAVE_GRANT_DAY),
-                DEFAULT_GRANT_DAY);
     }
 
     /** 勤怠提出リマインド送信日（1-28）を返します。 */
@@ -109,26 +93,22 @@ public class BatchSettingService {
         return parseIntValue(systemSettingMapper.selectValueByKey(KEY_ALERT_PAID_LEAVE_DAYS), DEFAULT_ALERT_PAID_LEAVE_DAYS);
     }
 
+    /** 勤務間インターバル警告閾値（時間）を返します。 */
+    public int getAlertMinIntervalHours() {
+        return parseIntValue(systemSettingMapper.selectValueByKey(KEY_ALERT_MIN_INTERVAL_HOURS), DEFAULT_ALERT_MIN_INTERVAL_HOURS);
+    }
+
     /**
      * バッチスケジュール設定を一括更新します。
      *
      * @param daysAfterEnd  月次集計: 期間終了日の何日後か（1-14）
-     * @param grantMonth    有給付与月（1-12）
-     * @param grantDay      有給付与日（1-28）
      * @param reminderDay   リマインド送信日（1-28）
      * @param reminderHour  リマインド送信時刻（0-23）
      */
     @Transactional
-    public void updateSettings(int daysAfterEnd, int grantMonth, int grantDay,
-                               int reminderDay, int reminderHour) {
+    public void updateSettings(int daysAfterEnd, int reminderDay, int reminderHour) {
         if (daysAfterEnd < 1 || daysAfterEnd > 14) {
             throw new IllegalArgumentException("月次集計実行日は1〜14の範囲で設定してください");
-        }
-        if (grantMonth < 1 || grantMonth > 12) {
-            throw new IllegalArgumentException("有給付与月は1〜12の範囲で設定してください");
-        }
-        if (grantDay < 1 || grantDay > 28) {
-            throw new IllegalArgumentException("有給付与日は1〜28の範囲で設定してください");
         }
         if (reminderDay < 1 || reminderDay > 28) {
             throw new IllegalArgumentException("リマインド送信日は1〜28の範囲で設定してください");
@@ -138,8 +118,6 @@ public class BatchSettingService {
         }
 
         systemSettingMapper.upsertValue(KEY_MONTHLY_SUMMARY_DAYS_AFTER_END, String.valueOf(daysAfterEnd));
-        systemSettingMapper.upsertValue(KEY_PAID_LEAVE_GRANT_MONTH,         String.valueOf(grantMonth));
-        systemSettingMapper.upsertValue(KEY_PAID_LEAVE_GRANT_DAY,           String.valueOf(grantDay));
         systemSettingMapper.upsertValue(KEY_REMINDER_DAY,                   String.valueOf(reminderDay));
         systemSettingMapper.upsertValue(KEY_REMINDER_HOUR,                  String.valueOf(reminderHour));
     }
@@ -148,7 +126,7 @@ public class BatchSettingService {
      * アラート閾値設定を一括更新します。
      */
     @Transactional
-    public void updateAlertSettings(int limit1, int limit2, int months, int days) {
+    public void updateAlertSettings(int limit1, int limit2, int months, int days, int minIntervalHours) {
         if (limit1 < 0 || limit2 < 0 || limit1 >= limit2) {
             throw new IllegalArgumentException("36協定の警告閾値が不正です（第1警告 < 第2警告となるように設定してください）");
         }
@@ -158,11 +136,15 @@ public class BatchSettingService {
         if (days < 0 || days > 40) {
             throw new IllegalArgumentException("有給消化基準日数は0〜40の範囲で設定してください");
         }
+        if (minIntervalHours < 0 || minIntervalHours > 24) {
+            throw new IllegalArgumentException("勤務間インターバルは0〜24の範囲で設定してください（0で無効）");
+        }
 
         systemSettingMapper.upsertValue(KEY_ALERT_ARTICLE36_LIMIT1,  String.valueOf(limit1));
         systemSettingMapper.upsertValue(KEY_ALERT_ARTICLE36_LIMIT2,  String.valueOf(limit2));
         systemSettingMapper.upsertValue(KEY_ALERT_PAID_LEAVE_MONTHS, String.valueOf(months));
         systemSettingMapper.upsertValue(KEY_ALERT_PAID_LEAVE_DAYS,   String.valueOf(days));
+        systemSettingMapper.upsertValue(KEY_ALERT_MIN_INTERVAL_HOURS, String.valueOf(minIntervalHours));
     }
 
     /** 月次集計の最終実行日時を返します。未実行の場合は {@code null} を返します。 */

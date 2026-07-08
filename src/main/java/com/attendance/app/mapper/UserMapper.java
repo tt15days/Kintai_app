@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * User Mapper - ユーザー情報に関するDB操作
+ * User Mapper - ユーザー情報に関するDB操作 
  */
 @Mapper
 public interface UserMapper {

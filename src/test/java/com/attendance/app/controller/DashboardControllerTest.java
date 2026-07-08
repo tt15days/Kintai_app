@@ -26,9 +26,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -346,5 +347,50 @@ class DashboardControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(response.getBody().get("error")).isEqualTo("診断アドバイスの生成中にエラーが発生しました。");
+    }
+
+    @Test
+    @DisplayName("showDashboard: workingHoursとovertimeHoursがnullの場合、開始/終了時刻から計算してモデルに設定すること")
+    void showDashboard_nullWorkingHours_fallbackCalculation() {
+        // Arrange
+        User user = new User();
+        user.setUserId(1L);
+        user.setUserRole(UserRole.USER);
+        when(securityUtil.getCurrentUser()).thenReturn(user);
+
+        AttendanceRecord record = new AttendanceRecord();
+        record.setUserId(1L);
+        LocalDate date = LocalDate.of(2026, 6, 15);
+        record.setAttendanceDate(com.attendance.app.util.DateTimeUtil.toInstant(date));
+        record.setStartTime(com.attendance.app.util.DateTimeUtil.toInstant(date, LocalTime.of(9, 0)));
+        record.setEndTime(com.attendance.app.util.DateTimeUtil.toInstant(date, LocalTime.of(19, 30)));
+        record.setWorkingHours(null);
+        record.setOvertimeHours(null);
+        record.setNightShiftHours(null);
+
+        when(attendanceRecordService.getRecordsByUserAndMonth(eq(1L), any(YearMonth.class)))
+                .thenReturn(List.of(record));
+        when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(new BigDecimal("15.5"));
+        
+        PaidLeaveBalance balance = new PaidLeaveBalance();
+        balance.setGrantedDays(new BigDecimal("10"));
+        balance.setCarriedOverDays(new BigDecimal("5"));
+        balance.setUsedDays(new BigDecimal("2"));
+        when(paidLeaveBalanceService.getActiveBalances(1L)).thenReturn(List.of(balance));
+
+        when(userService.isAttendanceApprover(user)).thenReturn(false);
+        when(userNotificationService.getUnreadByUserId(1L)).thenReturn(Collections.emptyList());
+        when(adminAnnouncementService.getActiveAnnouncements()).thenReturn(Collections.emptyList());
+
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        // Act
+        String view = controller.showDashboard(model);
+
+        // Assert
+        assertThat(view).isEqualTo("dashboard");
+        assertThat(model.get("totalHoursThisMonth")).isEqualTo("10.5");
+        assertThat(model.get("overtimeHours")).isEqualTo("1.5");
+        assertThat(model.get("nightShiftHours")).isEqualTo("0.0");
     }
 }

@@ -8,30 +8,36 @@
         <result column="message" property="message"/>
         <result column="is_read" property="isRead"/>
         <result column="notification_type" property="notificationType"/>
+        <result column="sender_user_id" property="senderUserId"/>
+        <result column="sender_name" property="senderName"/>
         <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"
                 typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
     </resultMap>
 
     <select id="selectUnreadByUserId" resultMap="notificationResultMap">
-        SELECT notification_id,
-               user_id,
-               message,
-               is_read,
-               notification_type,
-               created_at
-          FROM user_notifications
-         WHERE user_id = #{userId}
-           AND is_read = false
-         ORDER BY created_at DESC
+        SELECT un.notification_id,
+               un.user_id,
+               un.message,
+               un.is_read,
+               un.notification_type,
+               un.sender_user_id,
+               u.full_name AS sender_name,
+               un.created_at
+          FROM user_notifications un
+          LEFT JOIN users u ON un.sender_user_id = u.user_id
+         WHERE un.user_id = #{userId}
+           AND un.is_read = false
+         ORDER BY un.created_at DESC
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="notificationId">
-        INSERT INTO user_notifications (user_id, message, notification_type, is_read, created_at)
+        INSERT INTO user_notifications (user_id, message, notification_type, is_read, sender_user_id, created_at)
         VALUES (
             #{userId},
             #{message},
             COALESCE(#{notificationType}, 'REMINDER'),
             false,
+            #{senderUserId},
             NOW()
         )
     </insert>

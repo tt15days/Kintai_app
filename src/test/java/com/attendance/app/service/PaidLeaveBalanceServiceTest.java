@@ -2,6 +2,7 @@ package com.attendance.app.service;
 
 import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.mapper.PaidLeaveBalanceMapper;
+import com.attendance.app.mapper.UserMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,9 @@ class PaidLeaveBalanceServiceTest {
 
     @Mock
     private PaidLeaveBalanceMapper paidLeaveBalanceMapper;
+
+    @Mock
+    private UserMapper userMapper;
 
     @InjectMocks
     private PaidLeaveBalanceService service;
@@ -52,18 +56,18 @@ class PaidLeaveBalanceServiceTest {
     }
 
     @Test
-    @DisplayName("残高不足時は利用可能分だけ減算して終了する")
-    void deductBalance_withInsufficientBalance_deductsAvailableOnly() {
+    @DisplayName("残高不足時は例外を送出する（申請全体をロールバックさせるため）")
+    void deductBalance_withInsufficientBalance_throwsException() {
         PaidLeaveBalance only = balance(2L, 2026, LocalDate.of(2027, 3, 31), "2.0", "0.0");
 
         LocalDate today = LocalDate.now();
         when(paidLeaveBalanceMapper.selectActiveByUserIdForUpdate(2L, today))
                 .thenReturn(List.of(only));
 
-        service.deductBalance(2L, new BigDecimal("3.0"), today);
-
-        verify(paidLeaveBalanceMapper).update(only);
-        assertThat(only.getUsedDays()).isEqualByComparingTo("2.0");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                        service.deductBalance(2L, new BigDecimal("3.0"), today))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("不足");
     }
 
     @Test

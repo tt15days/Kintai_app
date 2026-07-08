@@ -75,4 +75,14 @@ public interface AttendanceApproverAssignmentMapper {
     int insertDepartmentApprover(
             @Param("departmentName") String departmentName,
             @Param("approverUserId") Long approverUserId);
+
+    /**
+     * 指定された承認者IDを持つ個人別承認者設定を削除します。
+     */
+    int deleteUserApproverByApprover(@Param("approverUserId") Long approverUserId);
+
+    /**
+     * 指定された承認者IDを持つ部署別承認者設定を削除します。
+     */
+    int deleteDepartmentApproverByApprover(@Param("approverUserId") Long approverUserId);
 }

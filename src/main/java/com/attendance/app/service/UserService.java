@@ -6,6 +6,9 @@ import com.attendance.app.entity.UserRole;
 import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.mapper.WorkScheduleClassMapper;
+import com.attendance.app.mapper.AttendanceApproverAssignmentMapper;
+import com.attendance.app.mapper.PaidLeaveBalanceMapper;
+import com.attendance.app.entity.PaidLeaveBalance;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -26,7 +30,7 @@ import java.util.Optional;
  * タイムゾーン対応: すべてのタイムスタンプは Instant 型（UTC）で管理
  * フロントエンドで日本時間に変換する
  *
- * <p>主要な更新操作（作成・更新・削除・パスワード初期化）は呼び出し元から actorUserId を受取り、
+ * <p>主要な更新操作（作成・更新・削除・パスワード初期化）は呼び出し元から actorUserId を受取り,
  * {@link AuditLogService} を通じて操作監査ログを記録します。
  */
 @Slf4j
@@ -50,6 +54,8 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
     private final SystemSettingMapper systemSettingMapper;
+    private final AttendanceApproverAssignmentMapper approverAssignmentMapper;
+    private final PaidLeaveBalanceMapper paidLeaveBalanceMapper;
 
     /**
      * 指定されたユーザーIDでユーザー情報を取得します。
@@ -138,6 +144,20 @@ public class UserService {
                 .build();
 
         userMapper.insert(user);
+
+        // 新規作成されたユーザーに初期有給残高レコードを付与する
+        int currentYear = LocalDate.now().getYear();
+        PaidLeaveBalance balance = PaidLeaveBalance.builder()
+                .userId(user.getUserId())
+                .grantYear(currentYear)
+                .grantedDays(DEFAULT_PAID_LEAVE_DAYS)
+                .grantDate(LocalDate.now())
+                .expiryDate(LocalDate.now().plusYears(2).minusDays(1))
+                .carriedOverDays(BigDecimal.ZERO)
+                .usedDays(BigDecimal.ZERO)
+                .build();
+        paidLeaveBalanceMapper.insert(balance);
+
         log.info("ユーザーを作成しました: fullName={}, role={}", fullName, role);
 
         auditLogService.recordUserEvent(
@@ -176,11 +196,16 @@ public class UserService {
             String notes,
             boolean canApproveAttendance,
             java.time.LocalDate hireDate,
+            boolean isActive,
             Long actorUserId) {
         User user = findUserOrThrow(userId);
 
-        if (userId.equals(actorUserId) && user.getUserRole() == UserRole.ADMIN && role == UserRole.USER) {
-            throw new IllegalArgumentException("自分自身の管理者ロールを一般ユーザーに降格することはできません。");
+        if (userId.equals(actorUserId) && user.getUserRole() == UserRole.ADMIN && role != UserRole.ADMIN) {
+            throw new IllegalArgumentException("自分自身の管理者ロールを降格することはできません。");
+        }
+
+        if (userId.equals(actorUserId) && !isActive) {
+            throw new IllegalArgumentException("自分自身のアカウントを無効にすることはできません。");
         }
 
         user.setEmail(email);
@@ -190,12 +215,33 @@ public class UserService {
         user.setPhoneNumber(normalizeOptionalText(phoneNumber));
         user.setClassName(validateWorkScheduleClassName(className));
         user.setPaidLeaveDays(paidLeaveDays != null ? paidLeaveDays : DEFAULT_PAID_LEAVE_DAYS);
+        adjustPaidLeaveBalance(userId, user.getPaidLeaveDays());
+
         user.setNotes(normalizeOptionalText(notes));
-        user.setCanApproveAttendance(role == UserRole.USER && canApproveAttendance);
+        user.setCanApproveAttendance(role != UserRole.ADMIN && canApproveAttendance);
         user.setHireDate(hireDate);
+        user.setIsActive(isActive);
+        if (!isActive) {
+            if (user.getDeletedAt() == null) {
+                user.setDeletedAt(Instant.now());
+            }
+        } else {
+            user.setDeletedAt(null);
+        }
         user.setUpdatedAt(Instant.now());
 
         userMapper.update(user);
+
+        // ログイン失敗カウントとロック状態をクリア（有効・無効化いずれの変更でも、再有効化に備えてクリアしておく）
+        userMapper.resetLoginAttempt(userId);
+
+        // アカウントが無効化された場合、そのユーザーの承認者割り当て（個人・部署）を解除する
+        if (!isActive) {
+            approverAssignmentMapper.deleteUserApproverByApprover(userId);
+            approverAssignmentMapper.deleteDepartmentApproverByApprover(userId);
+            log.info("無効化されたユーザーの承認者割り当てを解除しました: userId={}", userId);
+        }
+
         log.info("ユーザー情報を更新しました: userId={}", userId);
 
         auditLogService.recordUserEvent(
@@ -204,6 +250,38 @@ public class UserService {
                 userId,
                 "ロール: " + role.name());
         return user;
+    }
+
+    private void adjustPaidLeaveBalance(Long userId, BigDecimal targetPaidLeaveDays) {
+        List<PaidLeaveBalance> balances = paidLeaveBalanceMapper.selectByUserId(userId);
+        if (balances.isEmpty()) {
+            int currentYear = LocalDate.now().getYear();
+            PaidLeaveBalance balance = PaidLeaveBalance.builder()
+                    .userId(userId)
+                    .grantYear(currentYear)
+                    .grantedDays(targetPaidLeaveDays)
+                    .grantDate(LocalDate.now())
+                    .expiryDate(LocalDate.now().plusYears(2).minusDays(1))
+                    .carriedOverDays(BigDecimal.ZERO)
+                    .usedDays(BigDecimal.ZERO)
+                    .build();
+            paidLeaveBalanceMapper.insert(balance);
+        } else {
+            BigDecimal currentTotal = balances.stream()
+                    .filter(b -> b.getExpiryDate().isAfter(LocalDate.now()) || b.getExpiryDate().isEqual(LocalDate.now()))
+                    .map(b -> b.getRemainingDays())
+                    .reduce(BigDecimal.ZERO, (x, y) -> x.add(y));
+            BigDecimal diff = targetPaidLeaveDays.subtract(currentTotal);
+            if (diff.compareTo(BigDecimal.ZERO) != 0) {
+                PaidLeaveBalance latest = balances.get(0); // 降順なので最新年度
+                BigDecimal newGranted = latest.getGrantedDays().add(diff);
+                if (newGranted.compareTo(BigDecimal.ZERO) < 0) {
+                    newGranted = BigDecimal.ZERO;
+                }
+                latest.setGrantedDays(newGranted);
+                paidLeaveBalanceMapper.update(latest);
+            }
+        }
     }
 
     /**
@@ -412,7 +490,7 @@ public class UserService {
             return false;
         }
 
-        if (user.getUserRole() == UserRole.ADMIN) {
+        if (user.getUserRole() == UserRole.ADMIN || user.getUserRole() == UserRole.MANAGER) {
             return true;
         }
 
@@ -469,39 +547,62 @@ public class UserService {
         int maxDays = user.getMaxPaidLeaveDays() != null
                 ? user.getMaxPaidLeaveDays() : DEFAULT_MAX_PAID_LEAVE_DAYS;
 
-        BigDecimal current = user.getPaidLeaveDays() != null ? user.getPaidLeaveDays() : BigDecimal.ZERO;
-        BigDecimal newDays = current.add(BigDecimal.valueOf(grantDays))
-                .min(BigDecimal.valueOf(maxDays));
+        int currentYear = LocalDate.now().getYear();
 
+        // 二重付与防止: すでに当該年度の付与レコードがあればスキップ
+        Optional<PaidLeaveBalance> existingOpt = paidLeaveBalanceMapper.selectByUserAndYear(userId, currentYear);
+        if (existingOpt.isEmpty()) {
+            PaidLeaveBalance balance = PaidLeaveBalance.builder()
+                    .userId(userId)
+                    .grantYear(currentYear)
+                    .grantedDays(BigDecimal.valueOf(grantDays))
+                    .grantDate(LocalDate.now())
+                    .expiryDate(LocalDate.now().plusYears(2).minusDays(1))
+                    .carriedOverDays(BigDecimal.ZERO)
+                    .usedDays(BigDecimal.ZERO)
+                    .build();
+            paidLeaveBalanceMapper.insert(balance);
+        }
+
+        // 全有効残高の合計値を取得して、users.paid_leave_days を更新する
+        BigDecimal newDays = getCalculatedTotalRemainingDays(userId, maxDays);
         userMapper.updatePaidLeaveDays(userId, newDays);
 
         // 来年度向けに annual_leave_grant_days を自動増加（20日上限）
         int nextGrantDays = (int) Math.min(grantDays + increment.doubleValue(), 20.0);
         userMapper.updatePaidLeaveSettings(userId, nextGrantDays, increment, maxDays);
 
-        log.info("有給付与: userId={}, grantDays={}, before={}, after={}, nextGrantDays={}",
-                userId, grantDays, current, newDays, nextGrantDays);
+        log.info("有給付与: userId={}, grantDays={}, afterSync={}, nextGrantDays={}",
+                userId, grantDays, newDays, nextGrantDays);
+    }
+
+    private BigDecimal getCalculatedTotalRemainingDays(Long userId, int maxDays) {
+        List<PaidLeaveBalance> activeBalances = paidLeaveBalanceMapper.selectActiveByUserId(userId, LocalDate.now());
+        BigDecimal total = activeBalances.stream()
+                .map(b -> b.getRemainingDays())
+                .reduce(BigDecimal.ZERO, (x, y) -> x.add(y));
+        return total.min(BigDecimal.valueOf(maxDays));
     }
 
     /**
      * ユーザー別年次有給設定を管理者が更新します。
      *
      * @param userId               対象ユーザーID
-     * @param annualLeaveGrantDays 次回付与日数（0〜20）
-     * @param annualLeaveIncrement 毎年自動増加量（0.0〜10.0）
+     * @param annualLeaveGrantDays 次回付与日数（0〜30）
+     * @param annualLeaveIncrement 毎年自動増加量（0.0〜30.0）
      * @param maxPaidLeaveDays    有給残日数の上限（1〜100）
      */
     @Transactional
     public void updatePaidLeaveSettings(Long userId, int annualLeaveGrantDays,
                                         BigDecimal annualLeaveIncrement, int maxPaidLeaveDays) {
         findUserOrThrow(userId);
-        if (annualLeaveGrantDays < 0 || annualLeaveGrantDays > 20) {
-            throw new IllegalArgumentException("次回付与日数は0〜20の範囲で設定してください");
+        if (annualLeaveGrantDays < 0 || annualLeaveGrantDays > 30) {
+            throw new IllegalArgumentException("次回付与日数は0〜30の範囲で設定してください");
         }
         if (annualLeaveIncrement == null
                 || annualLeaveIncrement.compareTo(BigDecimal.ZERO) < 0
-                || annualLeaveIncrement.compareTo(BigDecimal.TEN) > 0) {
-            throw new IllegalArgumentException("年間増加量は0.0〜10.0の範囲で設定してください");
+                || annualLeaveIncrement.compareTo(BigDecimal.valueOf(30)) > 0) {
+            throw new IllegalArgumentException("年間増加量は0.0〜30.0の範囲で設定してください");
         }
         if (maxPaidLeaveDays < 1 || maxPaidLeaveDays > 100) {
             throw new IllegalArgumentException("最大有給日数は1〜100の範囲で設定してください");

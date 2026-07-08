@@ -14,8 +14,12 @@ import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,6 +48,23 @@ class LoginAttemptServiceTest {
 
         assertThat(result).isEqualTo(LoginAttemptResult.NORMAL);
         verify(userMapper).updateLoginAttempt(eq(1L), eq(2), isNull(), eq(false));
+    }
+
+    @Test
+    @DisplayName("失敗回数が警告閾値に達すると一時ロックする")
+    void handleFailure_tempLocksAccountAfterWarningThreshold() {
+        User user = User.builder()
+                .userId(1L)
+                .userRole(UserRole.USER)
+                .failedLoginCount(2)
+                .accountLocked(false)
+                .build();
+        when(userMapper.selectByEmailForUpdate("warning@example.com")).thenReturn(Optional.of(user));
+
+        LoginAttemptResult result = service.handleFailure("warning@example.com");
+
+        assertThat(result).isEqualTo(LoginAttemptResult.TEMP_LOCKED);
+        verify(userMapper).updateLoginAttempt(eq(1L), eq(3), any(Instant.class), eq(false));
     }
 
     @Test
@@ -78,4 +99,98 @@ class LoginAttemptServiceTest {
 
         verify(userMapper).resetLoginAttempt(3L);
     }
+
+    @Test
+    @DisplayName("存在しないメールアドレスの場合はNORMALを返し、DB更新を行わない")
+    void handleFailure_withNonExistentUser_returnsNormalAndDoesNotUpdate() {
+        when(userMapper.selectByEmailForUpdate("nonexistent@example.com")).thenReturn(Optional.empty());
+
+        LoginAttemptResult result = service.handleFailure("nonexistent@example.com");
+
+        assertThat(result).isEqualTo(LoginAttemptResult.NORMAL);
+        verify(userMapper, never()).updateLoginAttempt(any(), anyInt(), any(), anyBoolean());
+    }
+
+    @Test
+    @DisplayName("失敗カウントがnullの場合は1として扱われインクリメントされる")
+    void handleFailure_withNullFailedCount_treatsAsZeroAndIncrements() {
+        User user = User.builder()
+                .userId(10L)
+                .userRole(UserRole.USER)
+                .failedLoginCount(null)
+                .accountLocked(false)
+                .build();
+        when(userMapper.selectByEmailForUpdate("nullcount@example.com")).thenReturn(Optional.of(user));
+
+        LoginAttemptResult result = service.handleFailure("nullcount@example.com");
+
+        assertThat(result).isEqualTo(LoginAttemptResult.NORMAL);
+        verify(userMapper).updateLoginAttempt(eq(10L), eq(1), isNull(), eq(false));
+    }
+
+    @Test
+    @DisplayName("すでに永久ロックされている場合は再カウントせずLOCKEDを返す")
+    void handleFailure_alreadyLocked_returnsLockedWithoutDbUpdate() {
+        User user = User.builder()
+                .userId(11L)
+                .userRole(UserRole.USER)
+                .failedLoginCount(5)
+                .accountLocked(true)
+                .build();
+        when(userMapper.selectByEmailForUpdate("already@example.com")).thenReturn(Optional.of(user));
+
+        LoginAttemptResult result = service.handleFailure("already@example.com");
+
+        assertThat(result).isEqualTo(LoginAttemptResult.LOCKED);
+        verify(userMapper, never()).updateLoginAttempt(any(), anyInt(), any(), anyBoolean());
+    }
+
+    @Test
+    @DisplayName("管理者の場合は警告閾値や永久ロック閾値に達してもロックされない")
+    void handleFailure_adminUser_doesNotLockEvenAfterThresholds() {
+        // 警告閾値（3回目）の失敗時
+        User admin1 = User.builder()
+                .userId(100L)
+                .userRole(UserRole.ADMIN)
+                .failedLoginCount(2)
+                .accountLocked(false)
+                .build();
+        when(userMapper.selectByEmailForUpdate("admin1@example.com")).thenReturn(Optional.of(admin1));
+
+        LoginAttemptResult result1 = service.handleFailure("admin1@example.com");
+
+        assertThat(result1).isEqualTo(LoginAttemptResult.ADMIN_EXEMPT);
+        verify(userMapper).updateLoginAttempt(eq(100L), eq(3), isNull(), eq(false));
+
+        // 永久ロック閾値（5回目）の失敗時
+        User admin2 = User.builder()
+                .userId(101L)
+                .userRole(UserRole.ADMIN)
+                .failedLoginCount(4)
+                .accountLocked(false)
+                .build();
+        when(userMapper.selectByEmailForUpdate("admin2@example.com")).thenReturn(Optional.of(admin2));
+
+        LoginAttemptResult result2 = service.handleFailure("admin2@example.com");
+
+        assertThat(result2).isEqualTo(LoginAttemptResult.ADMIN_EXEMPT);
+        verify(userMapper).updateLoginAttempt(eq(101L), eq(5), isNull(), eq(false));
+    }
+
+    @Test
+    @DisplayName("失敗カウントもロックもない場合はログイン成功時にリセット処理を行わない")
+    void handleSuccess_noFailedCount_doesNotResetDb() {
+        User user = User.builder()
+                .userId(12L)
+                .failedLoginCount(0)
+                .accountLocked(false)
+                .lockedUntil(null)
+                .build();
+        when(userMapper.selectByEmailForUpdate("clear@example.com")).thenReturn(Optional.of(user));
+
+        service.handleSuccess("clear@example.com");
+
+        verify(userMapper, never()).resetLoginAttempt(any());
+    }
 }
+

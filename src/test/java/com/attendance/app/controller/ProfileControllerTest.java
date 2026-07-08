@@ -58,7 +58,7 @@ class ProfileControllerTest {
 
         when(securityUtil.getCurrentUser()).thenReturn(user);
         when(workScheduleClassService.getAllClasses()).thenReturn(Collections.emptyList());
-        when(leaveApplicationService.calculateYearlyUsedPaidLeaveDays(eq(1L), anyInt())).thenReturn(2L);
+        when(leaveApplicationService.calculateYearlyUsedPaidLeaveDays(eq(1L), anyInt())).thenReturn(new BigDecimal("2"));
         when(paidLeaveBalanceService.getBalancesByUserId(1L)).thenReturn(Collections.emptyList());
         when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(BigDecimal.ZERO);
 
@@ -70,8 +70,9 @@ class ProfileControllerTest {
         // Assert
         assertThat(view).isEqualTo("user/profile");
         assertThat(model.get("currentUser")).isEqualTo(user);
-        assertThat(model.get("yearlyUsedPaidLeaveDays")).isEqualTo(2L);
-        assertThat(model.get("remainingPaidLeaveDays")).isEqualTo(new BigDecimal("-2")); // 0 - 2 = -2
+        assertThat(model.get("yearlyUsedPaidLeaveDays")).isEqualTo(new BigDecimal("2"));
+        // 残日数は paid_leave_balance ベース（getTotalRemainingDays）に統一
+        assertThat((BigDecimal) model.get("remainingPaidLeaveDays")).isEqualByComparingTo(BigDecimal.ZERO);
         assertThat(model.get("workScheduleClasses")).isEqualTo(Collections.emptyList());
         assertThat(model.get("totalRemainingPaidLeaveDays")).isEqualTo(BigDecimal.ZERO);
     }
@@ -86,7 +87,7 @@ class ProfileControllerTest {
 
         when(securityUtil.getCurrentUser()).thenReturn(user);
         when(workScheduleClassService.getAllClasses()).thenReturn(List.of(new WorkScheduleClass()));
-        when(leaveApplicationService.calculateYearlyUsedPaidLeaveDays(eq(1L), anyInt())).thenReturn(3L);
+        when(leaveApplicationService.calculateYearlyUsedPaidLeaveDays(eq(1L), anyInt())).thenReturn(new BigDecimal("3"));
         when(paidLeaveBalanceService.getBalancesByUserId(1L)).thenReturn(Collections.emptyList());
         when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(new BigDecimal("7.5"));
 
@@ -98,8 +99,9 @@ class ProfileControllerTest {
         // Assert
         assertThat(view).isEqualTo("user/profile");
         assertThat(model.get("currentUser")).isEqualTo(user);
-        assertThat(model.get("yearlyUsedPaidLeaveDays")).isEqualTo(3L);
-        assertThat(model.get("remainingPaidLeaveDays")).isEqualTo(new BigDecimal("7.5")); // 10.5 - 3 = 7.5
+        assertThat(model.get("yearlyUsedPaidLeaveDays")).isEqualTo(new BigDecimal("3"));
+        // 残日数は paid_leave_balance ベース（getTotalRemainingDays）に統一
+        assertThat((BigDecimal) model.get("remainingPaidLeaveDays")).isEqualByComparingTo(new BigDecimal("7.5"));
         assertThat(model.get("totalRemainingPaidLeaveDays")).isEqualTo(new BigDecimal("7.5"));
     }
 

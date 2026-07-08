@@ -16,6 +16,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.time.LocalTime;
 import java.util.Optional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -64,14 +65,14 @@ class WorkSchedulesIntegrationTest {
                         .param("minHours", "4")
                         .param("startTime", "09:00")
                         .param("endTime", "18:00")
-                        .param("breakStartTime", "12:00")
-                        .param("breakEndTime", "13:00")
-                        .param("breakStartTime2", "15:00")
-                        .param("breakEndTime2", "15:15")
-                        .param("breakStartTime3", "19:00")
-                        .param("breakEndTime3", "19:30")
-                        .param("breakStartTime4", "22:00")
-                        .param("breakEndTime4", "22:30"))
+                        .param("breakStartTimes", "12:00")
+                        .param("breakEndTimes", "13:00")
+                        .param("breakStartTimes", "15:00")
+                        .param("breakEndTimes", "15:15")
+                        .param("breakStartTimes", "19:00")
+                        .param("breakEndTimes", "19:30")
+                        .param("breakStartTimes", "22:00")
+                        .param("breakEndTimes", "22:30"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attribute("successMessage", "勤務クラスを作成しました: 統合テストフルシフト"));
 
@@ -81,10 +82,11 @@ class WorkSchedulesIntegrationTest {
         assertThat(created.getWorkLocation()).isEqualTo("在宅");
         assertThat(created.getFolderName()).isEqualTo("開発");
         assertThat(created.getTags()).isEqualTo("テレワーク,夜勤");
-        assertThat(created.getBreakStartTime()).isEqualTo(LocalTime.of(12, 0));
-        assertThat(created.getBreakStartTime2()).isEqualTo(LocalTime.of(15, 0));
-        assertThat(created.getBreakStartTime3()).isEqualTo(LocalTime.of(19, 0));
-        assertThat(created.getBreakStartTime4()).isEqualTo(LocalTime.of(22, 0));
+        assertThat(created.getBreaks()).hasSize(4);
+        assertThat(created.getBreaks().get(0).getBreakStartTime()).isEqualTo(LocalTime.of(12, 0));
+        assertThat(created.getBreaks().get(1).getBreakStartTime()).isEqualTo(LocalTime.of(15, 0));
+        assertThat(created.getBreaks().get(2).getBreakStartTime()).isEqualTo(LocalTime.of(19, 0));
+        assertThat(created.getBreaks().get(3).getBreakStartTime()).isEqualTo(LocalTime.of(22, 0));
     }
 
     @Test
@@ -99,14 +101,10 @@ class WorkSchedulesIntegrationTest {
                         .param("isActive", "true")
                         .param("startTime", "09:00")
                         .param("endTime", "18:00")
-                        .param("breakStartTime", "12:00")
-                        .param("breakEndTime", "13:00")
-                        .param("breakStartTime2", "")
-                        .param("breakEndTime2", "")
-                        .param("breakStartTime3", "")
-                        .param("breakEndTime3", "")
-                        .param("breakStartTime4", "")
-                        .param("breakEndTime4", ""))
+                        .param("breakStartTimes", "12:00")
+                        .param("breakEndTimes", "13:00")
+                        .param("breakStartTimes", "")
+                        .param("breakEndTimes", ""))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attribute("successMessage", "勤務クラスを作成しました: 休憩1のみシフト"));
 
@@ -115,10 +113,8 @@ class WorkSchedulesIntegrationTest {
         WorkScheduleClass created = opt.get();
         assertThat(created.getFolderName()).isEqualTo("一般");
         assertThat(created.getTags()).isNull(); // 空文字列はサービス側でNULLに正規化される
-        assertThat(created.getBreakStartTime()).isEqualTo(LocalTime.of(12, 0));
-        assertThat(created.getBreakStartTime2()).isNull();
-        assertThat(created.getBreakStartTime3()).isNull();
-        assertThat(created.getBreakStartTime4()).isNull();
+        assertThat(created.getBreaks()).hasSize(1);
+        assertThat(created.getBreaks().get(0).getBreakStartTime()).isEqualTo(LocalTime.of(12, 0));
     }
 
     @Test
@@ -131,10 +127,10 @@ class WorkSchedulesIntegrationTest {
                         .param("isActive", "true")
                         .param("startTime", "09:00")
                         .param("endTime", "18:00")
-                        .param("breakStartTime", "")
-                        .param("breakEndTime", ""))
+                        .param("breakStartTimes", "")
+                        .param("breakEndTimes", ""))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(flash().attribute("errorMessage", "休憩1の開始時刻と終了時刻は両方入力してください"));
+                .andExpect(flash().attribute("errorMessage", "休憩時間は少なくとも1つ設定してください"));
 
         Optional<WorkScheduleClass> opt = workScheduleClassMapper.selectByName("休憩1欠落シフト");
         assertThat(opt).isNotPresent();
@@ -150,12 +146,12 @@ class WorkSchedulesIntegrationTest {
                         .param("isActive", "true")
                         .param("startTime", "09:00")
                         .param("endTime", "18:00")
-                        .param("breakStartTime", "12:00")
-                        .param("breakEndTime", "13:00")
-                        .param("breakStartTime2", "15:00")
-                        .param("breakEndTime2", "")) // 終了が空
+                        .param("breakStartTimes", "12:00")
+                        .param("breakEndTimes", "13:00")
+                        .param("breakStartTimes", "15:00")
+                        .param("breakEndTimes", "")) // 終了が空
                 .andExpect(status().is3xxRedirection())
-                .andExpect(flash().attribute("errorMessage", "休憩2の開始時刻と終了時刻は両方入力してください"));
+                .andExpect(flash().attribute("errorMessage", "休憩の開始時刻と終了時刻は両方入力してください"));
 
         Optional<WorkScheduleClass> opt = workScheduleClassMapper.selectByName("休憩不正シフト");
         assertThat(opt).isNotPresent();
@@ -167,11 +163,16 @@ class WorkSchedulesIntegrationTest {
     void updateWorkSchedule_success() throws Exception {
         // テスト用のクラスをあらかじめ登録
         WorkScheduleClass target = WorkScheduleClass.builder()
+                .classCode("W999")
                 .name("更新前シフト")
                 .startTime(LocalTime.of(9, 0))
                 .endTime(LocalTime.of(18, 0))
-                .breakStartTime(LocalTime.of(12, 0))
-                .breakEndTime(LocalTime.of(13, 0))
+                .breaks(List.of(
+                        com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                .breakStartTime(LocalTime.of(12, 0))
+                                .breakEndTime(LocalTime.of(13, 0))
+                                .build()
+                ))
                 .isActive(true)
                 .build();
         workScheduleClassMapper.insert(target);
@@ -185,14 +186,8 @@ class WorkSchedulesIntegrationTest {
                         .param("isActive", "false")
                         .param("startTime", "10:00")
                         .param("endTime", "19:00")
-                        .param("breakStartTime", "13:00")
-                        .param("breakEndTime", "14:00")
-                        .param("breakStartTime2", "")
-                        .param("breakEndTime2", "")
-                        .param("breakStartTime3", "")
-                        .param("breakEndTime3", "")
-                        .param("breakStartTime4", "")
-                        .param("breakEndTime4", ""))
+                        .param("breakStartTimes", "13:00")
+                        .param("breakEndTimes", "14:00"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attribute("successMessage", "勤務クラスを更新しました: 更新後シフト"));
 
@@ -204,6 +199,7 @@ class WorkSchedulesIntegrationTest {
         assertThat(updated.getTags()).isEqualTo("新タグ");
         assertThat(updated.getIsActive()).isFalse();
         assertThat(updated.getStartTime()).isEqualTo(LocalTime.of(10, 0));
-        assertThat(updated.getBreakStartTime()).isEqualTo(LocalTime.of(13, 0));
+        assertThat(updated.getBreaks()).hasSize(1);
+        assertThat(updated.getBreaks().get(0).getBreakStartTime()).isEqualTo(LocalTime.of(13, 0));
     }
 }

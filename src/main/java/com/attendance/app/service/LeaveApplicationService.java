@@ -106,11 +106,33 @@ public class LeaveApplicationService {
             throw new IllegalArgumentException("開始日は終了日より前である必要があります");
         }
 
+        String resolvedDurationType = leaveDurationType != null ? leaveDurationType : "FULL_DAY";
+        if (!"FULL_DAY".equals(resolvedDurationType) && !startDate.isEqual(endDate)) {
+            throw new IllegalArgumentException("半休は開始日と終了日が同じ単日でのみ申請できます");
+        }
+
+        // 同一期間に既存の有効な休暇申請（却下以外）が重複していないか確認する
+        List<LeaveApplication> overlapping = getApplicationsByUserAndDateRange(userId, startDate, endDate);
+        boolean hasOverlap = overlapping.stream()
+                .anyMatch(a -> a.getStatus() != LeaveStatus.REJECTED);
+        if (hasOverlap) {
+            throw new IllegalArgumentException("指定期間に既に休暇申請が存在します");
+        }
+
+        if (LeaveType.PAID_LEAVE == leaveType) {
+            BigDecimal requestedDays = calculateConsumedDays(startDate, endDate, resolvedDurationType);
+            BigDecimal remainingDays = paidLeaveBalanceService.getTotalRemainingDays(userId);
+            if (requestedDays.compareTo(remainingDays) > 0) {
+                BigDecimal shortage = requestedDays.subtract(remainingDays);
+                throw new IllegalArgumentException("有給休暇の残日数が不足しています（不足: " + shortage.stripTrailingZeros().toPlainString() + "日）");
+            }
+        }
+
         LeaveApplication application = LeaveApplication.builder()
                 .userId(userId)
                 .leaveStartDate(startDate)
                 .leaveEndDate(endDate)
-                .leaveDurationType(leaveDurationType != null ? leaveDurationType : "FULL_DAY")
+                .leaveDurationType(resolvedDurationType)
                 .leaveType(leaveType)
                 .reason(reason)
                 .status(LeaveStatus.PENDING)
@@ -168,17 +190,17 @@ public class LeaveApplicationService {
             throw new IllegalArgumentException("申請中のステータスのみ承認できます");
         }
 
+        // 有給休暇承認時は年次残高から使用日数を減算する（残高不足の場合は例外により本メソッド全体がロールバックされる）
+        if (LeaveType.PAID_LEAVE == application.getLeaveType()) {
+            BigDecimal days = calculateConsumedDays(application.getLeaveStartDate(), application.getLeaveEndDate(), application.getLeaveDurationType());
+            paidLeaveBalanceService.deductBalance(application.getUserId(), days, application.getLeaveStartDate());
+        }
+
         application.setStatus(LeaveStatus.APPROVED);
         application.setApprovedAt(DateTimeUtil.now());
         application.setApprovedBy(approvedBy);
         application.setUpdatedAt(DateTimeUtil.now());
         leaveApplicationMapper.update(application);
-
-        // 有給休暇承認時は年次残高から使用日数を減算する
-        if (LeaveType.PAID_LEAVE == application.getLeaveType()) {
-            long days = calculateLeaveDays(application.getLeaveStartDate(), application.getLeaveEndDate());
-            paidLeaveBalanceService.deductBalance(application.getUserId(), BigDecimal.valueOf(days), application.getLeaveStartDate());
-        }
 
         log.info("休暇申請を承認しました: applicationId={}, approvedBy={}", applicationId, approvedBy);
     }
@@ -210,8 +232,8 @@ public class LeaveApplicationService {
     public void deleteApplication(Long applicationId) {
         LeaveApplication application = findApplicationForUpdateOrThrow(applicationId);
         if (LeaveStatus.APPROVED == application.getStatus() && LeaveType.PAID_LEAVE == application.getLeaveType()) {
-            long days = calculateLeaveDays(application.getLeaveStartDate(), application.getLeaveEndDate());
-            paidLeaveBalanceService.refundBalance(application.getUserId(), BigDecimal.valueOf(days), application.getLeaveStartDate());
+            BigDecimal days = calculateConsumedDays(application.getLeaveStartDate(), application.getLeaveEndDate(), application.getLeaveDurationType());
+            paidLeaveBalanceService.refundBalance(application.getUserId(), days, application.getLeaveStartDate());
         }
         leaveApplicationMapper.deleteById(applicationId);
         log.info("休暇申請を削除しました: applicationId={}", applicationId);
@@ -229,26 +251,48 @@ public class LeaveApplicationService {
     }
 
     /**
+     * 休暇申請の実消化日数を計算します。
+     * 半休（AM_HALF/PM_HALF）は開始日＝終了日の単日申請であることを前提とし、0.5日として扱います。
+     * それ以外（FULL_DAY）は暦日数をそのまま日数として扱います。
+     *
+     * @param startDate          開始日
+     * @param endDate            終了日
+     * @param leaveDurationType  休暇期間種別（FULL_DAY, AM_HALF, PM_HALF）
+     * @return 実消化日数
+     */
+    public BigDecimal calculateConsumedDays(LocalDate startDate, LocalDate endDate, String leaveDurationType) {
+        if (isHalfDay(leaveDurationType)) {
+            return new BigDecimal("0.5");
+        }
+        long days = calculateLeaveDays(startDate, endDate);
+        return BigDecimal.valueOf(days);
+    }
+
+    /**
+     * 休暇1日あたりの消化日数を返します（半休は0.5日、それ以外は1.0日）。
+     * 半休は単日申請のみ許可されるため、申請単位の消化日数と一致します。
+     *
+     * @param leaveDurationType 休暇期間種別（FULL_DAY, AM_HALF, PM_HALF）
+     * @return 1日あたりの消化日数
+     */
+    public BigDecimal calculateDailyConsumedDays(String leaveDurationType) {
+        return isHalfDay(leaveDurationType) ? new BigDecimal("0.5") : BigDecimal.ONE;
+    }
+
+    private boolean isHalfDay(String leaveDurationType) {
+        return "AM_HALF".equals(leaveDurationType) || "PM_HALF".equals(leaveDurationType);
+    }
+
+    /**
      * 指定された年の承認済み有給休暇の使用日数を集計します。
+     * 半休（AM_HALF/PM_HALF）は0.5日として集計されます。
      *
      * @param userId 対象ユーザーID
      * @param year 集計対象の年（例: 2026）
      * @return 当該年の有給休暇使用日数の合計
      */
-    public long calculateYearlyUsedPaidLeaveDays(Long userId, int year) {
+    public BigDecimal calculateYearlyUsedPaidLeaveDays(Long userId, int year) {
         return leaveApplicationMapper.countApprovedPaidLeaveDays(userId, year);
-    }
-
-    /**
-     * 申請IDから休暇申請を取得し、存在しない場合は例外を送出します。
-     *
-     * @param applicationId 休暇申請ID
-     * @return 休暇申請情報
-     * @throws IllegalArgumentException 申請が存在しない場合
-     */
-    private LeaveApplication findApplicationOrThrow(Long applicationId) {
-        return leaveApplicationMapper.selectById(applicationId)
-                .orElseThrow(() -> new IllegalArgumentException(APPLICATION_NOT_FOUND_MESSAGE));
     }
 
     /**

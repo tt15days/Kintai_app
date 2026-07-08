@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org" layout:decorate="~{layout/base}" th:with="activePage='users'">
+
 <head>
     <title>ユーザー一覧</title>
 </head>
+
 <body>
     <h2 layout:fragment="page-title">ユーザー一覧</h2>
 
@@ -13,57 +15,55 @@
 
         <div class="card mb-6">
             <div class="flex gap-3">
-                <a href="/admin/users/create" class="btn btn-success gap-2 text-sm">
-                    <i class="fa-solid fa-user-plus"></i> 新規ユーザー追加
+                <a href="/admin/users/create" class="btn btn-success text-sm">
+                    新規ユーザー追加
                 </a>
             </div>
         </div>
 
         <div class="card">
-            <h4 class="text-base font-bold text-txt-primary flex items-center gap-1.5 pb-4 mb-4 border-b border-glass-border/30"><i class="fa-solid fa-users text-primary"></i> ユーザー一覧 <span class="badge badge-warning ml-2 font-mono" th:text="${userCount} + ' 名'"></span></h4>
+            <h4
+                class="text-base font-bold text-txt-primary flex items-center pb-4 mb-4 border-b border-glass-border/30">
+                ユーザー一覧 <span class="text-sm font-normal text-txt-secondary ml-2"
+                    th:text="'(' + ${userCount} + ' 名)'"></span></h4>
             <div class="table-container">
                 <table class="table-custom">
                     <thead class="bg-black/10 text-txt-primary">
                         <tr>
-                            <th><i class="fa-solid fa-hashtag"></i> ID</th>
-                            <th><i class="fa-solid fa-envelope"></i> メールアドレス</th>
-                            <th><i class="fa-solid fa-user"></i> 氏名</th>
-                            <th><i class="fa-solid fa-tag"></i> ロール</th>
-                            <th><i class="fa-solid fa-toggle-on"></i> ステータス</th>
-                            <th><i class="fa-solid fa-calendar"></i> 最終ログイン</th>
-                            <th><i class="fa-solid fa-tools"></i> 操作</th>
+                            <th class="text-center">ID</th>
+                            <th class="text-center">氏名(メールアドレス)</th>
+                            <th class="text-center">ロール</th>
+                            <th class="text-center w-px whitespace-nowrap">操作</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-glass-border/10">
-                        <tr th:each="user : ${users}" th:with="isAdmin=${user.userRole?.name() == 'ADMIN'}">
-                            <td class="font-mono" th:text="${user.userId}"></td>
-                            <td class="font-mono" th:text="${user.email}"></td>
-                            <td class="font-semibold" th:text="${user.fullName ?: ''}"></td>
-                            <td>
-                                <span th:if="${isAdmin}" class="badge badge-danger">
-                                    <i class="fa-solid fa-shield-alt"></i> 管理者
-                                </span>
-                                <span th:unless="${isAdmin}" class="badge badge-primary">
-                                    <i class="fa-solid fa-user"></i> 一般ユーザー
-                                </span>
+                        <tr th:each="user : ${users}" th:with="isAdmin=${user.userRole?.name() == 'ADMIN'}"
+                            th:classappend="${user.isActive == false ? 'bg-black/5' : ''}">
+                            <td class="text-center" th:classappend="${user.isActive == false ? 'opacity-50 grayscale' : ''}">
+                                <div class="text-txt-primary font-mono"
+                                    th:text="${#numbers.formatInteger(user.userId, 3)}"></div>
                             </td>
-                            <td>
-                                <span th:if="${user.isActive}" class="badge badge-success">
-                                    <i class="fa-solid fa-check-circle"></i> 有効
-                                </span>
-                                <span th:unless="${user.isActive}" class="badge badge-danger">
-                                    <i class="fa-solid fa-times-circle"></i> 無効
-                                </span>
+                            <td class="text-center" th:classappend="${user.isActive == false ? 'opacity-50 grayscale' : ''}">
+                                <div class="text-txt-primary">
+                                    <a th:href="'mailto:' + ${user.email}" class="hover:underline text-primary"
+                                        th:text="${user.fullName ?: ''}"></a>
+                                </div>
+                                <div class="text-xs text-txt-secondary font-mono mt-0.5"
+                                    th:text="${user.lastLoginAt != null ? '最終ログイン:' + #temporals.format(user.lastLoginAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy/MM/dd-HH:mm') : '最終ログイン:-'}">
+                                </div>
                             </td>
-                            <td class="font-mono" th:text="${user.lastLoginAt != null ? #temporals.format(user.lastLoginAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy-MM-dd HH:mm:ss') : '-'}"></td>
-                            <td>
-                                <a th:href="@{/admin/users/{userId}(userId=${user.userId})}" class="btn btn-primary gap-1.5 px-3 py-1.5 rounded-lg text-xs">
-                                    <i class="fa-solid fa-cog"></i> 詳細・設定
-                                </a>
+                            <td class="text-center" th:classappend="${user.isActive == false ? 'opacity-50 grayscale' : ''}">
+                                <span th:if="${user.userRole?.name() == 'ADMIN'}" class="badge badge-danger">管理者</span>
+                                <span th:if="${user.userRole?.name() == 'MANAGER'}" class="badge badge-warning">一般管理者</span>
+                                <span th:if="${user.userRole?.name() == 'USER'}" class="badge badge-primary">一般</span>
+                            </td>
+                            <td class="text-center w-px whitespace-nowrap">
+                                <a th:href="@{/admin/users/{userId}(userId=${user.userId})}"
+                                    class="btn btn-primary px-3 py-1.5 rounded-lg text-xs w-max">設定</a>
                             </td>
                         </tr>
                         <tr th:if="${users.isEmpty()}">
-                            <td colspan="7" class="text-center py-12 text-txt-secondary opacity-80">
+                            <td colspan="4" class="text-center py-12 text-txt-secondary opacity-80">
                                 <i class="fa-solid fa-inbox fa-2x mb-2 text-txt-secondary/50"></i>
                                 <p class="text-sm font-medium">ユーザーがありません</p>
                             </td>
@@ -74,4 +74,5 @@
         </div>
     </div>
 </body>
+
 </html>

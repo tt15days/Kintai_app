@@ -26,6 +26,8 @@ public class WorkScheduleClass {
 
     /** クラスID（PK） */
     private Long classId;
+    /** クラスコード（一意なビジネスID） */
+    private String classCode;
     /** クラス名（例: "A班"、"通常勤務"） */
     private String name;
     /** 勤務地・拠点名 */
@@ -52,22 +54,8 @@ public class WorkScheduleClass {
     private LocalTime startTime;
     /** 所定勤務終了時刻 */
     private LocalTime endTime;
-    /** 休憩1 開始時刻 */
-    private LocalTime breakStartTime;
-    /** 休憩1 終了時刻 */
-    private LocalTime breakEndTime;
-    /** 休憩2 開始時刻 */
-    private LocalTime breakStartTime2;
-    /** 休憩2 終了時刻 */
-    private LocalTime breakEndTime2;
-    /** 休憩3 開始時刻 */
-    private LocalTime breakStartTime3;
-    /** 休憩3 終了時刻 */
-    private LocalTime breakEndTime3;
-    /** 休憩4 開始時刻 */
-    private LocalTime breakStartTime4;
-    /** 休憩4 終了時刻 */
-    private LocalTime breakEndTime4;
+    /** 休憩時間リスト（縦持ち） */
+    private java.util.List<WorkScheduleClassBreak> breaks;
     /** 作成日時（UTC） */
     private Instant createdAt;
     /** 更新日時（UTC） */
@@ -79,10 +67,11 @@ public class WorkScheduleClass {
      */
     public int getTotalBreakMinutes() {
         int total = 0;
-        total += (int) DateTimeUtil.calculateDurationMinutes(breakStartTime, breakEndTime);
-        total += (int) DateTimeUtil.calculateDurationMinutes(breakStartTime2, breakEndTime2);
-        total += (int) DateTimeUtil.calculateDurationMinutes(breakStartTime3, breakEndTime3);
-        total += (int) DateTimeUtil.calculateDurationMinutes(breakStartTime4, breakEndTime4);
+        if (breaks != null) {
+            for (WorkScheduleClassBreak b : breaks) {
+                total += (int) DateTimeUtil.calculateDurationMinutes(b.getBreakStartTime(), b.getBreakEndTime());
+            }
+        }
         return total;
     }
 
@@ -100,11 +89,13 @@ public class WorkScheduleClass {
      * 休憩時間帯の要約を返します。
      */
     public String getBreakScheduleSummary() {
+        if (breaks == null || breaks.isEmpty()) {
+            return "-";
+        }
         StringBuilder summary = new StringBuilder();
-        appendTimeWindow(summary, breakStartTime, breakEndTime);
-        appendTimeWindow(summary, breakStartTime2, breakEndTime2);
-        appendTimeWindow(summary, breakStartTime3, breakEndTime3);
-        appendTimeWindow(summary, breakStartTime4, breakEndTime4);
+        for (WorkScheduleClassBreak b : breaks) {
+            appendTimeWindow(summary, b.getBreakStartTime(), b.getBreakEndTime());
+        }
         return summary.length() == 0 ? "-" : summary.toString();
     }
 

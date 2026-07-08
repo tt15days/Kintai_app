@@ -1,6 +1,10 @@
 ﻿document.addEventListener('DOMContentLoaded', () => {
     console.log('Nexus Time initialized.');
 
+    let contextPath = document.querySelector('meta[name="context-path"]')?.getAttribute('content') || '';
+    if (contextPath === '/') contextPath = '';
+    else if (contextPath.endsWith('/')) contextPath = contextPath.slice(0, -1);
+
 
 
     // Mobile Sidebar Toggle Logic
@@ -69,7 +73,7 @@
                     if (csrfTokenHeader && csrfToken) {
                         headers[csrfTokenHeader] = csrfToken;
                     }
-                    const response = await fetch('/dashboard/notifications/read-all', {
+                    const response = await fetch(`${contextPath}/dashboard/notifications/read-all`, {
                         method: 'POST',
                         headers: headers
                     });
@@ -87,7 +91,7 @@
 
         async function fetchUnreadNotifications() {
             try {
-                const response = await fetch('/dashboard/notifications/unread');
+                const response = await fetch(`${contextPath}/dashboard/notifications/unread`);
                 if (!response.ok) throw new Error('Network response was not ok');
                 const notifications = await response.json();
                 updateNotificationUI(notifications);
@@ -141,7 +145,7 @@
                 if (csrfTokenHeader && csrfToken) {
                     headers[csrfTokenHeader] = csrfToken;
                 }
-                const response = await fetch(`/dashboard/notifications/${id}/read`, {
+                const response = await fetch(`${contextPath}/dashboard/notifications/${id}/read`, {
                     method: 'POST',
                     headers: headers
                 });

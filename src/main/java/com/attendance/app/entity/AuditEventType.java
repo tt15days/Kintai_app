@@ -43,5 +43,16 @@ public enum AuditEventType {
     USER_DELETED,
 
     /** 管理者がユーザーのパスワードを初期化した。 */
-    USER_PASSWORD_RESET
+    USER_PASSWORD_RESET,
+
+    // ── セキュリティ・認証 ────────────────────────────────────────────────────────
+
+    /** ログインに成功した。 */
+    LOGIN_SUCCESS,
+
+    /** ログインに失敗した。 */
+    LOGIN_FAILED,
+
+    /** ログアウトした。 */
+    LOGOUT
 }

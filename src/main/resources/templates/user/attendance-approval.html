@@ -9,7 +9,7 @@
 <body>
 
 <h2 layout:fragment="page-title">
-    <i class="fas fa-inbox"></i> 月次勤怠 承認待ち
+    月次勤怠 承認待ち
     <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-warning/15 text-warning border border-warning/20 ml-2"
           th:if="${pendingSubmissions != null and !pendingSubmissions.isEmpty()}"
           th:text="${#lists.size(pendingSubmissions)} + '件'"></span>
@@ -18,20 +18,20 @@
 <div layout:fragment="content" class="flex flex-col flex-grow">
     <div class="flex justify-end mb-4">
         <a th:href="@{/attendance/approval/corrections}" class="bg-black/5 hover:bg-black/10 border border-glass-border text-txt-primary inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-200 active:scale-95 cursor-pointer">
-            <i class="fas fa-pen-to-square"></i> 修正申請の承認へ
+            修正申請の承認へ
         </a>
     </div>
 
     <!-- フラッシュメッセージ -->
     <div class="mb-4" th:if="${message != null}">
         <div class="bg-success/15 border border-success/30 text-success p-4 rounded-xl flex justify-between items-center mb-6 text-sm font-semibold transition-all duration-200" role="alert">
-            <span><i class="fas fa-check-circle"></i> <span th:text="${message}"></span></span>
+            <span><span th:text="${message}"></span></span>
             <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()">×</button>
         </div>
     </div>
     <div class="mb-4" th:if="${error != null}">
         <div class="bg-danger/12 border border-danger/30 text-danger p-4 rounded-xl flex justify-between items-center mb-6 text-sm font-semibold transition-all duration-200" role="alert">
-            <span><i class="fas fa-exclamation-circle"></i> <span th:text="${error}"></span></span>
+            <span><span th:text="${error}"></span></span>
             <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()">×</button>
         </div>
     </div>
@@ -41,64 +41,52 @@
 
             <!-- 承認待ちなし -->
             <div class="text-center py-12 text-txt-secondary opacity-80 flex flex-col items-center justify-center" th:if="${pendingSubmissions == null or pendingSubmissions.isEmpty()}">
-                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
                 <p class="mb-0 text-sm font-medium">承認待ちの月次勤怠申請はありません</p>
             </div>
 
             <!-- 承認待ち一覧 -->
             <div th:each="submission : ${pendingSubmissions}" class="bg-glass/70 backdrop-blur-glass border border-glass-border shadow-glass rounded-[16px] p-5 flex flex-col mb-4 transition-all duration-300 border-l-[4px] border-l-warning hover:border-l-primary">
                 <div>
-                    <div class="flex flex-col md:flex-row gap-4 justify-between items-start">
-                        <!-- 申請者情報 -->
+                    <div class="flex flex-col md:flex-row gap-4 justify-between items-center">
+                        <!-- 申請者情報と申請情報 -->
                         <div class="flex-1 min-w-[200px]">
-                            <div class="font-semibold text-[15px] text-txt-primary mb-1">
-                                <a th:href="@{/attendance/approval/{userId}/detail(userId=${submission.userId}, yearMonth=${submission.targetYearMonth})}"
-                                   class="text-primary hover:underline font-semibold flex items-center gap-1.5">
-                                    <i class="fas fa-user-circle"></i>
-                                    <span th:text="${applicantUsers[submission.userId] != null ? applicantUsers[submission.userId].fullName : '不明ユーザー'}"></span>
-                                </a>
-                            </div>
-                            <div class="text-xs text-txt-secondary opacity-80 flex items-center mb-2">
-                                <i class="fas fa-envelope mr-1.5"></i>
-                                <span th:text="${applicantUsers[submission.userId] != null ? applicantUsers[submission.userId].email : ''}"></span>
-                            </div>
-                            <div class="mt-2">
-                                <span class="text-[13px] px-2.5 py-1 rounded-full bg-black/5 text-txt-secondary font-semibold border border-glass-border inline-flex items-center gap-1.5">
-                                    <i class="fas fa-calendar"></i>
-                                    <span th:text="${submission.targetYearMonth}"></span>
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- 申請情報 -->
-                        <div class="flex-1 min-w-[200px]">
-                            <div class="text-xs text-txt-secondary opacity-80 flex items-center mb-1.5">
-                                <i class="fas fa-clock mr-1.5"></i> 申請日時:
-                                <span th:text="${submission.submittedAt != null ? #temporals.format(submission.submittedAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy/MM/dd HH:mm') : '-'}"></span>
-                            </div>
-                            <div>
-                                <span class="px-2 py-0.5 text-[0.7rem] font-bold rounded-full bg-warning/15 text-warning border border-warning/20"
+                            <!-- 承認待ちバッジとユーザー名/年月を並べる -->
+                            <div class="flex items-center gap-2 flex-wrap mb-1">
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-warning/15 text-warning border border-warning/20 shrink-0"
                                       th:if="${submission.status == submissionStatusPending}">
-                                    <i class="fas fa-hourglass-half mr-1"></i>承認待ち
+                                    承認待ち
                                 </span>
-                                <span class="px-2 py-0.5 text-[0.7rem] font-bold rounded-full bg-success/15 text-success border border-success/20"
+                                <span class="px-2 py-0.5 text-[0.7rem] font-bold rounded-full bg-success/15 text-success border border-success/20 shrink-0"
                                       th:if="${submission.status == submissionStatusApproved}">
-                                    <i class="fas fa-check mr-1"></i>承認済み
+                                    承認済み
                                 </span>
-                                <span class="px-2 py-0.5 text-[0.7rem] font-bold rounded-full bg-danger/15 text-danger border border-danger/20"
+                                <span class="px-2 py-0.5 text-[0.7rem] font-bold rounded-full bg-danger/15 text-danger border border-danger/20 shrink-0"
                                       th:if="${submission.status == submissionStatusReturned}">
-                                    <i class="fas fa-undo mr-1"></i>差し戻し済み
+                                    差し戻し済み
                                 </span>
+                                <div class="font-semibold text-[15px] text-txt-primary flex items-center">
+                                    <a th:href="@{/attendance/approval/{userId}/detail(userId=${submission.userId}, yearMonth=${submission.targetYearMonth})}"
+                                       class="text-primary hover:underline font-semibold flex items-center">
+                                        <span th:text="${applicantUsers[submission.userId] != null ? applicantUsers[submission.userId].fullName : '不明ユーザー'}"></span>
+                                        <span class="mx-1 font-normal">/</span>
+                                        <span class="font-normal" th:text="${submission.targetYearMonth}"></span>
+                                    </a>
+                                </div>
                             </div>
-                            <div class="text-xs text-txt-secondary opacity-80 flex items-center mt-1.5"
+                            <!-- 申請日時（行間を詰めて配置） -->
+                            <div class="text-xs text-txt-secondary opacity-80 flex items-center">
+                                申請日時:
+                                <span class="ml-1" th:text="${submission.submittedAt != null ? #temporals.format(submission.submittedAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy/MM/dd HH:mm') : '-'}"></span>
+                            </div>
+                            <!-- アクションコメント -->
+                            <div class="text-xs text-txt-secondary opacity-80 flex items-center mt-1"
                                  th:if="${submission.actionComment != null and !submission.actionComment.isBlank()}">
-                                <i class="fas fa-comment mr-1.5"></i>
                                 <span th:text="${submission.actionComment}"></span>
                             </div>
                         </div>
 
                         <!-- 操作ボタン -->
-                        <div class="flex gap-2 flex-wrap justify-end items-start"
+                        <div class="flex gap-2 flex-wrap justify-end items-center"
                              th:if="${submission.status == submissionStatusPending}">
                             <button type="button" class="bg-success text-white hover:bg-success/90 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 active:scale-95 text-xs cursor-pointer"
                                     th:data-submission-id="${submission.submissionId}"
@@ -129,10 +117,10 @@
             <div id="approveModalContent" class="card-heavy w-full max-w-[500px] transform scale-95 transition-all duration-300" onclick="event.stopPropagation()">
                 <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
                     <h5 class="m-0 text-base font-bold text-txt-primary" id="approveModalLabel">
-                        <i class="fas fa-check-circle text-success mr-1.5"></i> 承認確認
+                        承認確認
                     </h5>
-                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity" onclick="closeApproveModal()">
-                        <i class="fa-solid fa-xmark text-xl"></i>
+                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold" onclick="closeApproveModal()">
+                        ×
                     </button>
                 </div>
                 <div class="relative flex-auto py-2">
@@ -167,10 +155,10 @@
             <div id="returnModalContent" class="card-heavy w-full max-w-[500px] transform scale-95 transition-all duration-300" onclick="event.stopPropagation()">
                 <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
                     <h5 class="m-0 text-base font-bold text-txt-primary" id="returnModalLabel">
-                        <i class="fas fa-undo text-danger mr-1.5"></i> 差し戻し確認
+                        差し戻し確認
                     </h5>
-                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity" onclick="closeReturnModal()">
-                        <i class="fa-solid fa-xmark text-xl"></i>
+                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold" onclick="closeReturnModal()">
+                        ×
                     </button>
                 </div>
                 <div class="relative flex-auto py-2">

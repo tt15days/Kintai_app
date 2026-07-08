@@ -6,7 +6,6 @@ import com.attendance.app.service.AttendancePeriodSettingService;
 import com.attendance.app.service.BatchSettingService;
 import com.attendance.app.service.CsvFilenamePatternService;
 import com.attendance.app.service.HolidayService;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,7 +26,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -68,8 +66,6 @@ class SettingsControllerTest {
         when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
         when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
         when(batchSettingService.getMonthlySummaryDaysAfterEnd()).thenReturn(5);
-        when(batchSettingService.getPaidLeaveGrantMonth()).thenReturn(4);
-        when(batchSettingService.getPaidLeaveGrantDay()).thenReturn(1);
         when(batchSettingService.getReminderDay()).thenReturn(25);
         when(batchSettingService.getReminderHour()).thenReturn(9);
         when(batchSettingService.getAlertArticle36Limit1()).thenReturn(45);
@@ -325,20 +321,20 @@ class SettingsControllerTest {
     void updateBatchSettings_success() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
 
-        String viewName = controller.updateBatchSettings(5, 4, 1, 25, 9, redirectAttributes);
+        String viewName = controller.updateBatchSettings(5, 25, 9, redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("message")).isEqualTo("バッチ処理設定を更新しました");
-        verify(batchSettingService).updateSettings(5, 4, 1, 25, 9);
+        verify(batchSettingService).updateSettings(5, 25, 9);
     }
 
     @Test
     @DisplayName("updateBatchSettings: IllegalArgumentException 発生時のハンドリング")
     void updateBatchSettings_invalidArgs_returnsError() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-        doThrow(new IllegalArgumentException("Invalid batch parameter")).when(batchSettingService).updateSettings(anyInt(), anyInt(), anyInt(), anyInt(), anyInt());
+        doThrow(new IllegalArgumentException("Invalid batch parameter")).when(batchSettingService).updateSettings(anyInt(), anyInt(), anyInt());
 
-        String viewName = controller.updateBatchSettings(99, 4, 1, 25, 9, redirectAttributes);
+        String viewName = controller.updateBatchSettings(99, 25, 9, redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("Invalid batch parameter");
@@ -348,9 +344,9 @@ class SettingsControllerTest {
     @DisplayName("updateBatchSettings: その他例外発生時のハンドリング")
     void updateBatchSettings_exception_returnsError() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-        doThrow(new RuntimeException("Other error")).when(batchSettingService).updateSettings(anyInt(), anyInt(), anyInt(), anyInt(), anyInt());
+        doThrow(new RuntimeException("Other error")).when(batchSettingService).updateSettings(anyInt(), anyInt(), anyInt());
 
-        String viewName = controller.updateBatchSettings(5, 4, 1, 25, 9, redirectAttributes);
+        String viewName = controller.updateBatchSettings(5, 25, 9, redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("バッチ処理設定の更新に失敗しました");
@@ -361,20 +357,20 @@ class SettingsControllerTest {
     void updateAlertSettings_success() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
 
-        String viewName = controller.updateAlertSettings(45, 80, 6, 5, redirectAttributes);
+        String viewName = controller.updateAlertSettings(45, 80, 6, 5, 11, redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("message")).isEqualTo("アラート閾値設定を更新しました");
-        verify(batchSettingService).updateAlertSettings(45, 80, 6, 5);
+        verify(batchSettingService).updateAlertSettings(45, 80, 6, 5, 11);
     }
 
     @Test
     @DisplayName("updateAlertSettings: IllegalArgumentException 発生時のハンドリング")
     void updateAlertSettings_invalidArgs_returnsError() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-        doThrow(new IllegalArgumentException("Invalid alert parameter")).when(batchSettingService).updateAlertSettings(anyInt(), anyInt(), anyInt(), anyInt());
+        doThrow(new IllegalArgumentException("Invalid alert parameter")).when(batchSettingService).updateAlertSettings(anyInt(), anyInt(), anyInt(), anyInt(), anyInt());
 
-        String viewName = controller.updateAlertSettings(45, 80, 6, 5, redirectAttributes);
+        String viewName = controller.updateAlertSettings(45, 80, 6, 5, 11, redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("Invalid alert parameter");
@@ -384,9 +380,9 @@ class SettingsControllerTest {
     @DisplayName("updateAlertSettings: その他例外発生時のハンドリング")
     void updateAlertSettings_exception_returnsError() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-        doThrow(new RuntimeException("Other error")).when(batchSettingService).updateAlertSettings(anyInt(), anyInt(), anyInt(), anyInt());
+        doThrow(new RuntimeException("Other error")).when(batchSettingService).updateAlertSettings(anyInt(), anyInt(), anyInt(), anyInt(), anyInt());
 
-        String viewName = controller.updateAlertSettings(45, 80, 6, 5, redirectAttributes);
+        String viewName = controller.updateAlertSettings(45, 80, 6, 5, 11, redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("アラート閾値設定の更新に失敗しました");
@@ -465,7 +461,6 @@ class SettingsControllerTest {
 
     @Test
     @DisplayName("confirmAndSave: 正常にJSONデータがデシリアライズされて保存されること")
-    @SuppressWarnings("unchecked")
     void confirmAndSave_success() throws IOException {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
         SessionStatus sessionStatus = mock(SessionStatus.class);
@@ -476,6 +471,7 @@ class SettingsControllerTest {
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("message")).isEqualTo("祝日設定を保存しました。");
         
+        @SuppressWarnings("unchecked")
         List<Holiday> saved = (List<Holiday>) redirectAttributes.getFlashAttributes().get("savedHolidays");
         assertThat(saved).hasSize(1);
         assertThat(saved.get(0).getHolidayDate()).isEqualTo(LocalDate.of(2026, 1, 1));
@@ -500,7 +496,6 @@ class SettingsControllerTest {
 
     @Test
     @DisplayName("confirmAndSave: パースエラー（IOException）発生時のハンドリング")
-    @SuppressWarnings("unchecked")
     void confirmAndSave_parseError_returnsError() throws IOException {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
         SessionStatus sessionStatus = mock(SessionStatus.class);
@@ -515,7 +510,6 @@ class SettingsControllerTest {
 
     @Test
     @DisplayName("confirmAndSave: 保存エラー（その他例外）発生時のハンドリング")
-    @SuppressWarnings("unchecked")
     void confirmAndSave_saveError_returnsError() throws IOException {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
         SessionStatus sessionStatus = mock(SessionStatus.class);

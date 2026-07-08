@@ -187,4 +187,35 @@ public class DateTimeUtil {
     public static LocalTime currentTimeJapan() {
         return LocalTime.now(JAPAN);
     }
+
+    /**
+     * 時間（Double）を「〇時間〇分」形式の文字列に変換します。
+     *
+     * @param hours 変換対象の時間（例: 8.5）
+     * @return 「〇時間〇分」の形式の文字列。null または 0 以下の場合は「0時間0分」
+     */
+    public static String formatHoursToHHmm(Double hours) {
+        if (hours == null || hours <= 0) {
+            return "0時間0分";
+        }
+        long totalMinutes = Math.round(hours * 60);
+        long h = totalMinutes / 60;
+        long m = totalMinutes % 60;
+        return h + "時間" + m + "分";
+    }
+
+    /**
+     * 分（Integer）を「〇時間〇分」形式の文字列に変換します。
+     *
+     * @param minutes 変換対象の分（例: 510）
+     * @return 「〇時間〇分」の形式の文字列。null または 0 以下の場合は「0時間0分」
+     */
+    public static String formatMinutesToHHmm(Integer minutes) {
+        if (minutes == null || minutes <= 0) {
+            return "0時間0分";
+        }
+        int h = minutes / 60;
+        int m = minutes % 60;
+        return h + "時間" + m + "分";
+    }
 }

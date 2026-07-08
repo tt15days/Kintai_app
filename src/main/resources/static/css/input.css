@@ -83,7 +83,7 @@
     body {
         font-family: 'Inter', sans-serif;
         margin: 0;
-        font-size: 18px;
+        font-size: 16px;
         background: var(--body-bg);
         background-attachment: fixed;
         color: var(--text-primary);
@@ -125,13 +125,13 @@
 @layer components {
     /* --- カード・パネル --- */
     .card {
-        @apply bg-glass/70 backdrop-blur-glass border border-glass-border shadow-glass rounded-[24px] p-6 transition-all duration-300;
+        @apply bg-glass/70 backdrop-blur-glass border border-glass-border shadow-glass md:rounded-[12px] rounded-[8px] md:p-5 p-3 transition-all duration-300;
     }
     .card-sm {
-        @apply bg-glass/70 backdrop-blur-glass border border-glass-border shadow-glass rounded-[16px] p-4 transition-all duration-300;
+        @apply bg-glass/70 backdrop-blur-glass border border-glass-border shadow-glass md:rounded-[8px] rounded-[6px] md:p-3 p-2 transition-all duration-300;
     }
     .card-heavy {
-        @apply bg-glass/90 backdrop-blur-glass-heavy border border-glass-border shadow-glass-heavy rounded-[24px] p-6 transition-all duration-300;
+        @apply bg-glass/90 backdrop-blur-glass-heavy border border-glass-border shadow-glass-heavy md:rounded-[12px] rounded-[8px] md:p-5 p-3 transition-all duration-300;
     }
 
     /* --- ボタン基本 --- */
@@ -171,13 +171,13 @@
         @apply block text-sm font-semibold text-txt-secondary mb-1.5;
     }
     .form-input {
-        @apply w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
+        @apply w-full md:px-4 md:py-2.5 px-2.5 py-1.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
     }
     .form-select {
-        @apply w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 cursor-pointer;
+        @apply w-full md:px-4 md:py-2.5 px-2.5 py-1.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 cursor-pointer;
     }
     .form-textarea {
-        @apply w-full px-4 py-2.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
+        @apply w-full md:px-4 md:py-2.5 px-2.5 py-1.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
     }
 
     /* --- アラート --- */
@@ -219,13 +219,13 @@
         @apply min-w-full divide-y divide-glass-border/30 text-left border-collapse;
     }
     .table-custom th {
-        @apply p-3 text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-glass-border/30;
+        @apply md:p-2 p-1 text-xs font-bold uppercase tracking-wider text-txt-secondary border-b border-glass-border/30;
     }
     .table-custom tr {
         @apply hover:bg-glass-nav-hover/10 transition-colors;
     }
     .table-custom td {
-        @apply p-3 text-sm text-txt-primary;
+        @apply md:p-2 p-1 text-sm text-txt-primary;
     }
 
     .nav-link {

@@ -190,6 +190,7 @@ public class LeaveApplicationController {
             RedirectAttributes redirectAttributes) {
         try {
             Long userId = securityUtil.getCurrentUserId();
+            assertLeaveMonthEditableForRange(userId, startDate, endDate);
             LeaveApplication application = leaveApplicationService.createApplication(userId, startDate, endDate, leaveDurationType, leaveType, reason);
             // 承認フロー不要なので即時承認する
             leaveApplicationService.approveApplication(application.getApplicationId(), userId);
@@ -266,6 +267,30 @@ public class LeaveApplicationController {
         if (!attendanceSubmissionService.isEditableMonth(userId, payrollMonth)) {
             throw new IllegalArgumentException(
                     payrollMonth.format(YEAR_MONTH_FORMATTER) + " の月次勤怠は申請中または承認済みのため操作できません");
+        }
+    }
+
+    /**
+     * 申請期間（startDate〜endDate）に含まれる全ての給与月が編集可能かを検証し、
+     * ロック中の月が含まれる場合は例外を送出します。
+     *
+     * @param userId    ユーザーID
+     * @param startDate 休暇開始日
+     * @param endDate   休暇終了日
+     * @throws IllegalArgumentException 期間内にロック中の月が含まれる場合
+     */
+    private void assertLeaveMonthEditableForRange(Long userId, LocalDate startDate, LocalDate endDate) {
+        Set<YearMonth> payrollMonths = new java.util.LinkedHashSet<>();
+        LocalDate d = startDate;
+        while (!d.isAfter(endDate)) {
+            payrollMonths.add(attendanceSubmissionService.resolvePayrollMonth(d));
+            d = d.plusDays(1);
+        }
+        for (YearMonth payrollMonth : payrollMonths) {
+            if (!attendanceSubmissionService.isEditableMonth(userId, payrollMonth)) {
+                throw new IllegalArgumentException(
+                        payrollMonth.format(YEAR_MONTH_FORMATTER) + " の月次勤怠は申請中または承認済みのため操作できません");
+            }
         }
     }
 

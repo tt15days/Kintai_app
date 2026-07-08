@@ -5,6 +5,7 @@ import com.attendance.app.entity.UserRole;
 import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.mapper.WorkScheduleClassMapper;
+import com.attendance.app.mapper.PaidLeaveBalanceMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,8 @@ class UserServiceTest {
     private AuditLogService auditLogService;
     @Mock
     private SystemSettingMapper systemSettingMapper;
+    @Mock
+    private PaidLeaveBalanceMapper paidLeaveBalanceMapper;
 
     @InjectMocks
     private UserService service;
@@ -251,6 +254,14 @@ class UserServiceTest {
             User admin = User.builder()
                     .userId(1L).userRole(UserRole.ADMIN).isActive(true).build();
             assertThat(service.isAttendanceApprover(admin)).isTrue();
+        }
+
+        @Test
+        @DisplayName("一般管理者（MANAGER）は常に true を返す")
+        void managerUser_returnsTrue() {
+            User manager = User.builder()
+                    .userId(3L).userRole(UserRole.MANAGER).isActive(true).build();
+            assertThat(service.isAttendanceApprover(manager)).isTrue();
         }
 
         @Test

@@ -9,7 +9,7 @@
     <div layout:fragment="content">
         <div class="card">
             <p class="text-sm text-txt-secondary mb-6">
-                各従業員の今年度の有給休暇付与日数、取得日数、および年5日取得義務の達成状況を確認できます。
+                各従業員の当年度の付与・取得実績と、繰越を含む累計残日数、および年5日取得義務の達成状況を確認できます。
             </p>
             <div class="table-container">
                 <table class="table-custom">
@@ -17,19 +17,19 @@
                         <tr>
                             <th>社員ID</th>
                             <th>氏名</th>
-                            <th>付与日数</th>
-                            <th>取得日数</th>
-                            <th>残日数</th>
+                            <th>当年度付与日数</th>
+                            <th>当年度取得日数</th>
+                            <th>累計残日数</th>
                             <th>5日取得義務</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-glass-border/10">
                         <tr th:each="user : ${users}">
-                            <td class="font-mono" th:text="${'EMP-' + user.userId}">EMP-1</td>
+                            <td class="font-mono" th:text="${(empNoPrefix != null ? empNoPrefix : '') + #numbers.formatInteger(user.userId, 3)}">EMP-1</td>
                             <td class="font-semibold" th:text="${user.fullName}">氏名</td>
                             <td class="font-mono" th:with="balance=${balanceMap[user.userId]}" th:text="${balance.grantedDays} + ' 日'">10 日</td>
                             <td class="font-mono" th:with="balance=${balanceMap[user.userId]}" th:text="${balance.usedDays} + ' 日'">2 日</td>
-                            <td class="font-mono" th:with="balance=${balanceMap[user.userId]}" th:text="${balance.grantedDays.subtract(balance.usedDays)} + ' 日'">8 日</td>
+                            <td class="font-mono" th:text="${(remainingTotalMap[user.userId] != null ? remainingTotalMap[user.userId] : 0)} + ' 日'">8 日</td>
                             <td>
                                 <span th:if="${obligationMetMap[user.userId]}" class="badge badge-success"><i class="fa-solid fa-check"></i> 達成</span>
                                 <span th:unless="${obligationMetMap[user.userId]}" class="badge badge-danger"><i class="fa-solid fa-triangle-exclamation"></i> 未達成</span>

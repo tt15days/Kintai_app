@@ -45,29 +45,25 @@
                             <th>残業時間</th>
                             <th>深夜労働</th>
                             <th>ステータス</th>
-                            <th>アクション</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-glass-border/10">
                         <tr th:each="user : ${users}" th:classappend="${submissionByUserMap[user.userId] != null and submissionByUserMap[user.userId].status == submissionStatusPending ? 'bg-warning/5 font-medium' : ''}">
-                            <td><a th:href="@{/admin/attendance/{userId}(userId=${user.userId}, yearMonth=${yearMonth})}" th:text="${'EMP-' + user.userId}" class="text-primary hover:underline font-mono">EMP-001</a></td>
+                            <td><a th:href="@{/admin/attendance/{userId}(userId=${user.userId}, yearMonth=${yearMonth})}" th:text="${(empNoPrefix != null ? empNoPrefix : '') + #numbers.formatInteger(user.userId, 3)}" class="text-primary hover:underline font-mono">EMP-001</a></td>
                              <td>
                                  <a th:href="@{/admin/attendance/{userId}(userId=${user.userId}, yearMonth=${yearMonth})}" class="text-primary hover:underline font-semibold">
                                      <span th:text="${user.fullName}">John Doe</span>
                                  </a>
                                  <span th:unless="${user.isActive}" class="text-xs text-red-500 font-normal ml-1">(無効)</span>
                              </td>
-                            <td class="font-mono" th:with="wh=${workingSumByUserMap[user.userId]}" th:text="${wh != null ? #numbers.formatDecimal(wh, 1, 1) + 'h' : '0.0h'}">160h 00m</td>
-                            <td class="font-mono" th:with="ot=${overtimeSumByUserMap[user.userId]}" th:text="${ot != null ? #numbers.formatDecimal(ot, 1, 1) + 'h' : '0.0h'}">12h 30m</td>
-                            <td class="font-mono" th:with="ns=${nightShiftSumByUserMap[user.userId]}" th:text="${ns != null ? #numbers.formatDecimal(ns, 1, 1) + 'h' : '0.0h'}">0.0h</td>
+                            <td class="font-mono" th:with="wh=${workingSumByUserMap[user.userId]}" th:text="${wh != null ? T(com.attendance.app.util.DateTimeUtil).formatHoursToHHmm(wh) : '0時間0分'}">160時間</td>
+                            <td class="font-mono" th:with="ot=${overtimeSumByUserMap[user.userId]}" th:text="${ot != null ? T(com.attendance.app.util.DateTimeUtil).formatHoursToHHmm(ot) : '0時間0分'}">12時間</td>
+                            <td class="font-mono" th:with="ns=${nightShiftSumByUserMap[user.userId]}" th:text="${ns != null ? T(com.attendance.app.util.DateTimeUtil).formatHoursToHHmm(ns) : '0時間0分'}">0.0時間</td>
                             <td>
                                 <span th:if="${submissionByUserMap[user.userId] == null}" class="badge bg-black/5 text-txt-secondary border-glass-border">未提出</span>
                                 <span th:if="${submissionByUserMap[user.userId] != null and submissionByUserMap[user.userId].status == submissionStatusPending}" class="badge badge-warning animate-pulse">承認待ち</span>
                                 <span th:if="${submissionByUserMap[user.userId] != null and submissionByUserMap[user.userId].status == submissionStatusApproved}" class="badge badge-success">承認済</span>
                                 <span th:if="${submissionByUserMap[user.userId] != null and submissionByUserMap[user.userId].status == submissionStatusReturned}" class="badge badge-danger">差戻し</span>
-                            </td>
-                            <td>
-                                <a th:href="@{/admin/attendance/export/csv(userId=${user.userId}, yearMonth=${yearMonth})}" class="btn bg-primary/10 hover:bg-primary/20 text-primary p-2 rounded-lg text-xs" title="CSV出力"><i class="fa-solid fa-download"></i></a>
                             </td>
                         </tr>
                     </tbody>

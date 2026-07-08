@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org"
-      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
-      layout:decorate="~{layout/base}"
-      th:with="hideSidebar=true">
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{layout/base}" th:with="hideSidebar=true">
+
 <head>
-    <title>ログアウト完了 - Nexus Time</title>
+    <title>ログアウト完了</title>
 </head>
+
 <body>
     <div layout:fragment="content" class="flex min-h-[80vh] items-center justify-center">
         <div class="card w-full max-w-md p-8 text-center animate-fade-in">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary text-3xl mb-4">
+            <div
+                class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary text-3xl mb-4">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i>
             </div>
             <h1 class="text-xl font-bold text-txt-primary mb-2">ログアウト完了</h1>
@@ -19,7 +20,8 @@
             </p>
 
             <!-- ログアウト情報 -->
-            <div class="bg-glass-input/60 border border-glass-border rounded-xl p-4 mb-6 text-left text-sm text-txt-secondary space-y-1.5">
+            <div
+                class="bg-glass-input/60 border border-glass-border rounded-xl p-4 mb-6 text-left text-sm text-txt-secondary space-y-1.5">
                 <p class="font-bold text-txt-primary"><i class="fa-solid fa-circle-info text-primary"></i> ログアウト情報</p>
                 <p><i class="fa-solid fa-clock mr-1 text-txt-secondary/60"></i> <span id="logoutTime"></span></p>
                 <p><i class="fa-solid fa-shield-halved mr-1 text-txt-secondary/60"></i> セッションは安全に終了されました</p>
@@ -65,11 +67,12 @@
                 }, 1000);
             }
 
-            document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('DOMContentLoaded', function () {
                 setLogoutTime();
                 startCountdown();
             });
         </script>
     </th:block>
 </body>
+
 </html>

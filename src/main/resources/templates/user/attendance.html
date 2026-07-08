@@ -1,507 +1,648 @@
 <!DOCTYPE html>
 <html lang="ja" xmlns:th="http://www.thymeleaf.org" layout:decorate="~{layout/base}" th:with="activePage='attendance'">
+
 <head>
     <title>勤怠管理</title>
+    <style>
+        /* モバイル表示時の時刻入力アイコン非表示 */
+        @media (max-width: 767px) {
+            input[type="time"]::-webkit-calendar-picker-indicator {
+                display: none;
+                -webkit-appearance: none;
+            }
+        }
+
+        /* テーブル余白の調整 */
+        .table-custom-compact th,
+        .table-custom-compact td {
+            padding: 6px 8px !important;
+        }
+
+        @media (max-width: 767px) {
+
+            .table-custom-compact th,
+            .table-custom-compact td {
+                padding: 4px 4px !important;
+            }
+        }
+
+        /* 見出し（thead）以外のデータ行の境界線（罫線）を不要にする */
+        .table-custom-compact tbody tr {
+            border-top: none !important;
+        }
+
+        /* 時刻入力ボックスの入力値を中央揃えにする */
+        input[type="time"] {
+            text-align: center;
+        }
+        input[type="time"]::-webkit-datetime-edit {
+            text-align: center;
+            width: 100%;
+        }
+        input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+            justify-content: center;
+        }
+        /* iOS Chrome/Safari 等モバイルブラウザ用の入力値中央揃え */
+        input[type="time"]::-webkit-date-and-time-value {
+            text-align: center;
+            margin: 0 auto;
+        }
+    </style>
 </head>
+
 <body>
     <h2 layout:fragment="page-title">勤怠管理</h2>
 
     <div layout:fragment="content">
 
-    <!-- ナビゲーションバー -->
-    
+        <!-- ナビゲーションバー -->
 
-    <div class="w-full">
-        <div class="content">
-            <!-- Flash messages -->
-            <div class="mb-4" th:if="${message != null}">
-                <div class="alert alert-success text-center justify-center" role="alert" th:text="${message}"></div>
-            </div>
-            <div class="mb-4" th:if="${error != null}">
-                <div class="alert alert-danger text-center justify-center" role="alert" th:text="${error}"></div>
-            </div>
 
-            <!-- 上部コントロールバー -->
-            <div class="card-sm mb-4">
-                <div class="flex justify-between items-center flex-wrap gap-3">
-                    <!-- 左側: 月の選択と提出ステータス -->
-                    <div class="flex items-center flex-wrap gap-4">
-                        <form method="get" th:action="@{/attendance}" class="flex items-center gap-2 mb-0">
-                            <label for="yearMonth" class="mb-0 text-xs text-txt-secondary font-medium whitespace-nowrap">対象月度の選択</label>
-                            <input type="month" name="yearMonth" id="yearMonth" class="form-input w-[160px] p-2 font-mono" th:value="${yearMonth}">
-                            <button type="submit" class="btn btn-flat py-1.5 px-3 text-sm cursor-pointer">
-                                表示
-                            </button>
-                        </form>
+        <div class="w-full">
+            <div class="content">
+                <!-- Flash messages -->
+                <div class="mb-4" th:if="${message != null}">
+                    <div class="alert alert-success text-center justify-center" role="alert" th:text="${message}"></div>
+                </div>
+                <div class="mb-4" th:if="${error != null}">
+                    <div class="alert alert-danger text-center justify-center" role="alert" th:text="${error}"></div>
+                </div>
+
+                <!-- 上部コントロールバー -->
+                <div class="card-sm mb-4">
+                    <div class="flex justify-between items-center flex-wrap gap-3">
+                        <!-- 左側: 月の選択と提出ステータス -->
+                        <div class="flex items-center flex-wrap gap-4">
+                            <form method="get" th:action="@{/attendance}" class="flex items-center gap-2 mb-0">
+                                <label for="yearMonth"
+                                    class="mb-0 text-xs text-txt-secondary font-medium whitespace-nowrap">対象月度の選択</label>
+                                <input type="month" name="yearMonth" id="yearMonth"
+                                    class="form-input w-[160px] p-2 font-mono" th:value="${yearMonth}">
+                                <button type="submit" class="btn btn-flat py-1.5 px-3 text-sm cursor-pointer">
+                                    表示
+                                </button>
+                            </form>
+                            <a th:href="@{/attendance/export(yearMonth=${yearMonth})}"
+                                class="btn btn-flat py-1.5 px-3 text-sm cursor-pointer whitespace-nowrap">
+                                CSVダウンロード
+                            </a>
+                            <div class="flex items-center gap-2">
+                                <span class="text-txt-secondary text-xs font-medium">提出ステータス:</span>
+                                <span class="badge badge-primary text-xs"
+                                    th:if="${monthSubmission == null}">未提出（編集可能）</span>
+                                <span class="badge badge-warning text-xs"
+                                    th:if="${monthSubmission != null and monthSubmission.status == submissionStatusPending}">申請中</span>
+                                <span class="badge badge-success text-xs"
+                                    th:if="${monthSubmission != null and monthSubmission.status == submissionStatusApproved}">承認済み</span>
+                                <span class="badge badge-danger text-xs"
+                                    th:if="${monthSubmission != null and monthSubmission.status == submissionStatusReturned}">差し戻し</span>
+                                <span class="badge badge-primary text-xs bg-slate-500 text-white"
+                                    th:if="${monthSubmission != null and monthSubmission.status == submissionStatusWithdrawn}">取り下げ済み</span>
+                            </div>
+                        </div>
+                        <!-- 右側: 提出・取り下げアクション -->
                         <div class="flex items-center gap-2">
-                            <span class="text-txt-secondary text-xs font-medium">提出ステータス:</span>
-                            <span class="badge badge-primary text-xs" th:if="${monthSubmission == null}">未提出（編集可能）</span>
-                            <span class="badge badge-warning text-xs" th:if="${monthSubmission != null and monthSubmission.status == submissionStatusPending}">申請中</span>
-                            <span class="badge badge-success text-xs" th:if="${monthSubmission != null and monthSubmission.status == submissionStatusApproved}">承認済み</span>
-                            <span class="badge badge-danger text-xs" th:if="${monthSubmission != null and monthSubmission.status == submissionStatusReturned}">差し戻し</span>
-                            <span class="badge badge-primary text-xs bg-slate-500 text-white" th:if="${monthSubmission != null and monthSubmission.status == submissionStatusWithdrawn}">取り下げ済み</span>
+                            <!-- 提出ボタン -->
+                            <form method="post" th:action="@{/attendance/submit-month}" th:if="${monthEditable}"
+                                class="mb-0">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <input type="hidden" name="yearMonth" th:value="${yearMonth}" />
+                                <button type="submit" class="btn btn-primary px-4 py-2 text-sm cursor-pointer gap-2"
+                                    onclick="return confirm('この月の勤怠を申請します。申請後は承認されるまで編集できません。よろしいですか？');">
+                                    <span
+                                        th:text="${monthSubmission != null and monthSubmission.status == submissionStatusReturned ? '修正内容を再申請' : '1ヶ月の勤怠提出'}">1ヶ月の勤怠提出</span>
+                                </button>
+                            </form>
+                            <!-- 取り下げボタン -->
+                            <form method="post" th:action="@{/attendance/withdraw-month}"
+                                th:if="${monthSubmission != null and monthSubmission.status == submissionStatusPending}"
+                                class="mb-0">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                                <input type="hidden" name="yearMonth" th:value="${yearMonth}" />
+                                <button type="submit" class="btn btn-flat px-4 py-2 text-sm cursor-pointer gap-2"
+                                    onclick="return confirm('申請を取り下げます。編集可能な状態に戻りますがよろしいですか？');">
+                                    申請を取り下げる
+                                </button>
+                            </form>
                         </div>
                     </div>
-                    <!-- 右側: 提出・取り下げアクション -->
-                    <div class="flex items-center gap-2">
-                        <!-- 提出ボタン -->
-                        <form method="post" th:action="@{/attendance/submit-month}" th:if="${monthEditable}" class="mb-0">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                            <input type="hidden" name="yearMonth" th:value="${yearMonth}" />
-                            <button type="submit" class="btn btn-primary px-4 py-2 text-sm cursor-pointer gap-2"
-                                    onclick="return confirm('この月の勤怠を申請します。申請後は承認されるまで編集できません。よろしいですか？');">
-                                <i class="fa-solid fa-check"></i>
-                                <span th:text="${monthSubmission != null and monthSubmission.status == submissionStatusReturned ? '修正内容を再申請' : '1ヶ月の勤怠提出'}">1ヶ月の勤怠提出</span>
-                            </button>
-                        </form>
-                        <!-- 取り下げボタン -->
-                        <form method="post" th:action="@{/attendance/withdraw-month}"
-                              th:if="${monthSubmission != null and monthSubmission.status == submissionStatusPending}" class="mb-0">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                            <input type="hidden" name="yearMonth" th:value="${yearMonth}" />
-                            <button type="submit" class="btn btn-flat px-4 py-2 text-sm cursor-pointer gap-2"
-                                    onclick="return confirm('申請を取り下げます。編集可能な状態に戻りますがよろしいですか？');">
-                                <i class="fa-solid fa-undo"></i> 申請を取り下げる
-                            </button>
-                        </form>
+                </div>
+
+                <!-- サマリーカード部 -->
+                <div class="grid grid-cols-2 md:grid-cols-5 md:gap-4 gap-2 md:mb-4 mb-3">
+                    <!-- 総実労働時間 -->
+                    <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
+                        <div class="text-txt-secondary text-xs font-medium mb-2">総実労働時間</div>
+                        <div class="text-xl font-bold font-mono text-txt-primary">
+                            <span th:text="${T(com.attendance.app.util.DateTimeUtil).formatHoursToHHmm(totalWorkingHours)}">0時間0分</span>
+                        </div>
+                    </div>
+                    <!-- 時間内残業累計 -->
+                    <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
+                        <div class="text-txt-secondary text-xs font-medium mb-2">時間内残業累計</div>
+                        <div class="text-xl font-bold font-mono text-txt-primary">
+                            <span th:text="${T(com.attendance.app.util.DateTimeUtil).formatHoursToHHmm(totalOvertimeHours)}">0時間0分</span>
+                        </div>
+                    </div>
+                    <!-- 深夜勤務累計 -->
+                    <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
+                        <div class="text-txt-secondary text-xs font-medium mb-2">深夜勤務累計</div>
+                        <div class="text-xl font-bold font-mono text-txt-primary">
+                            <span
+                                th:text="${records != null and !records.isEmpty() and #aggregates.sum(records.![nightShiftHours]) != null ? T(com.attendance.app.util.DateTimeUtil).formatHoursToHHmm(#aggregates.sum(records.![nightShiftHours])) : '0時間0分'}">0時間0分</span>
+                        </div>
+                    </div>
+                    <!-- 出勤日数累計 -->
+                    <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
+                        <div class="text-txt-secondary text-xs font-medium mb-2">出勤日数累計</div>
+                        <div class="text-xl font-bold font-mono text-txt-primary">
+                            <span th:text="${records != null ? records.?[startTime != null].size() : 0}">0</span> <span
+                                class="text-xs font-normal text-txt-secondary">日</span>
+                        </div>
+                    </div>
+                    <!-- うち休日出勤 -->
+                    <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
+                        <div class="text-txt-secondary text-xs font-medium mb-2">うち休日出勤</div>
+                        <div class="text-xl font-bold font-mono text-txt-primary">
+                            <span
+                                th:text="${records != null ? records.?[holidayWorkHours != null and holidayWorkHours > 0].size() : 0}">0</span>
+                            <span class="text-xs font-normal text-txt-secondary">日</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- サマリーカード部 -->
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-                <!-- 総実労働時間 -->
-                <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
-                    <div class="text-txt-secondary text-xs font-medium mb-2">総実労働時間</div>
-                    <div class="text-xl font-bold font-mono text-txt-primary">
-                        <span th:text="${#numbers.formatDecimal(totalWorkingHours, 1, 1)}">0.0</span> <span class="text-xs font-normal text-txt-secondary">h</span>
-                    </div>
+                <!-- 注意メッセージバナー -->
+                <div class="alert alert-primary mb-4 justify-start gap-2" role="alert" th:if="${monthEditable}">
+                    <strong>注意:</strong> 開始時刻・終了時刻を入力し、保存ボタンを押してください。
                 </div>
-                <!-- 時間内残業累計 -->
-                <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
-                    <div class="text-txt-secondary text-xs font-medium mb-2">時間内残業累計</div>
-                    <div class="text-xl font-bold font-mono text-txt-primary">
-                        <span th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 1)}">0.0</span> <span class="text-xs font-normal text-txt-secondary">h</span>
-                    </div>
+                <div class="alert alert-warning mb-4 justify-start gap-2" role="alert"
+                    th:if="${monthSubmission != null and monthSubmission.status == submissionStatusPending}">
+                    この月は申請中のため編集できません。
                 </div>
-                <!-- 深夜勤務累計 -->
-                <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
-                    <div class="text-txt-secondary text-xs font-medium mb-2">深夜勤務累計</div>
-                    <div class="text-xl font-bold font-mono text-txt-primary">
-                        <span th:text="${records != null and !records.isEmpty() and #aggregates.sum(records.![nightShiftHours]) != null ? #numbers.formatDecimal(#aggregates.sum(records.![nightShiftHours]), 1, 1) : '0.0'}">0.0</span> <span class="text-xs font-normal text-txt-secondary">h</span>
-                    </div>
+                <div class="alert alert-success mb-4 justify-start gap-2" role="alert"
+                    th:if="${monthSubmission != null and monthSubmission.status == submissionStatusApproved}">
+                    この月は承認済みです。編集はできません。
                 </div>
-                <!-- 出勤日数累計 -->
-                <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
-                    <div class="text-txt-secondary text-xs font-medium mb-2">出勤日数累計</div>
-                    <div class="text-xl font-bold font-mono text-txt-primary">
-                        <span th:text="${records != null ? records.?[startTime != null].size() : 0}">0</span> <span class="text-xs font-normal text-txt-secondary">日</span>
-                    </div>
+                <div class="alert alert-danger mb-4 justify-start gap-2" role="alert"
+                    th:if="${monthSubmission != null and monthSubmission.status == submissionStatusReturned}">
+                    この月は差し戻しされています。修正後に再申請してください。
+                    <span th:if="${monthSubmission.actionComment != null}"
+                        th:text="' 理由: ' + ${monthSubmission.actionComment}"></span>
                 </div>
-                <!-- うち休日出勤 -->
-                <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
-                    <div class="text-txt-secondary text-xs font-medium mb-2">うち休日出勤</div>
-                    <div class="text-xl font-bold font-mono text-txt-primary">
-                        <span th:text="${records != null ? records.?[holidayWorkHours != null and holidayWorkHours > 0].size() : 0}">0</span> <span class="text-xs font-normal text-txt-secondary">日</span>
-                    </div>
+
+                <!-- 36協定警告バナー -->
+                <div class="alert alert-danger mb-4 justify-start gap-2" role="alert"
+                    th:if="${article36Status != null and article36Status == 'ALERT'}">
+                    <strong>【36協定 超過】</strong>
+                    今月の残業時間が法定上限（<span th:text="${article36MonthlyLimit}"></span>時間）を超えています。
+                    現在の残業時間: <strong th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 2)} + ' 時間'"></strong>
                 </div>
-            </div>
+                <div class="alert alert-warning mb-4 justify-start gap-2" role="alert"
+                    th:if="${article36Status != null and article36Status == 'WARNING'}">
+                    <strong>【36協定 注意】</strong>
+                    今月の残業時間が注意ライン（<span th:text="${article36MonthlyWarning}"></span>時間）を超えています。
+                    現在の残業時間: <strong th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 2)} + ' 時間'"></strong>
+                </div>
 
-            <!-- 注意メッセージバナー -->
-            <div class="alert alert-primary mb-4" role="alert" th:if="${monthEditable}">
-                <i class="fas fa-info-circle"></i>
-                <strong>注意:</strong> 開始時刻・終了時刻を入力し、保存ボタンをクリックしてください。
-            </div>
-            <div class="alert alert-warning mb-4 p-3" role="alert" th:if="${monthEditable}">
-                <i class="fas fa-pen"></i>
-                変更した行は黄色でハイライトされます。
-            </div>
+                <!-- 勤怠テーブル -->
+                <div class="card-sm mb-8">
+                    <form method="post" th:action="@{/attendance/saveAll}" onsubmit="return validateBulkSave(this)">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <input type="hidden" name="userId" th:value="${userId}" />
+                        <input type="hidden" name="yearMonth" th:value="${yearMonth}" />
+                        <div class="table-container">
+                            <table
+                                class="table-custom table-custom-compact mb-0 text-[0.75rem] md:text-sm table-fixed w-full">
+                                <thead>
+                                    <tr>
+                                        <th class="w-[18%] md:w-[14%] text-center">
+                                            日付
+                                        </th>
+                                        <th class="w-[23%] md:w-[15%] text-center pl-[1em]">
+                                            開始時刻
+                                        </th>
+                                        <th class="w-[23%] md:w-[15%] text-center">
+                                            終了時刻
+                                        </th>
+                                        <th class="w-[24%] md:w-[18%] text-center">
+                                            事由
+                                        </th>
+                                        <th class="w-[12%] md:w-[38%] text-center">
+                                            備考
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="date : ${monthDates}"
+                                        th:with="dateKey=${date.toString()}, leaveApp=${leaveMap != null ? leaveMap.get(date) : null}"
+                                        th:classappend="${(holidays != null and holidays.contains(date)) or date.dayOfWeek.value == 7 ? 'table-danger' : (date.dayOfWeek.value == 6 ? 'table-primary' : '')}">
+                                        <td class="font-mono text-[11px] md:text-[13px] text-center"
+                                            th:classappend="${(holidays != null and holidays.contains(date)) or date.dayOfWeek.value == 7 ? 'text-danger' : (date.dayOfWeek.value == 6 ? 'text-primary' : '')}"
+                                            th:text="${#temporals.format(date, 'MM/dd(E)')}"></td>
+                                        <td class="text-center pl-[1em]">
+                                            <input type="hidden" name="attendanceDate" th:value="${date}">
 
-            <div class="alert alert-warning mb-4" role="alert" th:if="${monthSubmission != null and monthSubmission.status == submissionStatusPending}">
-                <i class="fas fa-hourglass-half"></i>
-                この月は申請中のため編集できません。
-            </div>
-            <div class="alert alert-success mb-4" role="alert" th:if="${monthSubmission != null and monthSubmission.status == submissionStatusApproved}">
-                <i class="fas fa-check-circle"></i>
-                この月は承認済みです。編集はできません。
-            </div>
-            <div class="alert alert-danger mb-4" role="alert" th:if="${monthSubmission != null and monthSubmission.status == submissionStatusReturned}">
-                <i class="fas fa-undo-alt"></i>
-                この月は差し戻しされています。修正後に再申請してください。
-                <span th:if="${monthSubmission.actionComment != null}" th:text="' 理由: ' + ${monthSubmission.actionComment}"></span>
-            </div>
-
-            <!-- 36協定警告バナー -->
-            <div class="alert alert-danger mb-4" role="alert"
-                 th:if="${article36Status != null and article36Status == 'ALERT'}">
-                 <i class="fas fa-exclamation-triangle"></i>
-                <strong>【36協定 超過】</strong>
-                今月の残業時間が法定上限（<span th:text="${article36MonthlyLimit}"></span>時間）を超えています。
-                現在の残業時間: <strong th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 2)} + ' 時間'"></strong>
-            </div>
-            <div class="alert alert-warning mb-4" role="alert"
-                 th:if="${article36Status != null and article36Status == 'WARNING'}">
-                <i class="fas fa-exclamation-circle"></i>
-                <strong>【36協定 注意】</strong>
-                今月の残業時間が注意ライン（<span th:text="${article36MonthlyWarning}"></span>時間）を超えています。
-                現在の残業時間: <strong th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 2)} + ' 時間'"></strong>
-            </div>
-
-            <!-- 勤怠テーブル -->
-            <div class="card-sm mb-8">
-                <form method="post" th:action="@{/attendance/saveAll}" onsubmit="return validateBulkSave(this)">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                    <input type="hidden" name="userId" th:value="${userId}" />
-                    <input type="hidden" name="yearMonth" th:value="${yearMonth}" />
-                    <div class="table-container">
-                        <table class="table-custom mb-0">
-                            <thead>
-                                <tr>
-                                    <th class="w-[18%]">
-                                        <i class="fas fa-calendar"></i> 日付 / 曜日
-                                    </th>
-                                    <th class="w-[15%]">
-                                        開始時刻
-                                    </th>
-                                    <th class="w-[15%]">
-                                        終了時刻
-                                    </th>
-                                    <th class="w-[17%]">
-                                        事由
-                                    </th>
-                                    <th class="w-[35%]">
-                                        <i class="fas fa-comment"></i> 備考
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr th:each="date : ${monthDates}"
-                                    th:with="dateKey=${date.toString()}, leaveApp=${leaveMap != null ? leaveMap.get(date) : null}"
-                                    th:classappend="${holidays.contains(date) or date.dayOfWeek.value == 7 ? 'table-danger' : (date.dayOfWeek.value == 6 ? 'table-primary' : '')}">
-                                    <td class="font-mono" th:text="${#temporals.format(date, 'MM-dd (E)')}"></td>
-                                    <td>
-                                        <input type="hidden" name="attendanceDate" th:value="${date}">
-
-                                        <input type="time" name="startTime" class="form-input max-w-[120px] p-2 font-mono"
-                                               th:value="${startTimeMap != null ? startTimeMap[date.toString()] : ''}"
-                                               th:disabled="${(leaveApp != null) or !monthEditable}">
-                                    </td>
-                                    <td>
-                                        <input type="time" name="endTime" class="form-input max-w-[120px] p-2 font-mono"
-                                               th:value="${endTimeMap != null ? endTimeMap[date.toString()] : ''}"
-                                               th:disabled="${(leaveApp != null) or !monthEditable}">
-                                    </td>
-                                    <td>
-                                        <select name="eventTypeId" class="form-select max-w-[120px] p-2" th:disabled="${(leaveApp != null) or !monthEditable}">
-                                            <option th:each="et : ${eventTypes}"
-                                                    th:value="${et.eventTypeId}"
+                                            <input type="time" name="startTime"
+                                                class="form-input w-[6.2em] mx-auto md:p-1 p-0.5 font-mono text-center text-xs md:text-sm"
+                                                th:value="${startTimeMap != null ? startTimeMap[date.toString()] : ''}"
+                                                th:disabled="${(leaveApp != null) or !monthEditable}">
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="time" name="endTime"
+                                                class="form-input w-[6.2em] mx-auto md:p-1 p-0.5 font-mono text-center text-xs md:text-sm"
+                                                th:value="${endTimeMap != null ? endTimeMap[date.toString()] : ''}"
+                                                th:disabled="${(leaveApp != null) or !monthEditable}">
+                                        </td>
+                                        <td class="text-center">
+                                            <select name="eventTypeId"
+                                                class="form-select w-[6.2em] mx-auto md:p-1 p-0.5 text-xs md:text-sm text-center"
+                                                th:disabled="${(leaveApp != null) or !monthEditable}">
+                                                <option th:each="et : ${eventTypes}" th:value="${et.eventTypeId}"
                                                     th:text="${et.displayName}"
                                                     th:selected="${eventTypeIdMap != null and eventTypeIdMap[date.toString()] != null ? eventTypeIdMap[date.toString()] == et.eventTypeId : et.code == '通常'}">
-                                            </option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <div th:if="${leaveApp != null}">
-                                            <span class="font-semibold"
-                                                th:class="${'font-semibold ' + (leaveApp.leaveType.name() == 'SPECIAL_LEAVE' ? 'text-info-emphasis' : (leaveApp.leaveType.name() == 'UNPAID_LEAVE' ? 'text-slate-500' : (leaveApp.leaveType.name() == 'ABSENCE' ? 'text-danger' : 'text-success')))}"
-                                                   th:text="${leaveApp.leaveType.displayName}"></span>
-                                            <span th:if="${leaveApp.reason != null and !#strings.isEmpty(leaveApp.reason)}"
-                                                  class="ml-1 text-xs text-txt-secondary" th:text="${leaveApp.reason}"></span>
-                                        </div>
-                                        <div th:unless="${leaveApp != null}">
-                                            <input type="text" name="remarks" class="form-input p-2" 
-                                                th:disabled="${!monthEditable}" th:value="${remarksMap != null ? remarksMap[date.toString()] : ''}" placeholder="例) 会議参加">
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                                </option>
+                                            </select>
+                                        </td>
+                                        <td class="text-center">
+                                            <div th:if="${leaveApp != null}">
+                                                <span class="font-semibold"
+                                                    th:class="${'font-semibold ' + (leaveApp.leaveType.name() == 'SPECIAL_LEAVE' ? 'text-info-emphasis' : (leaveApp.leaveType.name() == 'UNPAID_LEAVE' ? 'text-slate-500' : (leaveApp.leaveType.name() == 'ABSENCE' ? 'text-danger' : 'text-success')))}"
+                                                    th:text="${leaveApp.leaveType.displayName}"></span>
+                                                <span
+                                                    th:if="${leaveApp.reason != null and !#strings.isEmpty(leaveApp.reason)}"
+                                                    class="ml-1 text-xs text-txt-secondary text-center"
+                                                    th:text="${leaveApp.reason}"></span>
+                                            </div>
+                                            <div th:unless="${leaveApp != null}">
+                                                <input type="text" name="remarks"
+                                                    class="form-input w-full md:p-1 p-0.5 text-xs md:text-sm hidden md:block text-center"
+                                                    th:disabled="${!monthEditable}"
+                                                    th:value="${remarksMap != null ? remarksMap[date.toString()] : ''}"
+                                                    placeholder="例) 会議参加">
+                                                <div class="block md:hidden flex flex-col gap-1 items-center">
+                                                    <span
+                                                        class="remarks-preview text-[10px] text-txt-secondary break-all"
+                                                        th:text="${remarksMap != null ? remarksMap[date.toString()] : ''}"></span>
+                                                    <button type="button"
+                                                        class="btn-edit-remarks text-primary text-[10px] font-semibold underline cursor-pointer"
+                                                        th:if="${monthEditable}"
+                                                        th:data-date="${#temporals.format(date, 'MM/dd(E)')}"
+                                                        onclick="openRemarksModal(this)">
+                                                        備考
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-4 flex justify-end" th:if="${monthEditable}">
+                            <button type="submit" class="btn btn-primary px-6 py-2.5 text-sm cursor-pointer gap-2">
+                                当月分を保存
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 備考入力モーダル -->
+                <div id="remarksModal"
+                    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[2000] hidden items-center justify-center p-4">
+                    <div
+                        class="bg-white border border-glass-heavy-border shadow-glass-heavy rounded-2xl max-w-md w-full p-6 animate-fade-in">
+                        <h3 class="text-base font-bold text-txt-primary mb-4" id="remarksModalTitle">備考の入力</h3>
+                        <div class="mb-4">
+                            <textarea id="remarksModalTextarea" rows="4" class="form-textarea w-full p-3 text-sm"
+                                placeholder="備考を入力してください（例: 会議参加）"></textarea>
+                        </div>
+                        <div class="flex justify-end gap-3">
+                            <button type="button" class="btn btn-flat px-4 py-2 text-xs cursor-pointer"
+                                onclick="closeRemarksModal()">キャンセル</button>
+                            <button type="button" class="btn btn-primary px-4 py-2 text-xs cursor-pointer"
+                                onclick="saveRemarksModal()">確定</button>
+                        </div>
                     </div>
-                    
-                    <div class="mt-4 flex justify-end" th:if="${monthEditable}">
-                        <button type="submit" class="btn btn-primary px-6 py-2.5 text-sm cursor-pointer gap-2">
-                            <i class="fas fa-save"></i> 当月分を保存
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Client-side bulk validation before submitting the month save -->
-    <script>
-        function parseTimeToMinutes(timeStr) {
-            if (!timeStr) return null;
-            var parts = timeStr.split(':');
-            if (parts.length !== 2) return null;
-            var h = Number(parts[0]);
-            var m = Number(parts[1]);
-            if (isNaN(h) || isNaN(m)) return null;
-            return h * 60 + m;
-        }
+        <!-- Client-side bulk validation before submitting the month save -->
+        <script>
+            // --- 備考入力モーダル制御 ---
+            let currentRemarksInput = null;
+            let currentPreviewSpan = null;
 
-        function validateBulkSave(form) {
-            var rows = form.querySelectorAll('tbody tr');
-            var errors = [];
-            var overnightCount = 0;
-            for (var i = 0; i < rows.length; i++) {
-                var row = rows[i];
-                var dateInput = row.querySelector('input[name="attendanceDate"]');
-                if (!dateInput) continue;
-                var date = dateInput.value || ('行' + (i + 1));
+            function openRemarksModal(btn) {
+                var row = btn.closest('tr');
+                currentRemarksInput = row.querySelector('input[name="remarks"]');
+                currentPreviewSpan = row.querySelector('.remarks-preview');
 
-                var startSelect = row.querySelector('input[name="startTime"]');
-                var endSelect = row.querySelector('input[name="endTime"]');
+                var dateStr = btn.getAttribute('data-date');
+                document.getElementById('remarksModalTitle').textContent = dateStr + ' の備考入力';
+                document.getElementById('remarksModalTextarea').value = currentRemarksInput ? currentRemarksInput.value : '';
 
-                // Skip rows disabled due to leave
-                if ((startSelect && startSelect.disabled) || (endSelect && endSelect.disabled)) continue;
+                var modal = document.getElementById('remarksModal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
 
-                var start = startSelect ? startSelect.value : '';
-                var end = endSelect ? endSelect.value : '';
+            function closeRemarksModal() {
+                var modal = document.getElementById('remarksModal');
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+                currentRemarksInput = null;
+                currentPreviewSpan = null;
+            }
 
-                if (!start && !end) continue; // empty row allowed
+            function saveRemarksModal() {
+                if (currentRemarksInput) {
+                    var val = document.getElementById('remarksModalTextarea').value.trim();
+                    currentRemarksInput.value = val;
 
-                var timeRegex = /^\d{2}:\d{2}$/;
-                if (start && !timeRegex.test(start)) {
-                    errors.push(date + ': 開始時刻の形式が不正です');
-                    continue;
+                    if (currentPreviewSpan) {
+                        currentPreviewSpan.textContent = val;
+                    }
+
+                    var event = new Event('input', { bubbles: true });
+                    currentRemarksInput.dispatchEvent(event);
                 }
-                if (end && !timeRegex.test(end)) {
-                    errors.push(date + ': 終了時刻の形式が不正です');
-                    continue;
-                }
+                closeRemarksModal();
+            }
 
-                if (start && end) {
-                    var s = parseTimeToMinutes(start);
-                    var e = parseTimeToMinutes(end);
-                    if (s == null || e == null) {
-                        errors.push(date + ': 時刻の解析に失敗しました');
+            function parseTimeToMinutes(timeStr) {
+                if (!timeStr) return null;
+                var parts = timeStr.split(':');
+                if (parts.length !== 2) return null;
+                var h = Number(parts[0]);
+                var m = Number(parts[1]);
+                if (isNaN(h) || isNaN(m)) return null;
+                return h * 60 + m;
+            }
+
+            function validateBulkSave(form) {
+                var rows = form.querySelectorAll('tbody tr');
+                var errors = [];
+                var overnightCount = 0;
+                for (var i = 0; i < rows.length; i++) {
+                    var row = rows[i];
+                    var dateInput = row.querySelector('input[name="attendanceDate"]');
+                    if (!dateInput) continue;
+                    var date = dateInput.value || ('行' + (i + 1));
+
+                    var startSelect = row.querySelector('input[name="startTime"]');
+                    var endSelect = row.querySelector('input[name="endTime"]');
+
+                    // Skip rows disabled due to leave
+                    if ((startSelect && startSelect.disabled) || (endSelect && endSelect.disabled)) continue;
+
+                    var start = startSelect ? startSelect.value : '';
+                    var end = endSelect ? endSelect.value : '';
+
+                    if (!start && !end) continue; // empty row allowed
+
+                    var timeRegex = /^\d{2}:\d{2}$/;
+                    if (start && !timeRegex.test(start)) {
+                        errors.push(date + ': 開始時刻の形式が不正です');
                         continue;
                     }
-                    if (e < s) {
-                        overnightCount++;
+                    if (end && !timeRegex.test(end)) {
+                        errors.push(date + ': 終了時刻の形式が不正です');
+                        continue;
+                    }
+
+                    if (start && end) {
+                        var s = parseTimeToMinutes(start);
+                        var e = parseTimeToMinutes(end);
+                        if (s == null || e == null) {
+                            errors.push(date + ': 時刻の解析に失敗しました');
+                            continue;
+                        }
+                        if (e < s) {
+                            overnightCount++;
+                        }
                     }
                 }
+
+                if (errors.length > 0) {
+                    alert('保存前に以下を修正してください:\n' + errors.join('\n'));
+                    return false;
+                }
+
+                if (overnightCount > 0) {
+                    return confirm('終了時刻が開始時刻より前の行が ' + overnightCount + ' 件あります。翌日扱いで保存しますか？');
+                }
+
+                return true;
             }
 
-            if (errors.length > 0) {
-                alert('保存前に以下を修正してください:\n' + errors.join('\n'));
-                return false;
+            function normalizeInputValue(value) {
+                return (value || '').trim();
             }
 
-            if (overnightCount > 0) {
-                return confirm('終了時刻が開始時刻より前の行が ' + overnightCount + ' 件あります。翌日扱いで保存しますか？');
-            }
+            function submitPaidLeave(btn) {
+                var row = btn.closest('tr');
+                var date = btn.dataset.date;
+                var yearMonth = btn.dataset.yearmonth;
+                var remarksInput = row ? row.querySelector('input[name="remarks"]') : null;
+                var remarks = remarksInput ? remarksInput.value.trim() : '';
 
-            return true;
-        }
-
-        function normalizeInputValue(value) {
-            return (value || '').trim();
-        }
-
-        function submitPaidLeave(btn) {
-            var row = btn.closest('tr');
-            var date = btn.dataset.date;
-            var yearMonth = btn.dataset.yearmonth;
-            var remarksInput = row ? row.querySelector('input[name="remarks"]') : null;
-            var remarks = remarksInput ? remarksInput.value.trim() : '';
-
-            // CSRFトークンを取得
-            var csrfInput = document.querySelector('input[name="_csrf"]');
-            if (!csrfInput) {
-                alert('セキュリティトークンが見つかりません。ページを再読み込みしてください。');
-                return;
-            }
-
-            var form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/leave/applyPaid';
-            form.style.display = 'none';
-
-            function addInput(name, value) {
-                var input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = name;
-                input.value = value;
-                form.appendChild(input);
-            }
-
-            addInput(csrfInput.name, csrfInput.value);
-            addInput('date', date);
-            addInput('yearMonth', yearMonth);
-            if (remarks) {
-                addInput('remarks', remarks);
-            }
-
-            document.body.appendChild(form);
-            form.submit();
-        }
-
-        function submitLeave(btn, leaveType) {
-            var row = btn.closest('tr');
-            var date = btn.dataset.date;
-            var yearMonth = btn.dataset.yearmonth;
-            var remarksInput = row ? row.querySelector('input[name="remarks"]') : null;
-            var remarks = remarksInput ? remarksInput.value.trim() : '';
-
-            var csrfInput = document.querySelector('input[name="_csrf"]');
-            if (!csrfInput) {
-                alert('セキュリティトークンが見つかりません。ページを再読み込みしてください。');
-                return;
-            }
-
-            var form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/leave/apply';
-            form.style.display = 'none';
-
-            function addInput2(name, value) {
-                var input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = name;
-                input.value = value;
-                form.appendChild(input);
-            }
-
-            addInput2(csrfInput.name, csrfInput.value);
-            addInput2('date', date);
-            addInput2('leaveType', leaveType);
-            addInput2('yearMonth', yearMonth);
-            if (remarks) {
-                addInput2('remarks', remarks);
-            }
-
-            document.body.appendChild(form);
-            form.submit();
-        }
-
-        function toggleTelework(btn) {
-            var row = btn.closest('tr');
-            var remarksInput = row ? row.querySelector('input[name="remarks"]') : null;
-            if (!remarksInput) return;
-
-            if (remarksInput.value.trim() === 'テレワーク') {
-                remarksInput.value = '';
-                btn.classList.remove('btn-secondary');
-                btn.classList.add('btn-outline-secondary');
-            } else {
-                remarksInput.value = 'テレワーク';
-                btn.classList.remove('btn-outline-secondary');
-                btn.classList.add('btn-secondary');
-            }
-
-            // 変更行ハイライトを更新
-            var event = new Event('input', { bubbles: true });
-            remarksInput.dispatchEvent(event);
-        }
-
-        function updateTeleworkBtn(row, remarks) {
-            var teleworkBtn = row.querySelector('.telework-btn');
-            if (!teleworkBtn) return;
-            if (remarks === 'テレワーク') {
-                teleworkBtn.classList.remove('btn-outline-secondary');
-                teleworkBtn.classList.add('btn-secondary');
-            } else {
-                teleworkBtn.classList.remove('btn-secondary');
-                teleworkBtn.classList.add('btn-outline-secondary');
-            }
-        }
-
-        function initializeChangedRowHighlight() {
-            var rows = document.querySelectorAll('form[action="/attendance/saveAll"] tbody tr');
-
-            rows.forEach(function (row) {
-                var startSelect = row.querySelector('input[name="startTime"]');
-                var endSelect = row.querySelector('input[name="endTime"]');
-                var remarksInput = row.querySelector('input[name="remarks"]');
-                var eventTypeSelect = row.querySelector('select[name="eventTypeId"]');
-
-                if (!startSelect && !endSelect && !remarksInput && !eventTypeSelect) {
+                // CSRFトークンを取得
+                var csrfInput = document.querySelector('input[name="_csrf"]');
+                if (!csrfInput) {
+                    alert('セキュリティトークンが見つかりません。ページを再読み込みしてください。');
                     return;
                 }
 
-                row.dataset.initialStartTime = normalizeInputValue(startSelect ? startSelect.value : '');
-                row.dataset.initialEndTime = normalizeInputValue(endSelect ? endSelect.value : '');
-                row.dataset.initialRemarks = normalizeInputValue(remarksInput ? remarksInput.value : '');
-                row.dataset.initialEventTypeId = normalizeInputValue(eventTypeSelect ? eventTypeSelect.value : '');
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/leave/applyPaid';
+                form.style.display = 'none';
 
-                var updateRowState = function () {
-                    var currentStart = normalizeInputValue(startSelect ? startSelect.value : '');
-                    var currentEnd = normalizeInputValue(endSelect ? endSelect.value : '');
-                    var currentRemarks = normalizeInputValue(remarksInput ? remarksInput.value : '');
-                    var currentEventTypeId = normalizeInputValue(eventTypeSelect ? eventTypeSelect.value : '');
-
-                    var changed = currentStart !== row.dataset.initialStartTime
-                        || currentEnd !== row.dataset.initialEndTime
-                        || currentRemarks !== row.dataset.initialRemarks
-                        || currentEventTypeId !== row.dataset.initialEventTypeId;
-
-                    row.classList.toggle('row-modified', changed);
-                };
-
-                if (startSelect && !startSelect.disabled) {
-                    startSelect.addEventListener('change', updateRowState);
+                function addInput(name, value) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = name;
+                    input.value = value;
+                    form.appendChild(input);
                 }
-                if (endSelect && !endSelect.disabled) {
-                    endSelect.addEventListener('change', updateRowState);
+
+                addInput(csrfInput.name, csrfInput.value);
+                addInput('date', date);
+                addInput('yearMonth', yearMonth);
+                if (remarks) {
+                    addInput('remarks', remarks);
                 }
-                if (eventTypeSelect && !eventTypeSelect.disabled) {
-                    eventTypeSelect.addEventListener('change', updateRowState);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+
+            function submitLeave(btn, leaveType) {
+                var row = btn.closest('tr');
+                var date = btn.dataset.date;
+                var yearMonth = btn.dataset.yearmonth;
+                var remarksInput = row ? row.querySelector('input[name="remarks"]') : null;
+                var remarks = remarksInput ? remarksInput.value.trim() : '';
+
+                var csrfInput = document.querySelector('input[name="_csrf"]');
+                if (!csrfInput) {
+                    alert('セキュリティトークンが見つかりません。ページを再読み込みしてください。');
+                    return;
                 }
-                if (remarksInput && !remarksInput.disabled) {
-                    remarksInput.addEventListener('input', function () {
-                        updateTeleworkBtn(row, remarksInput.value.trim());
-                        updateRowState();
+
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/leave/apply';
+                form.style.display = 'none';
+
+                function addInput2(name, value) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = name;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+
+                addInput2(csrfInput.name, csrfInput.value);
+                addInput2('date', date);
+                addInput2('leaveType', leaveType);
+                addInput2('yearMonth', yearMonth);
+                if (remarks) {
+                    addInput2('remarks', remarks);
+                }
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+
+            function toggleTelework(btn) {
+                var row = btn.closest('tr');
+                var remarksInput = row ? row.querySelector('input[name="remarks"]') : null;
+                if (!remarksInput) return;
+
+                if (remarksInput.value.trim() === 'テレワーク') {
+                    remarksInput.value = '';
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn-outline-secondary');
+                } else {
+                    remarksInput.value = 'テレワーク';
+                    btn.classList.remove('btn-outline-secondary');
+                    btn.classList.add('btn-secondary');
+                }
+
+                // 変更行ハイライトを更新
+                var event = new Event('input', { bubbles: true });
+                remarksInput.dispatchEvent(event);
+            }
+
+            function updateTeleworkBtn(row, remarks) {
+                var teleworkBtn = row.querySelector('.telework-btn');
+                if (!teleworkBtn) return;
+                if (remarks === 'テレワーク') {
+                    teleworkBtn.classList.remove('btn-outline-secondary');
+                    teleworkBtn.classList.add('btn-secondary');
+                } else {
+                    teleworkBtn.classList.remove('btn-secondary');
+                    teleworkBtn.classList.add('btn-outline-secondary');
+                }
+            }
+
+            function initializeChangedRowHighlight() {
+                var rows = document.querySelectorAll('form[action="/attendance/saveAll"] tbody tr');
+
+                rows.forEach(function (row) {
+                    var startSelect = row.querySelector('input[name="startTime"]');
+                    var endSelect = row.querySelector('input[name="endTime"]');
+                    var remarksInput = row.querySelector('input[name="remarks"]');
+                    var eventTypeSelect = row.querySelector('select[name="eventTypeId"]');
+
+                    if (!startSelect && !endSelect && !remarksInput && !eventTypeSelect) {
+                        return;
+                    }
+
+                    row.dataset.initialStartTime = normalizeInputValue(startSelect ? startSelect.value : '');
+                    row.dataset.initialEndTime = normalizeInputValue(endSelect ? endSelect.value : '');
+                    row.dataset.initialRemarks = normalizeInputValue(remarksInput ? remarksInput.value : '');
+                    row.dataset.initialEventTypeId = normalizeInputValue(eventTypeSelect ? eventTypeSelect.value : '');
+
+                    var updateRowState = function () {
+                        var currentStart = normalizeInputValue(startSelect ? startSelect.value : '');
+                        var currentEnd = normalizeInputValue(endSelect ? endSelect.value : '');
+                        var currentRemarks = normalizeInputValue(remarksInput ? remarksInput.value : '');
+                        var currentEventTypeId = normalizeInputValue(eventTypeSelect ? eventTypeSelect.value : '');
+
+                        var changed = currentStart !== row.dataset.initialStartTime
+                            || currentEnd !== row.dataset.initialEndTime
+                            || currentRemarks !== row.dataset.initialRemarks
+                            || currentEventTypeId !== row.dataset.initialEventTypeId;
+
+                        row.classList.toggle('row-modified', changed);
+                    };
+
+                    if (startSelect && !startSelect.disabled) {
+                        startSelect.addEventListener('change', updateRowState);
+                    }
+                    if (endSelect && !endSelect.disabled) {
+                        endSelect.addEventListener('change', updateRowState);
+                    }
+                    if (eventTypeSelect && !eventTypeSelect.disabled) {
+                        eventTypeSelect.addEventListener('change', updateRowState);
+                    }
+                    if (remarksInput && !remarksInput.disabled) {
+                        remarksInput.addEventListener('input', function () {
+                            updateTeleworkBtn(row, remarksInput.value.trim());
+                            updateRowState();
+                        });
+                        remarksInput.addEventListener('change', updateRowState);
+                    }
+
+                    updateRowState();
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                // 土曜休出トグルボタン
+                document.querySelectorAll('.saturday-work-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var row = btn.closest('tr');
+                        var cb = row.querySelector('.saturday-work-cb');
+                        if (!cb) return;
+                        cb.checked = !cb.checked;
+                        if (cb.checked) {
+                            btn.classList.remove('btn-outline-warning');
+                            btn.classList.add('btn-warning');
+                        } else {
+                            btn.classList.remove('btn-warning');
+                            btn.classList.add('btn-outline-warning');
+                        }
+                        row.classList.add('row-modified');
                     });
-                    remarksInput.addEventListener('change', updateRowState);
-                }
-
-                updateRowState();
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            // 土曜休出トグルボタン
-            document.querySelectorAll('.saturday-work-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    var row = btn.closest('tr');
-                    var cb = row.querySelector('.saturday-work-cb');
-                    if (!cb) return;
-                    cb.checked = !cb.checked;
-                    if (cb.checked) {
-                        btn.classList.remove('btn-outline-warning');
-                        btn.classList.add('btn-warning');
-                    } else {
-                        btn.classList.remove('btn-warning');
-                        btn.classList.add('btn-outline-warning');
-                    }
-                    row.classList.add('row-modified');
                 });
-            });
 
-            // 日祝休出トグルボタン
-            document.querySelectorAll('.holiday-work-btn').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    var row = btn.closest('tr');
-                    var cb = row.querySelector('.holiday-work-cb');
-                    if (!cb) return;
-                    cb.checked = !cb.checked;
-                    if (cb.checked) {
-                        btn.classList.remove('btn-outline-warning');
-                        btn.classList.add('btn-warning');
-                    } else {
-                        btn.classList.remove('btn-warning');
-                        btn.classList.add('btn-outline-warning');
-                    }
-                    // 休出トグルは変更行とみなす
-                    row.classList.add('row-modified');
+                // 日祝休出トグルボタン
+                document.querySelectorAll('.holiday-work-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var row = btn.closest('tr');
+                        var cb = row.querySelector('.holiday-work-cb');
+                        if (!cb) return;
+                        cb.checked = !cb.checked;
+                        if (cb.checked) {
+                            btn.classList.remove('btn-outline-warning');
+                            btn.classList.add('btn-warning');
+                        } else {
+                            btn.classList.remove('btn-warning');
+                            btn.classList.add('btn-outline-warning');
+                        }
+                        // 休出トグルは変更行とみなす
+                        row.classList.add('row-modified');
+                    });
                 });
-            });
 
-            initializeChangedRowHighlight();
-        });
-    </script>
+                initializeChangedRowHighlight();
+            });
+        </script>
     </div>
 </body>
+
 </html>

@@ -15,12 +15,36 @@
                     <label class="form-label">Message</label>
                     <textarea name="message" class="form-textarea" rows="4" placeholder="Type your message here..." required></textarea>
                 </div>
+                <div class="space-y-3">
+                    <label class="form-label">Target Type</label>
+                    <div class="flex items-center gap-6">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="radio" name="targetType" value="all" checked onclick="toggleTargetFields()" class="form-radio text-primary">
+                            <span class="ml-2 text-sm text-txt-primary">All Employees</span>
+                        </label>
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="radio" name="targetType" value="user" onclick="toggleTargetFields()" class="form-radio text-primary">
+                            <span class="ml-2 text-sm text-txt-primary">Specific Employee</span>
+                        </label>
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="radio" name="targetType" value="class" onclick="toggleTargetFields()" class="form-radio text-primary">
+                            <span class="ml-2 text-sm text-txt-primary">Work Schedule Class</span>
+                        </label>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="form-label">Target Audience (Leave empty for All)</label>
-                        <select name="userId" class="form-select">
-                            <option value="">All Employees</option>
+                    <div id="userTargetWrapper" class="hidden">
+                        <label class="form-label">Employee</label>
+                        <select id="userIdSelect" name="userId" class="form-select">
+                            <option value="">Select an employee...</option>
                             <option th:each="user : ${activeUsers}" th:value="${user.userId}" th:text="${user.fullName}"></option>
+                        </select>
+                    </div>
+                    <div id="classTargetWrapper" class="hidden">
+                        <label class="form-label">Work Schedule Class</label>
+                        <select id="classIdSelect" name="classId" class="form-select">
+                            <option value="">Select a class...</option>
+                            <option th:each="cls : ${classes}" th:value="${cls.classId}" th:text="${cls.name}"></option>
                         </select>
                     </div>
                 </div>
@@ -32,6 +56,38 @@
             </form>
         </div>
 
+        <script>
+            function toggleTargetFields() {
+                const targetType = document.querySelector('input[name="targetType"]:checked').value;
+                const userWrapper = document.getElementById('userTargetWrapper');
+                const classWrapper = document.getElementById('classTargetWrapper');
+                const userSelect = document.getElementById('userIdSelect');
+                const classSelect = document.getElementById('classIdSelect');
+
+                if (targetType === 'all') {
+                    userWrapper.classList.add('hidden');
+                    classWrapper.classList.add('hidden');
+                    userSelect.value = '';
+                    classSelect.value = '';
+                    userSelect.removeAttribute('required');
+                    classSelect.removeAttribute('required');
+                } else if (targetType === 'user') {
+                    userWrapper.classList.remove('hidden');
+                    classWrapper.classList.add('hidden');
+                    classSelect.value = '';
+                    userSelect.setAttribute('required', 'required');
+                    classSelect.removeAttribute('required');
+                } else if (targetType === 'class') {
+                    userWrapper.classList.add('hidden');
+                    classWrapper.classList.remove('hidden');
+                    userSelect.value = '';
+                    userSelect.removeAttribute('required');
+                    classSelect.setAttribute('required', 'required');
+                }
+            }
+            // Initialize on load
+            window.addEventListener('DOMContentLoaded', toggleTargetFields);
+        </script>
     </div>
 </body>
 </html>
