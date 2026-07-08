@@ -82,5 +82,50 @@ public interface WorkScheduleClassMapper {
      * @param name クラス名
      * @return 存在する場合は true
      */
+    /**
+     * 名称の存在チェック
+     *
+     * @param name クラス名
+     * @return 存在する場合は true
+     */
     boolean existsByName(@Param("name") String name);
+
+    /**
+     * クラスコードの存在チェック
+     *
+     * @param classCode クラスコード
+     * @return 存在する場合は true
+     */
+    boolean existsByCode(@Param("classCode") String classCode);
+
+    /**
+     * クラスコードの重複チェック（同一IDを除く）
+     *
+     * @param classCode クラスコード
+     * @param classId 除外する勤務クラスID
+     * @return 重複する場合は true
+     */
+    boolean existsByCodeAndNotId(@Param("classCode") String classCode, @Param("classId") Long classId);
+
+    /**
+     * クラスコードで勤務クラスを取得
+     *
+     * @param classCode クラスコード
+     * @return 勤務クラス。存在しない場合は Optional.empty()
+     */
+    Optional<WorkScheduleClass> selectByCode(@Param("classCode") String classCode);
+
+    /**
+     * 休憩時間リストを一括登録
+     *
+     * @param breaks 休憩時間リスト
+     */
+    void insertBreaks(@Param("breaks") List<com.attendance.app.entity.WorkScheduleClassBreak> breaks);
+
+    /**
+     * 勤務クラスIDに紐付く休憩時間を削除
+     *
+     * @param classId 勤務クラスID
+     */
+    void deleteBreaksByClassId(@Param("classId") Long classId);
 }

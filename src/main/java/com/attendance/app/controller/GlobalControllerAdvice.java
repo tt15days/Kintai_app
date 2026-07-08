@@ -112,5 +112,24 @@ public class GlobalControllerAdvice {
             model.addAttribute("systemName", "勤怠管理システム");
         }
     }
+
+    /**
+     * 社員番号プレフィックス設定をモデルに追加します。
+     *
+     * @param model Spring MVC モデル
+     */
+    @ModelAttribute
+    public void addEmpNoPrefix(Model model) {
+        try {
+            String prefix = systemSettingMapper.selectValueByKey("EMP_NO_PREFIX");
+            if (prefix == null) {
+                prefix = "";
+            }
+            model.addAttribute("empNoPrefix", prefix);
+        } catch (Exception e) {
+            log.warn("社員番号プレフィックス設定の取得に失敗しました。デフォルト値（空）を使用します。: {}", e.getMessage());
+            model.addAttribute("empNoPrefix", "");
+        }
+    }
 }
 

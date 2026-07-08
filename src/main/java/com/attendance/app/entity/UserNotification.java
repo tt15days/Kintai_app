@@ -29,6 +29,10 @@ public class UserNotification {
     private Boolean isRead;
     /** 通知の種類（例: SYSTEM, REMINDER） */
     private String notificationType;
+    /** 送信者のユーザーID（NULLはシステム） */
+    private Long senderUserId;
+    /** 送信者名（表示用、DBカラムなし） */
+    private String senderName;
     /** 作成日時（UTC） */
     private Instant createdAt;
 }

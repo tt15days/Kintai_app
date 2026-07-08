@@ -52,7 +52,7 @@
                         th:text="${currentUser.positionTitle}">部長</span>
                 </div>
                 <div class="font-mono text-[0.8rem] text-txt-secondary mt-1"
-                    th:text="${currentUser.empNo != null ? currentUser.empNo : 'EMP000'}">EMP001</div>
+                    th:text="${(empNoPrefix != null ? empNoPrefix : '') + #numbers.formatInteger(currentUser.userId, 3)}">EMP001</div>
                 <div class="mt-2 flex items-center gap-2">
                     <span
                         class="text-[0.75rem] px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 inline-flex items-center gap-1 font-bold">

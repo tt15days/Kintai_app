@@ -134,16 +134,14 @@
                     <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
                         <div class="text-txt-secondary text-xs font-medium mb-2">総実労働時間</div>
                         <div class="text-xl font-bold font-mono text-txt-primary">
-                            <span th:text="${#numbers.formatDecimal(totalWorkingHours, 1, 1)}">0.0</span> <span
-                                class="text-xs font-normal text-txt-secondary">時間</span>
+                            <span th:text="${T(com.attendance.app.util.DateTimeUtil).formatHoursToHHmm(totalWorkingHours)}">0時間0分</span>
                         </div>
                     </div>
                     <!-- 時間内残業累計 -->
                     <div class="card-sm text-center flex flex-col justify-center min-h-[100px]">
                         <div class="text-txt-secondary text-xs font-medium mb-2">時間内残業累計</div>
                         <div class="text-xl font-bold font-mono text-txt-primary">
-                            <span th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 1)}">0.0</span> <span
-                                class="text-xs font-normal text-txt-secondary">時間</span>
+                            <span th:text="${T(com.attendance.app.util.DateTimeUtil).formatHoursToHHmm(totalOvertimeHours)}">0時間0分</span>
                         </div>
                     </div>
                     <!-- 深夜勤務累計 -->
@@ -151,8 +149,7 @@
                         <div class="text-txt-secondary text-xs font-medium mb-2">深夜勤務累計</div>
                         <div class="text-xl font-bold font-mono text-txt-primary">
                             <span
-                                th:text="${records != null and !records.isEmpty() and #aggregates.sum(records.![nightShiftHours]) != null ? #numbers.formatDecimal(#aggregates.sum(records.![nightShiftHours]), 1, 1) : '0.0'}">0.0</span>
-                            <span class="text-xs font-normal text-txt-secondary">時間</span>
+                                th:text="${records != null and !records.isEmpty() and #aggregates.sum(records.![nightShiftHours]) != null ? T(com.attendance.app.util.DateTimeUtil).formatHoursToHHmm(#aggregates.sum(records.![nightShiftHours])) : '0時間0分'}">0時間0分</span>
                         </div>
                     </div>
                     <!-- 出勤日数累計 -->

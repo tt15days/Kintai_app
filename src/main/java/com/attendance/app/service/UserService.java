@@ -221,6 +221,13 @@ public class UserService {
         user.setCanApproveAttendance(role != UserRole.ADMIN && canApproveAttendance);
         user.setHireDate(hireDate);
         user.setIsActive(isActive);
+        if (!isActive) {
+            if (user.getDeletedAt() == null) {
+                user.setDeletedAt(Instant.now());
+            }
+        } else {
+            user.setDeletedAt(null);
+        }
         user.setUpdatedAt(Instant.now());
 
         userMapper.update(user);
@@ -262,8 +269,8 @@ public class UserService {
         } else {
             BigDecimal currentTotal = balances.stream()
                     .filter(b -> b.getExpiryDate().isAfter(LocalDate.now()) || b.getExpiryDate().isEqual(LocalDate.now()))
-                    .map(PaidLeaveBalance::getRemainingDays)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    .map(b -> b.getRemainingDays())
+                    .reduce(BigDecimal.ZERO, (x, y) -> x.add(y));
             BigDecimal diff = targetPaidLeaveDays.subtract(currentTotal);
             if (diff.compareTo(BigDecimal.ZERO) != 0) {
                 PaidLeaveBalance latest = balances.get(0); // 降順なので最新年度
@@ -572,8 +579,8 @@ public class UserService {
     private BigDecimal getCalculatedTotalRemainingDays(Long userId, int maxDays) {
         List<PaidLeaveBalance> activeBalances = paidLeaveBalanceMapper.selectActiveByUserId(userId, LocalDate.now());
         BigDecimal total = activeBalances.stream()
-                .map(PaidLeaveBalance::getRemainingDays)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(b -> b.getRemainingDays())
+                .reduce(BigDecimal.ZERO, (x, y) -> x.add(y));
         return total.min(BigDecimal.valueOf(maxDays));
     }
 

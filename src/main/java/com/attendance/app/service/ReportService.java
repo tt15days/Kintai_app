@@ -180,20 +180,20 @@ public class ReportService {
                     ? formatTime(DateTimeUtil.toLocalTime(rec.getEndTime()).toString())
                     : "";
             workingHours = rec.getWorkingHours() != null
-                    ? String.format("%.2f", rec.getWorkingHours())
+                    ? com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(rec.getWorkingHours())
                     : "";
             overtimeHours = rec.getOvertimeHours() != null
-                    ? String.format("%.2f", rec.getOvertimeHours())
+                    ? com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(rec.getOvertimeHours())
                     : "";
 
             double hwHours = rec.getHolidayWorkHours() != null ? rec.getHolidayWorkHours() : 0.0;
             if (hwHours > 0) {
                 if (date.getDayOfWeek().getValue() == SATURDAY) {
-                    saturdayWorkHours = String.format("%.2f", hwHours);
-                    holidayWorkHours = "0.00";
+                    saturdayWorkHours = com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(hwHours);
+                    holidayWorkHours = "0時間0分";
                 } else {
-                    saturdayWorkHours = "0.00";
-                    holidayWorkHours = String.format("%.2f", hwHours);
+                    saturdayWorkHours = "0時間0分";
+                    holidayWorkHours = com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(hwHours);
                 }
             }
 

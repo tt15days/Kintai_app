@@ -5,14 +5,47 @@
 -- ============================================================
 -- サンプル勤務クラス挿入
 -- ============================================================
-INSERT INTO work_schedule_classes (name, work_location, address, station, telephone, section_name, is_active, start_time, end_time)
+INSERT INTO work_schedule_classes (class_code, name, work_location, address, station, telephone, section_name, is_active, start_time, end_time)
 VALUES
-    ('標準勤務', '本社', '東京都千代田区大手町1-1-1', '大手町駅', '03-1234-5678', '開発部', true, '09:00:00', '18:00:00'),
-    ('早番',     '本社', '東京都千代田区大手町1-1-1', '大手町駅', '03-1234-5678', '開発部', true, '08:00:00', '17:00:00'),
-    ('遅番',     '本社', '東京都千代田区大手町1-1-1', '大手町駅', '03-1234-5678', '開発部', true, '10:00:00', '19:00:00'),
-    ('時短勤務', '本社', '東京都千代田区大手町1-1-1', '大手町駅', '03-1234-5678', '総務部', true, '09:00:00', '15:00:00'),
-    ('夜勤',     '本社', '東京都千代田区大手町1-1-1', '大手町駅', '03-1234-5678', '警備部', true, '22:00:00', '07:00:00')
+    ('W001', '標準勤務', '本社', '東京都千代田区大手町1-1-1', '大手町駅', '03-1234-5678', '開発部', true, '09:00:00', '18:00:00'),
+    ('W002', '早番',     '本社', '東京都千代田区大手町1-1-1', '大手町駅', '03-1234-5678', '開発部', true, '08:00:00', '17:00:00'),
+    ('W003', '遅番',     '本社', '東京都千代田区大手町1-1-1', '大手町駅', '03-1234-5678', '開発部', true, '10:00:00', '19:00:00'),
+    ('W004', '時短勤務', '本社', '東京都千代田区大手町1-1-1', '大手町駅', '03-1234-5678', '総務部', true, '09:00:00', '15:00:00'),
+    ('W005', '夜勤',     '本社', '東京都千代田区大手町1-1-1', '大手町駅', '03-1234-5678', '警備部', true, '22:00:00', '07:00:00'),
+    ('W006', '交代制勤務', '本社', '東京都千代田区大手町1-1-1', '大手町駅', '03-1234-5678', '開発部', true, '09:00:00', '18:00:00')
 ON CONFLICT (name) DO NOTHING;
+
+-- ============================================================
+-- サンプル勤務クラス休憩時間挿入
+-- ============================================================
+-- 通常の休憩時間（W001-W005）
+INSERT INTO work_schedule_class_breaks (class_id, break_start_time, break_end_time)
+SELECT c.class_id, '12:00:00', '13:00:00'
+  FROM work_schedule_classes c
+ WHERE c.class_code IN ('W001', 'W002', 'W003', 'W004', 'W005')
+   AND NOT EXISTS (
+       SELECT 1 FROM work_schedule_class_breaks b
+        WHERE b.class_id = c.class_id
+   );
+
+-- 交代制勤務（W006）用 複数休憩時間（12:00-13:00 と 15:00-15:15 の2つ）
+INSERT INTO work_schedule_class_breaks (class_id, break_start_time, break_end_time)
+SELECT c.class_id, '12:00:00', '13:00:00'
+  FROM work_schedule_classes c
+ WHERE c.class_code = 'W006'
+   AND NOT EXISTS (
+       SELECT 1 FROM work_schedule_class_breaks b
+        WHERE b.class_id = c.class_id AND b.break_start_time = '12:00:00'
+   );
+
+INSERT INTO work_schedule_class_breaks (class_id, break_start_time, break_end_time)
+SELECT c.class_id, '15:00:00', '15:15:00'
+  FROM work_schedule_classes c
+ WHERE c.class_code = 'W006'
+   AND NOT EXISTS (
+       SELECT 1 FROM work_schedule_class_breaks b
+        WHERE b.class_id = c.class_id AND b.break_start_time = '15:00:00'
+   );
 
 -- ============================================================
 -- サンプルユーザー挿入
@@ -66,6 +99,41 @@ VALUES (
     true,
     true,
     NOW(),
+    NOW()
+) ON CONFLICT (email) DO NOTHING;
+
+-- その他ユーザー (パスワード: other123)
+-- BCryptハッシュ (strength=10): $2a$10$NzFqXf8RXB/zEBkQdFB/wernyCLyc.yKsqHgIMXkpTyfpPW1peWve
+INSERT INTO users (emp_no, department, employment_type, email, password, full_name, user_role, is_active, can_approve_attendance, created_at, updated_at)
+VALUES (
+    'EMP-004',
+    '開発部',
+    'PART_TIME',
+    'other@example.com',
+    '$2a$10$NzFqXf8RXB/zEBkQdFB/wernyCLyc.yKsqHgIMXkpTyfpPW1peWve',
+    'その他ユーザー',
+    'OTHER',
+    true,
+    false,
+    NOW(),
+    NOW()
+) ON CONFLICT (email) DO NOTHING;
+
+-- 廃止済みユーザー (パスワード: retired123)
+-- BCryptハッシュ (strength=10): $2a$10$NzFqXf8RXB/zEBkQdFB/wernyCLyc.yKsqHgIMXkpTyfpPW1peWve
+INSERT INTO users (emp_no, department, employment_type, email, password, full_name, user_role, is_active, can_approve_attendance, deleted_at, created_at, updated_at)
+VALUES (
+    'EMP-999',
+    '営業部',
+    'FULL_TIME',
+    'retired@example.com',
+    '$2a$10$NzFqXf8RXB/zEBkQdFB/wernyCLyc.yKsqHgIMXkpTyfpPW1peWve',
+    '退職済みユーザー',
+    'USER',
+    false,
+    false,
+    NOW() - INTERVAL '10 days',
+    NOW() - INTERVAL '1 year',
     NOW()
 ) ON CONFLICT (email) DO NOTHING;
 
@@ -256,3 +324,29 @@ SELECT
   FROM users
  WHERE email = 'admin@example.com'
 LIMIT 1;
+
+-- ============================================================
+-- サンプル有給休暇残高挿入 (その他ユーザー用)
+-- ============================================================
+-- その他ユーザー (other@example.com): 2026年度 10日付与、前年繰越 2日
+INSERT INTO paid_leave_balance (user_id, grant_year, granted_days, grant_date, expiry_date, carried_over_days, used_days)
+SELECT user_id, 2026, 10.0, '2026-04-01', '2028-03-31', 2.0, 0.0
+  FROM users WHERE email = 'other@example.com'
+ON CONFLICT (user_id, grant_year) DO NOTHING;
+
+-- ============================================================
+-- サンプルメッセージ通知挿入
+-- ============================================================
+-- 管理者 (admin@example.com) から 一般ユーザー (user@example.com) への通知
+INSERT INTO user_notifications (user_id, sender_user_id, message, is_read, notification_type, created_at)
+SELECT u.user_id, a.user_id, '勤怠の差し戻しがありました。修正して再提出してください。', false, 'REMINDER', NOW() - INTERVAL '1 day'
+  FROM users u, users a
+ WHERE u.email = 'user@example.com' AND a.email = 'admin@example.com'
+ON CONFLICT (notification_id) DO NOTHING;
+
+-- 管理者 (admin@example.com) から その他ユーザー (other@example.com) への通知
+INSERT INTO user_notifications (user_id, sender_user_id, message, is_read, notification_type, created_at)
+SELECT u.user_id, a.user_id, '提出された残業申請を承認しました。確認してください。', false, 'REMINDER', NOW()
+  FROM users u, users a
+ WHERE u.email = 'other@example.com' AND a.email = 'admin@example.com'
+ON CONFLICT (notification_id) DO NOTHING;

@@ -25,7 +25,7 @@
                     </thead>
                     <tbody class="divide-y divide-glass-border/10">
                         <tr th:each="user : ${users}">
-                            <td class="font-mono" th:text="${'EMP-' + user.userId}">EMP-1</td>
+                            <td class="font-mono" th:text="${(empNoPrefix != null ? empNoPrefix : '') + #numbers.formatInteger(user.userId, 3)}">EMP-1</td>
                             <td class="font-semibold" th:text="${user.fullName}">氏名</td>
                             <td class="font-mono" th:with="balance=${balanceMap[user.userId]}" th:text="${balance.grantedDays} + ' 日'">10 日</td>
                             <td class="font-mono" th:with="balance=${balanceMap[user.userId]}" th:text="${balance.usedDays} + ' 日'">2 日</td>

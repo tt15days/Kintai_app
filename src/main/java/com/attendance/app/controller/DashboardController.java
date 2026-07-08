@@ -95,8 +95,11 @@ public class DashboardController {
             model.addAttribute("currentMonth", currentMonth);
             model.addAttribute("records", records);
             model.addAttribute("totalHoursThisMonth", String.format("%.1f", totalHours));
+            model.addAttribute("totalHoursThisMonthStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalHours));
             model.addAttribute("overtimeHours", String.format("%.1f", totalOvertime));
+            model.addAttribute("overtimeHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalOvertime));
             model.addAttribute("nightShiftHours", String.format("%.1f", totalNightShift));
+            model.addAttribute("nightShiftHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalNightShift));
             // 有給休暇日数の取得
             double remainingPaidLeave = paidLeaveBalanceService.getTotalRemainingDays(userId).doubleValue();
             model.addAttribute("remainingPaidLeave", String.format("%.1f", remainingPaidLeave));

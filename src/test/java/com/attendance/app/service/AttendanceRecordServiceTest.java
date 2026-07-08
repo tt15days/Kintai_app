@@ -202,8 +202,12 @@ class AttendanceRecordServiceTest {
                     .name("標準勤務")
                     .startTime(LocalTime.of(9, 0))
                     .endTime(LocalTime.of(18, 0))
-                    .breakStartTime(LocalTime.of(12, 0))
-                    .breakEndTime(LocalTime.of(13, 0))
+                    .breaks(List.of(
+                            com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                    .breakStartTime(LocalTime.of(12, 0))
+                                    .breakEndTime(LocalTime.of(13, 0))
+                                    .build()
+                    ))
                     .build();
 
             when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, attendanceDate)).thenReturn(Optional.empty());
@@ -229,8 +233,12 @@ class AttendanceRecordServiceTest {
                     .name("標準勤務")
                     .startTime(LocalTime.of(9, 0))
                     .endTime(LocalTime.of(18, 0))
-                    .breakStartTime(LocalTime.of(12, 0))
-                    .breakEndTime(LocalTime.of(13, 0))
+                    .breaks(List.of(
+                            com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                    .breakStartTime(LocalTime.of(12, 0))
+                                    .breakEndTime(LocalTime.of(13, 0))
+                                    .build()
+                    ))
                     .build();
 
             when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, attendanceDate)).thenReturn(Optional.of(existing));
@@ -427,6 +435,93 @@ class AttendanceRecordServiceTest {
 
                 assertThat(result).isNotNull();
                 verify(userNotificationService, never()).notifyIntervalAlert(anyLong(), anyString());
+            }
+        }
+
+        @Test
+        @DisplayName("正常系: 勤務間インターバルがちょうど最小時間（例: 11時間）の場合は警告通知を送信しない")
+        void quickStart_intervalGapEqualToMin_doesNotSendNotifications() {
+            Long userId = 10L;
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務").startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(18, 0)).build();
+
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+            when(eventTypeMapper.selectByCode("通常")).thenReturn(Optional.of(EventType.builder().eventTypeId(1).build()));
+            when(batchSettingService.getAlertMinIntervalHours()).thenReturn(11);
+            
+            // 前日の退勤が18:00 (JST) = 09:00 (UTC)
+            AttendanceRecord prevRecord = AttendanceRecord.builder()
+                    .endTime(Instant.parse("2026-05-31T09:00:00Z")).build();
+            
+            // 当日の出勤が05:00 (JST) = 前日20:00 (UTC) (インターバルちょうど11時間)
+            LocalDate mockToday = LocalDate.of(2026, 6, 1);
+            LocalTime mockTime = LocalTime.of(5, 0);
+            Instant mockNow = Instant.parse("2026-05-31T20:00:00Z");
+
+            when(attendanceRecordMapper.selectByUserAndDate(userId, LocalDate.of(2026, 5, 31))).thenReturn(Optional.of(prevRecord));
+
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class)) {
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.currentTimeJapan()).thenReturn(mockTime);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.toInstant(mockToday)).thenReturn(mockNow);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.toInstant(mockToday, mockTime)).thenReturn(mockNow);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.now()).thenReturn(mockNow);
+
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(eq(userId), any(LocalDate.class))).thenReturn(Optional.empty());
+
+                AttendanceRecord result = service.quickStartAttendance(userId);
+
+                assertThat(result).isNotNull();
+                verify(userNotificationService, never()).notifyIntervalAlert(anyLong(), anyString());
+            }
+        }
+
+        @Test
+        @DisplayName("正常系: 勤務間インターバルが最小時間未満（例: 10時間59分）の場合は警告通知を送信する")
+        void quickStart_intervalGapJustBelowMin_sendsNotifications() {
+            Long userId = 10L;
+            User user = User.builder().userId(userId).fullName("テスト太郎").className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務").startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(18, 0)).build();
+
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+            when(eventTypeMapper.selectByCode("通常")).thenReturn(Optional.of(EventType.builder().eventTypeId(1).build()));
+            when(batchSettingService.getAlertMinIntervalHours()).thenReturn(11);
+            
+            // 前日の退勤が18:00 (JST) = 09:00 (UTC)
+            AttendanceRecord prevRecord = AttendanceRecord.builder()
+                    .endTime(Instant.parse("2026-05-31T09:00:00Z")).build();
+            
+            // 当日の出勤が04:59 (JST) = 前日19:59 (UTC) (インターバル10時間59分 = 11時間未満)
+            LocalDate mockToday = LocalDate.of(2026, 6, 1);
+            LocalTime mockTime = LocalTime.of(4, 59);
+            Instant mockNow = Instant.parse("2026-05-31T19:59:00Z");
+
+            when(attendanceRecordMapper.selectByUserAndDate(userId, LocalDate.of(2026, 5, 31))).thenReturn(Optional.of(prevRecord));
+            when(userNotificationService.getUnreadByUserId(userId)).thenReturn(java.util.Collections.emptyList());
+
+            // 管理者を取得するモック
+            User admin = User.builder().userId(99L).fullName("管理者").userRole(UserRole.ADMIN).build();
+            when(userMapper.selectByRole("ADMIN")).thenReturn(List.of(admin));
+            when(userNotificationService.getUnreadByUserId(99L)).thenReturn(java.util.Collections.emptyList());
+
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class)) {
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.currentTimeJapan()).thenReturn(mockTime);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.toInstant(mockToday)).thenReturn(mockNow);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.toInstant(mockToday, mockTime)).thenReturn(mockNow);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.now()).thenReturn(mockNow);
+
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(eq(userId), any(LocalDate.class))).thenReturn(Optional.empty());
+
+                AttendanceRecord result = service.quickStartAttendance(userId);
+
+                assertThat(result).isNotNull();
+                verify(userNotificationService, times(1)).notifyIntervalAlert(eq(userId), anyString());
+                verify(userNotificationService, times(1)).notifyIntervalAlert(eq(99L), anyString());
             }
         }
     }

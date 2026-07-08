@@ -41,11 +41,17 @@ public class WorkScheduleClassServiceTest {
     void setUp() {
         defaultClass = WorkScheduleClass.builder()
                 .classId(1L)
+                .classCode("W001")
                 .name("標準勤務")
                 .startTime(LocalTime.of(9, 0))
                 .endTime(LocalTime.of(18, 0))
-                .breakStartTime(LocalTime.of(12, 0))
-                .breakEndTime(LocalTime.of(13, 0))
+                .breaks(List.of(
+                        com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                .classId(1L)
+                                .breakStartTime(LocalTime.of(12, 0))
+                                .breakEndTime(LocalTime.of(13, 0))
+                                .build()
+                ))
                 .build();
     }
 
@@ -79,14 +85,19 @@ public class WorkScheduleClassServiceTest {
     @Test
     void testCreateClass_Success() {
         when(workScheduleClassMapper.existsByName("新規シフト")).thenReturn(false);
+        when(workScheduleClassMapper.existsByCode(anyString())).thenReturn(false);
 
         WorkScheduleClass result = workScheduleClassService.createClass(
                 "新規シフト", "本社",
                 null, null, null, null, "開発フォルダ", "夜勤,シフト",
                 true, null, null,
                 LocalTime.of(10, 0), LocalTime.of(19, 0),
-                LocalTime.of(13, 0), LocalTime.of(14, 0),
-                null, null, null, null, null, null
+                List.of(
+                        com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                .breakStartTime(LocalTime.of(13, 0))
+                                .breakEndTime(LocalTime.of(14, 0))
+                                .build()
+                )
         );
 
         assertNotNull(result);
@@ -108,8 +119,12 @@ public class WorkScheduleClassServiceTest {
                     null, null, null, null, null, null,
                     true, null, null,
                     LocalTime.of(9, 0), LocalTime.of(18, 0),
-                    LocalTime.of(12, 0), LocalTime.of(13, 0),
-                    null, null, null, null, null, null
+                    List.of(
+                            com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                    .breakStartTime(LocalTime.of(12, 0))
+                                    .breakEndTime(LocalTime.of(13, 0))
+                                    .build()
+                    )
             );
         });
         assertTrue(ex.getMessage().contains("既に登録されています"));
@@ -126,8 +141,12 @@ public class WorkScheduleClassServiceTest {
                     null, null, null, null, null, null,
                     true, null, null,
                     LocalTime.of(9, 0), LocalTime.of(18, 0),
-                    LocalTime.of(12, 0), null, // Missing end time
-                    null, null, null, null, null, null
+                    List.of(
+                            com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                    .breakStartTime(LocalTime.of(12, 0))
+                                    .breakEndTime(null)
+                                    .build()
+                    )
             );
         });
         assertTrue(ex.getMessage().contains("開始時刻と終了時刻は両方入力"));
@@ -143,8 +162,13 @@ public class WorkScheduleClassServiceTest {
                 null, null, null, null, "新フォルダ", "変更タグ",
                 true, null, null,
                 LocalTime.of(8, 0), LocalTime.of(17, 0),
-                LocalTime.of(11, 0), LocalTime.of(12, 0),
-                null, null, null, null, null, null
+                List.of(
+                        com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                .classId(1L)
+                                .breakStartTime(LocalTime.of(11, 0))
+                                .breakEndTime(LocalTime.of(12, 0))
+                                .build()
+                )
         );
 
         assertEquals("変更後シフト", result.getName());
@@ -166,8 +190,13 @@ public class WorkScheduleClassServiceTest {
                     null, null, null, null, null, null,
                     true, null, null,
                     LocalTime.of(9, 0), LocalTime.of(18, 0),
-                    LocalTime.of(12, 0), LocalTime.of(13, 0),
-                    null, null, null, null, null, null
+                    List.of(
+                            com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                    .classId(1L)
+                                    .breakStartTime(LocalTime.of(12, 0))
+                                    .breakEndTime(LocalTime.of(13, 0))
+                                    .build()
+                    )
             );
         });
         verify(workScheduleClassMapper, never()).update(any());

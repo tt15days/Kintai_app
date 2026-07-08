@@ -10,10 +10,7 @@
         <div>
             <div class="card">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 mb-6 border-b border-glass-border/30 gap-4">
-                    <h4 class="text-lg font-bold text-txt-primary flex items-center gap-1.5"><i class="fas fa-user-check text-primary"></i> 勤怠詳細ビュー</h4>
-                    <a th:href="${backUrl}" class="btn btn-flat gap-2 text-sm px-4 py-2">
-                        <i class="fas fa-arrow-left"></i> 戻る
-                    </a>
+                    <h4 class="text-lg font-bold text-txt-primary flex items-center gap-1.5">勤怠詳細ビュー</h4>
                 </div>
                 <div>
                     <div class="mb-4" th:if="${successMessage != null}">
@@ -25,7 +22,7 @@
 
                     <!-- ユーザー情報 -->
                     <div class="card-sm mb-6 bg-glass/20">
-                        <h5 class="text-sm font-bold text-txt-secondary mb-4 flex items-center gap-1.5"><i class="fas fa-user text-txt-secondary/80"></i> ユーザー情報</h5>
+                        <h5 class="text-sm font-bold text-txt-secondary mb-4 flex items-center gap-1.5">ユーザー情報</h5>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-txt-primary">
                             <div class="space-y-2">
                                 <p><span class="text-txt-secondary font-semibold">氏名:</span> <span class="font-semibold" th:text="${user != null && user.fullName != null ? user.fullName : ''}"></span></p>
@@ -33,15 +30,9 @@
                             </div>
                             <div class="space-y-2">
                                 <p><span class="text-txt-secondary font-semibold">ロール:</span>
-                                    <span th:if="${user != null and user.userRole != null and user.userRole.name() == 'ADMIN'}" class="badge badge-danger">
-                                        <i class="fas fa-shield-alt"></i> 管理者
-                                    </span>
-                                    <span th:if="${user != null and user.userRole != null and user.userRole.name() == 'MANAGER'}" class="badge badge-warning">
-                                        <i class="fas fa-users"></i> 一般管理者
-                                    </span>
-                                    <span th:if="${user == null or user.userRole == null or user.userRole.name() == 'USER'}" class="badge badge-primary">
-                                        <i class="fas fa-user"></i> 一般ユーザー
-                                    </span>
+                                    <span th:if="${user != null and user.userRole != null and user.userRole.name() == 'ADMIN'}" class="badge badge-danger">管理者</span>
+                                    <span th:if="${user != null and user.userRole != null and user.userRole.name() == 'MANAGER'}" class="badge badge-warning">一般管理者</span>
+                                    <span th:if="${user == null or user.userRole == null or user.userRole.name() == 'USER'}" class="badge badge-primary">一般ユーザー</span>
                                 </p>
                                 <p><span class="text-txt-secondary font-semibold">登録日:</span> <span class="font-mono text-xs" th:text="${user != null && user.createdAt != null ? #temporals.format(user.createdAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy-MM-dd') : ''}"></span></p>
                                 <p><span class="text-txt-secondary font-semibold">勤務クラス:</span>
@@ -62,9 +53,7 @@
                         <form th:if="${user != null}" method="get" th:action="@{/attendance/approval/{userId}/detail(userId=${user.userId})}" class="flex flex-wrap items-end gap-4">
                             <input type="hidden" name="from" th:value="${from}" th:if="${from != null}">
                             <div class="flex flex-col min-w-[200px]">
-                                <label for="yearMonth" class="form-label">
-                                    <i class="fas fa-calendar text-txt-secondary/80"></i> 表示月
-                                </label>
+                                <label for="yearMonth" class="form-label">表示月</label>
                                 <div class="flex">
                                     <input type="month" class="form-input rounded-l-xl text-sm font-mono h-11 flex-1" id="yearMonth" name="yearMonth" th:value="${yearMonth}">
                                     <button type="submit" class="btn btn-primary p-3 rounded-r-xl h-11 w-11 text-sm border-0">
@@ -75,9 +64,7 @@
                             <!-- CSVダウンロード -->
                             <div th:if="${user != null and #authorization.expression('hasRole(''ADMIN'')')}">
                                 <a th:href="@{/admin/attendance/export/csv(userId=${user.userId}, yearMonth=${yearMonth})}"
-                                   class="btn btn-success gap-2 text-sm h-11">
-                                    <i class="fas fa-file-csv"></i> CSV出力
-                                </a>
+                                   class="btn btn-success gap-2 text-sm h-11">CSV出力</a>
                             </div>
                         </form>
                     </div>
@@ -85,21 +72,13 @@
                     <!-- 申請ステータス -->
                     <div class="mb-6" th:if="${submission != null}">
                         <span class="badge badge-warning font-bold"
-                              th:if="${submission.status == submissionStatusPending}">
-                            <i class="fas fa-hourglass-half"></i> 申請中
-                        </span>
+                              th:if="${submission.status == submissionStatusPending}">申請中</span>
                         <span class="badge badge-success font-bold"
-                              th:if="${submission.status == submissionStatusApproved}">
-                            <i class="fas fa-check-circle"></i> 承認済み
-                        </span>
+                              th:if="${submission.status == submissionStatusApproved}">承認済み</span>
                         <span class="badge badge-danger font-bold"
-                              th:if="${submission.status == submissionStatusReturned}">
-                            <i class="fas fa-undo-alt"></i> 差し戻し
-                        </span>
+                              th:if="${submission.status == submissionStatusReturned}">差し戻し</span>
                         <span class="badge bg-black/5 text-txt-secondary border-glass-border font-bold inline-flex items-center gap-1"
-                              th:if="${submission.status == submissionStatusWithdrawn}">
-                            <i class="fas fa-ban"></i> 取り下げ
-                        </span>
+                              th:if="${submission.status == submissionStatusWithdrawn}">取り下げ</span>
                         <span class="ml-3 text-xs text-txt-secondary opacity-70 font-mono"
                               th:if="${submission.submittedAt != null}"
                               th:text="'申請日時: ' + ${#temporals.format(submission.submittedAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy-MM-dd HH:mm')}"></span>
@@ -117,7 +96,7 @@
                         <span>
                             <strong>【36協定 超過】</strong>
                             今月の残業時間が法定上限（<span th:text="${article36MonthlyLimit}"></span>時間）を超えています。
-                            現在の残業時間: <strong class="font-mono" th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 2)} + ' 時間'"></strong>
+                            現在の残業時間: <strong class="font-mono" th:text="${T(com.attendance.app.util.DateTimeUtil).formatHoursToHHmm(totalOvertimeHours)}"></strong>
                         </span>
                     </div>
                     <div class="alert alert-warning mb-6" role="alert"
@@ -126,12 +105,12 @@
                         <span>
                             <strong>【36協定 注意】</strong>
                             今月の残業時間が注意ライン（<span th:text="${article36MonthlyWarning}"></span>時間）を超えています。
-                            現在の残業時間: <strong class="font-mono" th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 2)} + ' 時間'"></strong>
+                            現在の残業時間: <strong class="font-mono" th:text="${T(com.attendance.app.util.DateTimeUtil).formatHoursToHHmm(totalOvertimeHours)}"></strong>
                         </span>
                     </div>
 
                     <!-- 勤怠記録テーブル -->
-                    <h5 class="text-sm font-bold text-txt-secondary mb-3 flex items-center gap-1.5"><i class="fas fa-table text-txt-secondary/80"></i> 勤怠記録</h5>
+                    <h5 class="text-sm font-bold text-txt-secondary mb-3 flex items-center gap-1.5">勤怠記録</h5>
                     
                     <!-- 管理者アカウントの場合（一括編集フォーム） -->
                     <form th:if="${#authorization.expression('hasRole(''ADMIN'')')}" method="post" th:action="@{/attendance/approval/{userId}/detail/saveAll(userId=${user.userId})}" onsubmit="return validateBulkSave(this)">
@@ -142,11 +121,11 @@
                             <table class="table-custom mb-0 text-[0.75rem] md:text-sm">
                                 <thead class="bg-black/10 text-txt-primary">
                                     <tr>
-                                        <th class="w-[20%] md:w-[18%]"><i class="fas fa-calendar"></i> 日付 / 曜日</th>
+                                        <th class="w-[20%] md:w-[18%]">日付 / 曜日</th>
                                         <th class="w-[15%]">開始時刻</th>
                                         <th class="w-[15%]">終了時刻</th>
                                         <th class="w-[17%]">事由</th>
-                                        <th class="w-[33%] md:w-[35%]"><i class="fas fa-comment"></i> 備考</th>
+                                        <th class="w-[33%] md:w-[35%]">備考</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-glass-border/10">
@@ -187,9 +166,7 @@
                             </table>
                         </div>
                         <div class="mt-4 flex justify-end">
-                            <button type="submit" class="btn btn-primary px-6 py-2.5 text-sm cursor-pointer gap-2">
-                                <i class="fas fa-save"></i> 当月分を保存
-                            </button>
+                            <button type="submit" class="btn btn-primary px-6 py-2.5 text-sm cursor-pointer gap-2">当月分を保存</button>
                         </div>
                     </form>
 
@@ -198,11 +175,11 @@
                         <table class="table-custom text-[0.75rem] md:text-sm">
                             <thead class="bg-black/10 text-txt-primary">
                                 <tr>
-                                    <th class="w-[20%] md:w-[18%]"><i class="fas fa-calendar"></i> 日付 / 曜日</th>
+                                    <th class="w-[20%] md:w-[18%]">日付 / 曜日</th>
                                     <th class="w-[15%]">開始時刻</th>
                                     <th class="w-[15%]">終了時刻</th>
                                     <th class="w-[17%]">事由</th>
-                                    <th class="w-[33%] md:w-[35%]"><i class="fas fa-comment"></i> 備考</th>
+                                    <th class="w-[33%] md:w-[35%]">備考</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-glass-border/10">
@@ -227,7 +204,7 @@
 
                     <!-- 今月の集計 -->
                     <hr class="border-glass-border/30 my-6">
-                    <h5 class="text-sm font-bold text-txt-secondary mb-3 flex items-center gap-1.5"><i class="fas fa-chart-pie text-txt-secondary/80"></i> 今月の集計</h5>
+                    <h5 class="text-sm font-bold text-txt-secondary mb-3 flex items-center gap-1.5">今月の集計</h5>
                     <!-- PC用テーブル表示 -->
                     <div class="table-container mb-6 hidden md:block">
                         <table class="table-custom text-[0.75rem] md:text-sm">
@@ -246,11 +223,11 @@
                             <tbody class="divide-y divide-glass-border/10">
                                 <tr>
                                     <td class="text-center font-bold font-mono" th:text="${records.size()} + ' 日'">0 日</td>
-                                    <td class="text-center font-bold font-mono" th:text="${#numbers.formatDecimal(totalWorkingHours, 1, 2)} + ' 時間'">0.00 時間</td>
-                                    <td class="text-center font-bold font-mono" th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 2)} + ' 時間'">0.00 時間</td>
-                                    <td class="text-center font-bold font-mono" th:text="${#numbers.formatDecimal(totalSaturdayWorkHours, 1, 2)} + ' 時間'">0.00 時間</td>
-                                    <td class="text-center font-bold font-mono" th:text="${#numbers.formatDecimal(totalHolidayWorkHours, 1, 2)} + ' 時間'">0.00 時間</td>
-                                    <td class="text-center font-bold font-mono" th:text="${#numbers.formatDecimal(totalPaidLeaveDays, 1, 1)} + ' 日 / ' + ${#numbers.formatDecimal(totalPaidLeaveHours, 1, 2)} + ' 時間'">0.0 日 / 0.00 時間</td>
+                                    <td class="text-center font-bold font-mono" th:text="${totalWorkingHoursStr}">0時間0分</td>
+                                    <td class="text-center font-bold font-mono" th:text="${totalOvertimeHoursStr}">0時間0分</td>
+                                    <td class="text-center font-bold font-mono" th:text="${totalSaturdayWorkHoursStr}">0時間0分</td>
+                                    <td class="text-center font-bold font-mono" th:text="${totalHolidayWorkHoursStr}">0時間0分</td>
+                                    <td class="text-center font-bold font-mono" th:text="${#numbers.formatDecimal(totalPaidLeaveDays, 1, 1)} + ' 日 / ' + ${totalPaidLeaveHoursStr}">0.0 日 / 0時間0分</td>
                                     <td class="text-center font-bold font-mono" th:text="${totalUnpaidLeaveDays} + ' 日'">0 日</td>
                                     <td class="text-center font-bold font-mono" th:text="${totalAbsenceDays} + ' 日'">0 日</td>
                                 </tr>
@@ -266,25 +243,23 @@
                         </div>
                         <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
                             <span class="text-txt-secondary font-semibold">労働時間</span>
-                            <span class="font-bold font-mono" th:text="${#numbers.formatDecimal(totalWorkingHours, 1, 2)} + ' 時間'">0.00 時間</span>
+                            <span class="font-bold font-mono" th:text="${totalWorkingHoursStr}">0時間0分</span>
                         </div>
                         <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
                             <span class="text-txt-secondary font-semibold">残業時間</span>
-                            <span class="font-bold font-mono text-danger" th:text="${#numbers.formatDecimal(totalOvertimeHours, 1, 2)} + ' 時間'">0.00 時間</span>
+                            <span class="font-bold font-mono text-danger" th:text="${totalOvertimeHoursStr}">0時間0分</span>
                         </div>
                         <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
                             <span class="text-txt-secondary font-semibold">土曜休出</span>
-                            <span class="font-bold font-mono" th:text="${#numbers.formatDecimal(totalSaturdayWorkHours, 1, 2)} + ' 時間'">0.00 時間</span>
+                            <span class="font-bold font-mono" th:text="${totalSaturdayWorkHoursStr}">0時間0分</span>
                         </div>
                         <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
                             <span class="text-txt-secondary font-semibold">日祝休出</span>
-                            <span class="font-bold font-mono" th:text="${#numbers.formatDecimal(totalHolidayWorkHours, 1, 2)} + ' 時間'">0.00 時間</span>
+                            <span class="font-bold font-mono" th:text="${totalHolidayWorkHoursStr}">0時間0分</span>
                         </div>
-                        <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex flex-col items-start gap-1 col-span-2">
-                            <div class="w-full flex justify-between items-center">
-                                <span class="text-txt-secondary font-semibold">有給利用</span>
-                                <span class="font-bold font-mono" th:text="${#numbers.formatDecimal(totalPaidLeaveDays, 1, 1)} + ' 日 / ' + ${#numbers.formatDecimal(totalPaidLeaveHours, 1, 2)} + ' 時間'">0.0 日 / 0.00 時間</span>
-                            </div>
+                        <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
+                            <span class="text-txt-secondary font-semibold">有給利用</span>
+                            <span class="font-bold font-mono" th:text="${#numbers.formatDecimal(totalPaidLeaveDays, 1, 1)} + ' 日 / ' + ${totalPaidLeaveHoursStr}">0.0 日 / 0時間0分</span>
                         </div>
                         <div class="p-2.5 bg-black/5 rounded-lg border border-glass-border flex justify-between items-center">
                             <span class="text-txt-secondary font-semibold">無給休暇</span>
@@ -297,7 +272,7 @@
                     </div>
 
                     <!-- 有給日数サマリー -->
-                    <h5 class="text-sm font-bold text-txt-secondary mb-3 mt-6 flex items-center gap-1.5"><i class="fas fa-calendar-check text-txt-secondary/80"></i> 有給日数サマリー（<span th:text="${currentYear}"></span>年）</h5>
+                    <h5 class="text-sm font-bold text-txt-secondary mb-3 mt-6 flex items-center gap-1.5">有給日数サマリー（<span th:text="${currentYear}"></span>年）</h5>
                     <div class="table-container mb-6">
                         <table class="table-custom">
                             <thead class="bg-black/10 text-txt-primary">

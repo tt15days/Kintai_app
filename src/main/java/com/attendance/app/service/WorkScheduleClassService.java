@@ -83,14 +83,7 @@ public class WorkScheduleClassService {
      * @param workLocation 勤務地
      * @param startTime 始業時刻
      * @param endTime 終業時刻
-     * @param breakStartTime 休憩開始時刻
-     * @param breakEndTime 休憩終了時刻
-     * @param breakStartTime2 休憩開始時刻2
-     * @param breakEndTime2 休憩終了時刻2
-     * @param breakStartTime3 休憩開始時刻3
-     * @param breakEndTime3 休憩終了時刻3
-     * @param breakStartTime4 休憩開始時刻4
-     * @param breakEndTime4 休憩終了時刻4
+     * @param breaks 休憩時間リスト
      * @return 作成された勤務クラス
      */
     @org.springframework.cache.annotation.CacheEvict(value = "workScheduleClasses", allEntries = true)
@@ -100,21 +93,18 @@ public class WorkScheduleClassService {
                                          Boolean isActive,
                                          Short maxHours, Short minHours,
                                          LocalTime startTime, LocalTime endTime,
-                                         LocalTime breakStartTime, LocalTime breakEndTime,
-                                         LocalTime breakStartTime2, LocalTime breakEndTime2,
-                                         LocalTime breakStartTime3, LocalTime breakEndTime3,
-                                         LocalTime breakStartTime4, LocalTime breakEndTime4) {
+                                         List<com.attendance.app.entity.WorkScheduleClassBreak> breaks) {
         String normalizedName = normalizeRequiredName(name);
         if (workScheduleClassMapper.existsByName(normalizedName)) {
             throw new IllegalArgumentException("このクラス名は既に登録されています: " + normalizedName);
         }
 
-        BreakWindow primaryBreak = normalizePrimaryBreakWindow(breakStartTime, breakEndTime);
-        BreakWindow break2 = normalizeOptionalBreakWindow(breakStartTime2, breakEndTime2, "休憩2");
-        BreakWindow break3 = normalizeOptionalBreakWindow(breakStartTime3, breakEndTime3, "休憩3");
-        BreakWindow break4 = normalizeOptionalBreakWindow(breakStartTime4, breakEndTime4, "休憩4");
+        validateBreaks(breaks);
+
+        String classCode = generateClassCode();
 
         WorkScheduleClass wsc = WorkScheduleClass.builder()
+                .classCode(classCode)
                 .name(normalizedName)
                 .workLocation(normalizeOptionalText(workLocation))
                 .address(normalizeOptionalText(address))
@@ -128,20 +118,21 @@ public class WorkScheduleClassService {
                 .minHours(minHours)
                 .startTime(startTime != null ? startTime : DEFAULT_WORK_START_TIME)
                 .endTime(endTime != null ? endTime : DEFAULT_WORK_END_TIME)
-                .breakStartTime(primaryBreak.startTime())
-                .breakEndTime(primaryBreak.endTime())
-                .breakStartTime2(break2.startTime())
-                .breakEndTime2(break2.endTime())
-                .breakStartTime3(break3.startTime())
-                .breakEndTime3(break3.endTime())
-                .breakStartTime4(break4.startTime())
-                .breakEndTime4(break4.endTime())
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
 
         workScheduleClassMapper.insert(wsc);
-        log.info("勤務クラスを作成しました: name={}", normalizedName);
+
+        if (breaks != null && !breaks.isEmpty()) {
+            for (com.attendance.app.entity.WorkScheduleClassBreak b : breaks) {
+                b.setClassId(wsc.getClassId());
+            }
+            workScheduleClassMapper.insertBreaks(breaks);
+        }
+
+        wsc.setBreaks(breaks);
+        log.info("勤務クラスを作成しました: name={}, classCode={}", normalizedName, classCode);
         return wsc;
     }
 
@@ -153,14 +144,7 @@ public class WorkScheduleClassService {
      * @param workLocation 勤務地
      * @param startTime 始業時刻
      * @param endTime 終業時刻
-     * @param breakStartTime 休憩開始時刻
-     * @param breakEndTime 休憩終了時刻
-     * @param breakStartTime2 休憩開始時刻2
-     * @param breakEndTime2 休憩終了時刻2
-     * @param breakStartTime3 休憩開始時刻3
-     * @param breakEndTime3 休憩終了時刻3
-     * @param breakStartTime4 休憩開始時刻4
-     * @param breakEndTime4 休憩終了時刻4
+     * @param breaks 休憩時間リスト
      * @return 更新された勤務クラス
      */
     @org.springframework.cache.annotation.CacheEvict(value = "workScheduleClasses", allEntries = true)
@@ -170,10 +154,7 @@ public class WorkScheduleClassService {
                                          Boolean isActive,
                                          Short maxHours, Short minHours,
                                          LocalTime startTime, LocalTime endTime,
-                                         LocalTime breakStartTime, LocalTime breakEndTime,
-                                         LocalTime breakStartTime2, LocalTime breakEndTime2,
-                                         LocalTime breakStartTime3, LocalTime breakEndTime3,
-                                         LocalTime breakStartTime4, LocalTime breakEndTime4) {
+                                         List<com.attendance.app.entity.WorkScheduleClassBreak> breaks) {
         WorkScheduleClass wsc = workScheduleClassMapper.selectById(classId)
                 .orElseThrow(() -> new IllegalArgumentException(CLASS_NOT_FOUND_PREFIX + classId));
         String normalizedName = normalizeRequiredName(name);
@@ -182,6 +163,8 @@ public class WorkScheduleClassService {
         if (workScheduleClassMapper.existsByNameAndNotId(normalizedName, classId)) {
             throw new IllegalArgumentException("このクラス名は既に登録されています: " + normalizedName);
         }
+
+        validateBreaks(breaks);
 
         wsc.setName(normalizedName);
         wsc.setWorkLocation(normalizeOptionalText(workLocation));
@@ -196,23 +179,20 @@ public class WorkScheduleClassService {
         wsc.setMinHours(minHours);
         wsc.setStartTime(startTime != null ? startTime : DEFAULT_WORK_START_TIME);
         wsc.setEndTime(endTime != null ? endTime : DEFAULT_WORK_END_TIME);
-
-        BreakWindow primaryBreak = normalizePrimaryBreakWindow(breakStartTime, breakEndTime);
-        BreakWindow break2 = normalizeOptionalBreakWindow(breakStartTime2, breakEndTime2, "休憩2");
-        BreakWindow break3 = normalizeOptionalBreakWindow(breakStartTime3, breakEndTime3, "休憩3");
-        BreakWindow break4 = normalizeOptionalBreakWindow(breakStartTime4, breakEndTime4, "休憩4");
-
-        wsc.setBreakStartTime(primaryBreak.startTime());
-        wsc.setBreakEndTime(primaryBreak.endTime());
-        wsc.setBreakStartTime2(break2.startTime());
-        wsc.setBreakEndTime2(break2.endTime());
-        wsc.setBreakStartTime3(break3.startTime());
-        wsc.setBreakEndTime3(break3.endTime());
-        wsc.setBreakStartTime4(break4.startTime());
-        wsc.setBreakEndTime4(break4.endTime());
         wsc.setUpdatedAt(Instant.now());
 
         workScheduleClassMapper.update(wsc);
+
+        // 休憩時間の更新（一度削除してから全挿入）
+        workScheduleClassMapper.deleteBreaksByClassId(classId);
+        if (breaks != null && !breaks.isEmpty()) {
+            for (com.attendance.app.entity.WorkScheduleClassBreak b : breaks) {
+                b.setClassId(classId);
+            }
+            workScheduleClassMapper.insertBreaks(breaks);
+        }
+        wsc.setBreaks(breaks);
+
         if (!oldName.equals(normalizedName)) {
             userMapper.replaceClassName(oldName, normalizedName);
             attendanceApproverAssignmentMapper.replaceDepartmentName(oldName, normalizedName);
@@ -252,23 +232,25 @@ public class WorkScheduleClassService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    /**
-     * 休憩時間帯を正規化します。
-     */
-    private BreakWindow normalizePrimaryBreakWindow(LocalTime startTime, LocalTime endTime) {
-        if (startTime == null || endTime == null) {
-            throw new IllegalArgumentException("休憩1の開始時刻と終了時刻は両方入力してください");
+    private String generateClassCode() {
+        int index = 1;
+        while (true) {
+            String code = "W" + String.format("%03d", index);
+            if (!workScheduleClassMapper.existsByCode(code)) {
+                return code;
+            }
+            index++;
         }
-        validateBreakWindow(startTime, endTime, "休憩1");
-        return new BreakWindow(startTime, endTime);
     }
 
-    private BreakWindow normalizeOptionalBreakWindow(LocalTime startTime, LocalTime endTime, String label) {
-        if (startTime == null && endTime == null) {
-            return new BreakWindow(null, null);
+    private void validateBreaks(List<com.attendance.app.entity.WorkScheduleClassBreak> breaks) {
+        if (breaks == null || breaks.isEmpty()) {
+            throw new IllegalArgumentException("休憩時間は少なくとも1つ設定してください");
         }
-        validateBreakWindow(startTime, endTime, label);
-        return new BreakWindow(startTime, endTime);
+        for (int i = 0; i < breaks.size(); i++) {
+            com.attendance.app.entity.WorkScheduleClassBreak b = breaks.get(i);
+            validateBreakWindow(b.getBreakStartTime(), b.getBreakEndTime(), "休憩" + (i + 1));
+        }
     }
 
     private void validateBreakWindow(LocalTime startTime, LocalTime endTime, String label) {
@@ -278,8 +260,5 @@ public class WorkScheduleClassService {
         if (startTime.equals(endTime)) {
             throw new IllegalArgumentException(label + "の開始時刻と終了時刻は同じにできません");
         }
-    }
-
-    private record BreakWindow(LocalTime startTime, LocalTime endTime) {
     }
 }

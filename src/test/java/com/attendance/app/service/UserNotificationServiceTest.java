@@ -47,22 +47,23 @@ class UserNotificationServiceTest {
         @Test
         @DisplayName("指定ユーザーへ ADMIN_MESSAGE 通知を保存する")
         void sendsAdminMessageToSingleUser() {
-            service.sendCustomNotification(2L, "管理者メッセージ");
-
+            service.sendCustomNotification(2L, "管理者メッセージ", 1L);
+ 
             ArgumentCaptor<UserNotification> captor = ArgumentCaptor.forClass(UserNotification.class);
             verify(userNotificationMapper).insert(captor.capture());
-
+ 
             UserNotification saved = captor.getValue();
             assertThat(saved.getUserId()).isEqualTo(2L);
+            assertThat(saved.getSenderUserId()).isEqualTo(1L);
             assertThat(saved.getMessage()).isEqualTo("管理者メッセージ");
             assertThat(saved.getNotificationType()).isEqualTo(UserNotificationService.TYPE_ADMIN_MESSAGE);
             assertThat(saved.getIsRead()).isFalse();
         }
-
+ 
         @Test
         @DisplayName("空メッセージは拒否する")
         void rejectsBlankMessage() {
-            assertThatThrownBy(() -> service.sendCustomNotification(2L, "  "))
+            assertThatThrownBy(() -> service.sendCustomNotification(2L, "  ", 1L))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessage("メッセージを入力してください");
 
@@ -82,7 +83,7 @@ class UserNotificationServiceTest {
             User approver = User.builder().userId(3L).userRole(UserRole.USER).build();
             when(userService.getActiveUsers()).thenReturn(List.of(admin, user, approver));
 
-            int count = service.sendCustomNotificationToAll("一括通知");
+            int count = service.sendCustomNotificationToAll("一括通知", 1L);
 
             ArgumentCaptor<UserNotification> captor = ArgumentCaptor.forClass(UserNotification.class);
             verify(userNotificationMapper, org.mockito.Mockito.times(2)).insert(captor.capture());
@@ -90,6 +91,9 @@ class UserNotificationServiceTest {
             assertThat(captor.getAllValues())
                     .extracting(u -> u.getUserId())
                     .containsExactly(2L, 3L);
+            assertThat(captor.getAllValues())
+                    .extracting(u -> u.getSenderUserId())
+                    .containsOnly(1L);
             assertThat(captor.getAllValues())
                     .extracting(u -> u.getNotificationType())
                     .containsOnly(UserNotificationService.TYPE_ADMIN_MESSAGE);

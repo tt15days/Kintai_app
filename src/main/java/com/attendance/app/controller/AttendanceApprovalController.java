@@ -86,7 +86,7 @@ public class AttendanceApprovalController {
             // N+1対策: 申請者IDをdistinctに収集し、ユーザー取得はID単位で1回のみ行う
             Map<Long, User> applicantUsers = new HashMap<>();
             Set<Long> applicantUserIds = pendingSubmissions.stream()
-                    .map(AttendanceSubmission::getUserId)
+                    .map(submission -> submission.getUserId())
                     .collect(java.util.stream.Collectors.toSet());
             for (Long applicantUserId : applicantUserIds) {
                 userService.getUserById(applicantUserId)
@@ -176,7 +176,7 @@ public class AttendanceApprovalController {
             // N+1対策: 申請者IDをdistinctに収集し、ユーザー取得はID単位で1回のみ行う
             Map<Long, User> applicantUsers = new HashMap<>();
             Set<Long> applicantUserIds = pendingRequests.stream()
-                    .map(AttendanceCorrectionRequest::getUserId)
+                    .map(request -> request.getUserId())
                     .collect(java.util.stream.Collectors.toSet());
             for (Long applicantUserId : applicantUserIds) {
                 userService.getUserById(applicantUserId)
@@ -357,11 +357,16 @@ public class AttendanceApprovalController {
         model.addAttribute("yearMonth", currentMonth);
         model.addAttribute("records", records);
         model.addAttribute("totalWorkingHours", totalWorkingHours);
+        model.addAttribute("totalWorkingHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalWorkingHours));
         model.addAttribute("totalOvertimeHours", totalOvertimeHours);
+        model.addAttribute("totalOvertimeHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalOvertimeHours));
         model.addAttribute("totalSaturdayWorkHours", totalSaturdayWorkHours);
+        model.addAttribute("totalSaturdayWorkHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalSaturdayWorkHours));
         model.addAttribute("totalHolidayWorkHours", totalHolidayWorkHours);
+        model.addAttribute("totalHolidayWorkHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalHolidayWorkHours));
         model.addAttribute("totalPaidLeaveDays", totalPaidLeaveDays);
         model.addAttribute("totalPaidLeaveHours", totalPaidLeaveHours);
+        model.addAttribute("totalPaidLeaveHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalPaidLeaveHours));
         model.addAttribute("totalUnpaidLeaveDays", totalUnpaidLeaveDays);
         model.addAttribute("totalAbsenceDays", totalAbsenceDays);
         model.addAttribute("submission", submission);

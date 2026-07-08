@@ -1,6 +1,6 @@
 package com.attendance.app.service;
 
-import com.attendance.app.entity.PaidLeaveBalance;
+
 import com.attendance.app.entity.User;
 import com.attendance.app.mapper.SystemSettingMapper;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +20,7 @@ import java.util.List;
 public class AutoGrantPaidLeaveService {
 
     private final SystemSettingMapper systemSettingMapper;
-    private final PaidLeaveBalanceService paidLeaveBalanceService;
+
     private final UserService userService;
     private final BatchSettingService batchSettingService;
 

@@ -85,10 +85,11 @@ public class AttendanceRecordService {
 
     private WorkScheduleDefinition toWorkScheduleDefinition(WorkScheduleClass workScheduleClass) {
         List<BreakWindow> breakWindows = new ArrayList<>();
-        addBreakWindow(breakWindows, workScheduleClass.getBreakStartTime(), workScheduleClass.getBreakEndTime());
-        addBreakWindow(breakWindows, workScheduleClass.getBreakStartTime2(), workScheduleClass.getBreakEndTime2());
-        addBreakWindow(breakWindows, workScheduleClass.getBreakStartTime3(), workScheduleClass.getBreakEndTime3());
-        addBreakWindow(breakWindows, workScheduleClass.getBreakStartTime4(), workScheduleClass.getBreakEndTime4());
+        if (workScheduleClass.getBreaks() != null) {
+            for (com.attendance.app.entity.WorkScheduleClassBreak b : workScheduleClass.getBreaks()) {
+                addBreakWindow(breakWindows, b.getBreakStartTime(), b.getBreakEndTime());
+            }
+        }
 
         return new WorkScheduleDefinition(
                 workScheduleClass.getClassId(),

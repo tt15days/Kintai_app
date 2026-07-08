@@ -656,16 +656,29 @@ public class AdminController {
             @RequestParam(required = false) Short minHours,
             @RequestParam String startTime,
             @RequestParam String endTime,
-            @RequestParam(required = false) String breakStartTime,
-            @RequestParam(required = false) String breakEndTime,
-            @RequestParam(required = false) String breakStartTime2,
-            @RequestParam(required = false) String breakEndTime2,
-            @RequestParam(required = false) String breakStartTime3,
-            @RequestParam(required = false) String breakEndTime3,
-            @RequestParam(required = false) String breakStartTime4,
-            @RequestParam(required = false) String breakEndTime4,
+            @RequestParam(required = false) List<String> breakStartTimes,
+            @RequestParam(required = false) List<String> breakEndTimes,
             RedirectAttributes redirectAttributes) {
         try {
+            List<com.attendance.app.entity.WorkScheduleClassBreak> breaks = new java.util.ArrayList<>();
+            if (breakStartTimes != null && breakEndTimes != null) {
+                int size = Math.min(breakStartTimes.size(), breakEndTimes.size());
+                for (int i = 0; i < size; i++) {
+                    String start = breakStartTimes.get(i);
+                    String end = breakEndTimes.get(i);
+                    boolean startPresent = start != null && !start.isBlank();
+                    boolean endPresent = end != null && !end.isBlank();
+                    if (startPresent && endPresent) {
+                        breaks.add(com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                .breakStartTime(LocalTime.parse(start))
+                                .breakEndTime(LocalTime.parse(end))
+                                .build());
+                    } else if (startPresent || endPresent) {
+                        throw new IllegalArgumentException("休憩の開始時刻と終了時刻は両方入力してください");
+                    }
+                }
+            }
+
             workScheduleClassService.createClass(
                     name,
                     workLocation,
@@ -680,14 +693,7 @@ public class AdminController {
                     minHours,
                     LocalTime.parse(startTime),
                     LocalTime.parse(endTime),
-                    parseOptionalTime(breakStartTime),
-                    parseOptionalTime(breakEndTime),
-                    parseOptionalTime(breakStartTime2),
-                    parseOptionalTime(breakEndTime2),
-                    parseOptionalTime(breakStartTime3),
-                    parseOptionalTime(breakEndTime3),
-                    parseOptionalTime(breakStartTime4),
-                    parseOptionalTime(breakEndTime4));
+                    breaks);
             redirectAttributes.addFlashAttribute("successMessage", "勤務クラスを作成しました: " + name);
             log.info("勤務クラスを作成: name={}", name);
         } catch (IllegalArgumentException e) {
@@ -719,16 +725,29 @@ public class AdminController {
             @RequestParam(required = false) Short minHours,
             @RequestParam String startTime,
             @RequestParam String endTime,
-            @RequestParam(required = false) String breakStartTime,
-            @RequestParam(required = false) String breakEndTime,
-            @RequestParam(required = false) String breakStartTime2,
-            @RequestParam(required = false) String breakEndTime2,
-            @RequestParam(required = false) String breakStartTime3,
-            @RequestParam(required = false) String breakEndTime3,
-            @RequestParam(required = false) String breakStartTime4,
-            @RequestParam(required = false) String breakEndTime4,
+            @RequestParam(required = false) List<String> breakStartTimes,
+            @RequestParam(required = false) List<String> breakEndTimes,
             RedirectAttributes redirectAttributes) {
         try {
+            List<com.attendance.app.entity.WorkScheduleClassBreak> breaks = new java.util.ArrayList<>();
+            if (breakStartTimes != null && breakEndTimes != null) {
+                int size = Math.min(breakStartTimes.size(), breakEndTimes.size());
+                for (int i = 0; i < size; i++) {
+                    String start = breakStartTimes.get(i);
+                    String end = breakEndTimes.get(i);
+                    boolean startPresent = start != null && !start.isBlank();
+                    boolean endPresent = end != null && !end.isBlank();
+                    if (startPresent && endPresent) {
+                        breaks.add(com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                .breakStartTime(LocalTime.parse(start))
+                                .breakEndTime(LocalTime.parse(end))
+                                .build());
+                    } else if (startPresent || endPresent) {
+                        throw new IllegalArgumentException("休憩の開始時刻と終了時刻は両方入力してください");
+                    }
+                }
+            }
+
             workScheduleClassService.updateClass(
                     classId,
                     name,
@@ -744,14 +763,7 @@ public class AdminController {
                     minHours,
                     LocalTime.parse(startTime),
                     LocalTime.parse(endTime),
-                    parseOptionalTime(breakStartTime),
-                    parseOptionalTime(breakEndTime),
-                    parseOptionalTime(breakStartTime2),
-                    parseOptionalTime(breakEndTime2),
-                    parseOptionalTime(breakStartTime3),
-                    parseOptionalTime(breakEndTime3),
-                    parseOptionalTime(breakStartTime4),
-                    parseOptionalTime(breakEndTime4));
+                    breaks);
             redirectAttributes.addFlashAttribute("successMessage", "勤務クラスを更新しました: " + name);
             log.info("勤務クラスを更新: classId={}, name={}", classId, name);
         } catch (IllegalArgumentException e) {
@@ -764,12 +776,6 @@ public class AdminController {
         return ADMIN_WORK_SCHEDULES_REDIRECT;
     }
 
-    private LocalTime parseOptionalTime(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return LocalTime.parse(value);
-    }
 
     /**
      * 勤務クラスを論理削除（無効化）します。
@@ -807,6 +813,7 @@ public class AdminController {
                     .filter(u -> u.getUserRole() != UserRole.ADMIN)
                     .collect(Collectors.toList());
             model.addAttribute("activeUsers", activeUsers);
+            model.addAttribute("classes", workScheduleClassService.getAllClasses());
             log.info("通知管理画面を表示: activeUserCount={}", activeUsers.size());
         } catch (Exception e) {
             handleAdminViewError(model, e, "通知管理画面表示に失敗", "通知管理画面の表示に失敗しました");
@@ -815,29 +822,39 @@ public class AdminController {
     }
 
     /**
-     * 指定ユーザーまたは全ユーザーにカスタム通知を送信します。
+     * 指定ユーザー、指定勤務クラス、または全ユーザーにカスタム通知を送信します。
      *
      * @param userId  null の場合は全ユーザーに送信
+     * @param classId null の場合は全ユーザーに送信（userIdもnullの場合）
      * @param message 通知メッセージ
      */
     @PostMapping("/notifications/send")
     public String sendNotification(
             @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Long classId,
             @RequestParam String message,
             RedirectAttributes redirectAttributes) {
         try {
+            Long senderUserId = securityUtil.getCurrentUserId();
             if (userId != null) {
                 User target = userService.getUserById(userId)
                         .orElseThrow(() -> new IllegalArgumentException("ユーザーが見つかりません: id=" + userId));
-                userNotificationService.sendCustomNotification(userId, message);
+                userNotificationService.sendCustomNotification(userId, message, senderUserId);
                 redirectAttributes.addFlashAttribute("successMessage",
                         target.getFullName() + " さんに通知を送信しました");
-                log.info("管理者カスタム通知を送信: targetUserId={}", userId);
+                log.info("管理者カスタム通知を送信: targetUserId={}, senderUserId={}", userId, senderUserId);
+            } else if (classId != null) {
+                com.attendance.app.entity.WorkScheduleClass wsc = workScheduleClassService.getClassById(classId)
+                        .orElseThrow(() -> new IllegalArgumentException("勤務クラスが見つかりません: id=" + classId));
+                int count = userNotificationService.sendCustomNotificationToClass(classId, message, senderUserId);
+                redirectAttributes.addFlashAttribute("successMessage",
+                        "勤務クラス「" + wsc.getName() + "」のユーザー（" + count + "名）に通知を送信しました");
+                log.info("管理者クラス一括通知を送信: classId={}, count={}, senderUserId={}", classId, count, senderUserId);
             } else {
-                int count = userNotificationService.sendCustomNotificationToAll(message);
+                int count = userNotificationService.sendCustomNotificationToAll(message, senderUserId);
                 redirectAttributes.addFlashAttribute("successMessage",
                         "全ユーザー（" + count + "名）に通知を送信しました");
-                log.info("管理者一括通知を送信: count={}", count);
+                log.info("管理者一括通知を送信: count={}, senderUserId={}", count, senderUserId);
             }
         } catch (IllegalArgumentException e) {
             log.warn("通知送信に失敗: {}", e.getMessage());

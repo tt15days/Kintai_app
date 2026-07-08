@@ -100,7 +100,7 @@ public class PayrollExportServiceTest {
         assertThat(lines).hasSize(2); // 1 header + 1 data row
         
         assertThat(lines[0]).isEqualTo("従業員コード,氏名,出勤日数,欠勤日数,有休消化日数,総労働時間,時間外労働時間,深夜労働時間,休日労働時間");
-        assertThat(lines[1]).isEqualTo("EMP001,テスト 太郎,1,0,0,8.00,1.50,0.00,0.00");
+        assertThat(lines[1]).isEqualTo("EMP001,テスト 太郎,1,0,0,8時間0分,1時間30分,0時間0分,0時間0分");
     }
 
     @Test
@@ -234,10 +234,10 @@ public class PayrollExportServiceTest {
 
         // User1 data row check
         // EMP001,テスト 太郎, 出勤日数:2, 欠勤日数:0, 有休消化日数:0, 総労働:15.50, 残業:1.00, 深夜:1.00, 休日:0.00
-        assertThat(lines[1]).isEqualTo("EMP001,テスト 太郎,2,0,0,15.50,1.00,1.00,0.00");
+        assertThat(lines[1]).isEqualTo("EMP001,テスト 太郎,2,0,0,15時間30分,1時間0分,1時間0分,0時間0分");
 
         // User2 data row check
         // EMP002,テスト 次郎, 出勤日数:0, 欠勤日数:2 (unpaid + absence), 有休消化日数:1, 総労働:0.00, 残業:0.00, 深夜:0.00, 休日:0.00
-        assertThat(lines[2]).isEqualTo("EMP002,テスト 次郎,0,2,1,0.00,0.00,0.00,0.00");
+        assertThat(lines[2]).isEqualTo("EMP002,テスト 次郎,0,2,1,0時間0分,0時間0分,0時間0分,0時間0分");
     }
 }

@@ -9,7 +9,9 @@ public enum UserRole {
     /** 一般管理者 */
     MANAGER("一般管理者"),
     /** 一般ユーザー */
-    USER("一般ユーザー");
+    USER("一般ユーザー"),
+    /** その他 */
+    OTHER("その他");
 
     private final String displayName;
 

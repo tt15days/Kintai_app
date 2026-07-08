@@ -1,11 +1,9 @@
 package com.attendance.app.service;
 
-import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.entity.User;
 import com.attendance.app.mapper.SystemSettingMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -14,12 +12,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,8 +22,7 @@ public class AutoGrantPaidLeaveServiceTest {
     @Mock
     private SystemSettingMapper systemSettingMapper;
 
-    @Mock
-    private PaidLeaveBalanceService paidLeaveBalanceService;
+
 
     @Mock
     private UserService userService;

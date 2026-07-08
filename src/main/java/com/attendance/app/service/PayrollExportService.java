@@ -122,10 +122,10 @@ public class PayrollExportService {
                         workingDays,
                         absenceDays + unpaidLeaveDays,
                         paidLeaveDays,
-                        String.format("%.2f", totalWorkingHours),
-                        String.format("%.2f", totalOvertimeHours),
-                        String.format("%.2f", totalNightShiftHours),
-                        String.format("%.2f", totalHolidayWorkHours)
+                        com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalWorkingHours),
+                        com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalOvertimeHours),
+                        com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalNightShiftHours),
+                        com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalHolidayWorkHours)
                 );
             }
         }

@@ -55,6 +55,8 @@ public class User {
     private Boolean canApproveAttendance;
     /** アカウントの有効・無効状態 */
     private Boolean isActive;
+    /** 廃止日時（UTC） */
+    private Instant deletedAt;
     /** 作成日時（UTC） */
     private Instant createdAt;
     /** 更新日時（UTC） */

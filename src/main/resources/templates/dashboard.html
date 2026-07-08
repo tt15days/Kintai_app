@@ -35,8 +35,7 @@
                 <span class="text-[0.8rem] text-txt-secondary font-semibold">今月の実労働時間</span>
                 <div class="flex items-baseline gap-[0.15rem] my-1">
                     <span class="text-4xl font-extrabold text-txt-primary font-mono leading-none"
-                        th:text="${totalHoursThisMonth}">0.0</span>
-                    <span class="text-[0.8rem] text-txt-secondary font-semibold">時間</span>
+                        th:text="${totalHoursThisMonthStr}">0時間0分</span>
                 </div>
                 <span class="text-[0.75rem] text-txt-secondary font-medium"
                     th:text="'出勤実績: ' + ${attendanceDays} + '日'">出勤実績: 0日</span>
@@ -47,8 +46,7 @@
                 <span class="text-[0.8rem] text-txt-secondary font-semibold">時間外労働時間（残業）</span>
                 <div class="flex items-baseline gap-[0.15rem] my-1">
                     <span class="text-4xl font-extrabold text-txt-primary font-mono leading-none"
-                        th:text="${overtimeHours}">0.0</span>
-                    <span class="text-[0.8rem] text-txt-secondary font-semibold">時間</span>
+                        th:text="${overtimeHoursStr}">0時間0分</span>
                 </div>
                 <span class="text-[0.75rem] text-txt-secondary font-medium">36協定上限: 45時間</span>
             </div>
@@ -58,8 +56,7 @@
                 <span class="text-[0.8rem] text-txt-secondary font-semibold">深夜勤務時間</span>
                 <div class="flex items-baseline gap-[0.15rem] my-1">
                     <span class="text-4xl font-extrabold text-txt-primary font-mono leading-none"
-                        th:text="${nightShiftHours}">0.0</span>
-                    <span class="text-[0.8rem] text-txt-secondary font-semibold">時間</span>
+                        th:text="${nightShiftHoursStr}">0時間0分</span>
                 </div>
                 <span class="text-[0.75rem] text-txt-secondary font-medium">22:00〜翌05:00対象</span>
             </div>
@@ -109,6 +106,8 @@
                     <div th:each="note : ${notifications}"
                         th:onclick="'markDashboardNotificationAsRead(' + ${note.notificationId} + ', this)'"
                         class="mb-2 py-2 px-3 rounded-lg bg-black/5 border border-glass-border hover:bg-black/10 cursor-pointer transition-colors duration-200 text-left">
+                        <div class="text-[0.75rem] text-accent mb-0.5" th:if="${note.senderName != null}" th:text="'送信元: ' + ${note.senderName}">
+                            送信元: 管理者名</div>
                         <div class="text-[0.8rem] text-txt-primary leading-normal mb-0.5" th:text="${note.message}">
                             通知メッセージ</div>
                         <div class="text-[0.7rem] text-txt-secondary"

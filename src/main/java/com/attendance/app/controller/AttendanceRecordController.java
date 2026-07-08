@@ -237,11 +237,16 @@ public class AttendanceRecordController {
         model.addAttribute("monthRange", monthRange);
         model.addAttribute("monthDates", monthDates);
         model.addAttribute("totalWorkingHours", totalWorkingHours);
+        model.addAttribute("totalWorkingHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalWorkingHours));
         model.addAttribute("totalOvertimeHours", totalOvertimeHours);
+        model.addAttribute("totalOvertimeHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalOvertimeHours));
         model.addAttribute("totalHolidayWorkHours", totalHolidayWorkHours);
+        model.addAttribute("totalHolidayWorkHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalHolidayWorkHours));
         model.addAttribute("totalSaturdayWorkHours", totalSaturdayWorkHours);
+        model.addAttribute("totalSaturdayWorkHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalSaturdayWorkHours));
         model.addAttribute("totalPaidLeaveDays", totalPaidLeaveDays);
         model.addAttribute("totalPaidLeaveHours", totalPaidLeaveHours);
+        model.addAttribute("totalPaidLeaveHoursStr", com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalPaidLeaveHours));
         model.addAttribute("totalUnpaidLeaveDays", totalUnpaidLeaveDays);
         model.addAttribute("totalAbsenceDays", totalAbsenceDays);
         model.addAttribute("monthSubmission", monthSubmission);

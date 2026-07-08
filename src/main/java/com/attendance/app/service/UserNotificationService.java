@@ -4,6 +4,8 @@ import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserNotification;
 import com.attendance.app.entity.UserRole;
 import com.attendance.app.mapper.UserNotificationMapper;
+import com.attendance.app.mapper.WorkScheduleClassMapper;
+import com.attendance.app.entity.WorkScheduleClass;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ public class UserNotificationService {
     private final UserNotificationMapper userNotificationMapper;
     private final UserService userService;
     private final AttendanceSubmissionService attendanceSubmissionService;
+    private final WorkScheduleClassMapper workScheduleClassMapper;
 
     /**
      * 指定ユーザーの未読通知一覧を返します（作成日時降順）。
@@ -95,6 +98,7 @@ public class UserNotificationService {
                         .message(message)
                         .notificationType(TYPE_REMINDER)
                         .isRead(false)
+                        .senderUserId(null)
                         .build();
                 userNotificationMapper.insert(notification);
                 count++;
@@ -136,7 +140,7 @@ public class UserNotificationService {
      */
     public void notifyApplicantApproved(Long applicantUserId, String description) {
         String message = description + " が承認されました。";
-        insertNotification(applicantUserId, message, TYPE_APPROVED);
+        insertNotification(applicantUserId, message, TYPE_APPROVED, null);
         log.info("承認通知を送信: userId={}, description={}", applicantUserId, description);
     }
 
@@ -150,7 +154,7 @@ public class UserNotificationService {
     public void notifyApplicantReturned(Long applicantUserId, String description, String comment) {
         String message = description + " が差し戻されました。"
                 + (comment != null && !comment.isBlank() ? " コメント: " + comment : "");
-        insertNotification(applicantUserId, message, TYPE_RETURNED);
+        insertNotification(applicantUserId, message, TYPE_RETURNED, null);
         log.info("差し戻し通知を送信: userId={}, description={}", applicantUserId, description);
     }
 
@@ -164,7 +168,7 @@ public class UserNotificationService {
     public void notifyApplicantRejected(Long applicantUserId, String description, String comment) {
         String message = description + " が却下されました。"
                 + (comment != null && !comment.isBlank() ? " コメント: " + comment : "");
-        insertNotification(applicantUserId, message, TYPE_REJECTED);
+        insertNotification(applicantUserId, message, TYPE_REJECTED, null);
         log.info("却下通知を送信: userId={}, description={}", applicantUserId, description);
     }
 
@@ -184,7 +188,7 @@ public class UserNotificationService {
                 continue;
             }
             if (userService.isAttendanceApprover(user)) {
-                insertNotification(user.getUserId(), message, notificationType);
+                insertNotification(user.getUserId(), message, notificationType, null);
                 count++;
             }
         }
@@ -198,12 +202,13 @@ public class UserNotificationService {
      * @param message 通知メッセージ
      * @param notificationType 通知タイプ
      */
-    private void insertNotification(Long userId, String message, String notificationType) {
+    private void insertNotification(Long userId, String message, String notificationType, Long senderUserId) {
         UserNotification notification = UserNotification.builder()
                 .userId(userId)
                 .message(message)
                 .notificationType(notificationType)
                 .isRead(false)
+                .senderUserId(senderUserId)
                 .build();
         userNotificationMapper.insert(notification);
     }
@@ -213,22 +218,24 @@ public class UserNotificationService {
      *
      * @param userId  送信先ユーザーID
      * @param message 通知メッセージ
+     * @param senderUserId 送信元のユーザーID
      */
-    public void sendCustomNotification(Long userId, String message) {
+    public void sendCustomNotification(Long userId, String message, Long senderUserId) {
         if (message == null || message.isBlank()) {
             throw new IllegalArgumentException("メッセージを入力してください");
         }
-        insertNotification(userId, message, TYPE_ADMIN_MESSAGE);
-        log.info("管理者カスタム通知を送信: userId={}", userId);
+        insertNotification(userId, message, TYPE_ADMIN_MESSAGE, senderUserId);
+        log.info("管理者カスタム通知を送信: userId={}, senderUserId={}", userId, senderUserId);
     }
 
     /**
      * 管理者が全アクティブユーザー（ADMIN除く）にカスタムメッセージを一括送信します。
      *
      * @param message 通知メッセージ
+     * @param senderUserId 送信元のユーザーID
      * @return 送信したユーザー数
      */
-    public int sendCustomNotificationToAll(String message) {
+    public int sendCustomNotificationToAll(String message, Long senderUserId) {
         if (message == null || message.isBlank()) {
             throw new IllegalArgumentException("メッセージを入力してください");
         }
@@ -238,10 +245,40 @@ public class UserNotificationService {
             if (user.getUserRole() == UserRole.ADMIN) {
                 continue;
             }
-            insertNotification(user.getUserId(), message, TYPE_ADMIN_MESSAGE);
+            insertNotification(user.getUserId(), message, TYPE_ADMIN_MESSAGE, senderUserId);
             count++;
         }
-        log.info("管理者一括通知を送信: count={}", count);
+        log.info("管理者一括通知を送信: count={}, senderUserId={}", count, senderUserId);
+        return count;
+    }
+
+    /**
+     * 管理者が指定勤務クラスに所属する全アクティブユーザー（ADMIN除く）にカスタムメッセージを一括送信します。
+     *
+     * @param classId      勤務クラスID
+     * @param message      通知メッセージ
+     * @param senderUserId 送信者のユーザーID
+     * @return 送信したユーザー数
+     */
+    public int sendCustomNotificationToClass(Long classId, String message, Long senderUserId) {
+        if (message == null || message.isBlank()) {
+            throw new IllegalArgumentException("メッセージを入力してください");
+        }
+        WorkScheduleClass wsc = workScheduleClassMapper.selectById(classId)
+                .orElseThrow(() -> new IllegalArgumentException("勤務クラスが見つかりません: id=" + classId));
+        
+        List<User> activeUsers = userService.getActiveUsers();
+        int count = 0;
+        for (User user : activeUsers) {
+            if (user.getUserRole() == UserRole.ADMIN) {
+                continue;
+            }
+            if (wsc.getName().equals(user.getClassName())) {
+                insertNotification(user.getUserId(), message, TYPE_ADMIN_MESSAGE, senderUserId);
+                count++;
+            }
+        }
+        log.info("管理者クラス一括通知を送信: classId={}, count={}, senderUserId={}", classId, count, senderUserId);
         return count;
     }
 
@@ -252,7 +289,7 @@ public class UserNotificationService {
      * @param message アラートメッセージ
      */
     public void notifyArticle36Alert(Long userId, String message) {
-        insertNotification(userId, message, TYPE_ARTICLE36_ALERT);
+        insertNotification(userId, message, TYPE_ARTICLE36_ALERT, null);
         log.info("36協定アラート通知を送信: userId={}", userId);
     }
 
@@ -263,7 +300,7 @@ public class UserNotificationService {
      * @param message アラートメッセージ
      */
     public void notifyIntervalAlert(Long userId, String message) {
-        insertNotification(userId, message, TYPE_INTERVAL_ALERT);
+        insertNotification(userId, message, TYPE_INTERVAL_ALERT, null);
         log.info("勤務間インターバル不足アラート通知を送信: userId={}", userId);
     }
 
