@@ -50,6 +50,16 @@ public interface PaidLeaveBalanceMapper {
     Optional<PaidLeaveBalance> selectByUserAndYear(@Param("userId") Long userId, @Param("grantYear") Integer grantYear);
 
     /**
+     * 複数ユーザーの指定年度の有給残高を一括取得します。
+     *
+     * @param userIds ユーザーIDのリスト
+     * @param grantYear 付与年度
+     * @return 有給残高のリスト
+     */
+    List<PaidLeaveBalance> selectByUsersAndYear(@Param("userIds") List<Long> userIds, @Param("grantYear") Integer grantYear);
+
+
+    /**
      * 有給残高を挿入します。
      *
      * @param balance 登録する有給残高情報

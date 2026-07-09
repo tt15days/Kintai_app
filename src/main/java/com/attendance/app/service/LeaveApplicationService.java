@@ -164,6 +164,31 @@ public class LeaveApplicationService {
             throw new IllegalArgumentException("承認済みの申請は更新できません");
         }
 
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("開始日は終了日より前である必要があります");
+        }
+
+        if (!"FULL_DAY".equals(application.getLeaveDurationType()) && !startDate.isEqual(endDate)) {
+            throw new IllegalArgumentException("半休は開始日と終了日が同じ単日でのみ申請できます");
+        }
+
+        // 同一期間に既存の有効な休暇申請（却下以外で自身以外）が重複していないか確認する
+        List<LeaveApplication> overlapping = getApplicationsByUserAndDateRange(application.getUserId(), startDate, endDate);
+        boolean hasOverlap = overlapping.stream()
+                .anyMatch(a -> !a.getApplicationId().equals(applicationId) && a.getStatus() != LeaveStatus.REJECTED);
+        if (hasOverlap) {
+            throw new IllegalArgumentException("指定期間に既に休暇申請が存在します");
+        }
+
+        if (LeaveType.PAID_LEAVE == leaveType) {
+            BigDecimal requestedDays = calculateConsumedDays(startDate, endDate, application.getLeaveDurationType());
+            BigDecimal remainingDays = paidLeaveBalanceService.getTotalRemainingDays(application.getUserId());
+            if (requestedDays.compareTo(remainingDays) > 0) {
+                BigDecimal shortage = requestedDays.subtract(remainingDays);
+                throw new IllegalArgumentException("有給休暇の残日数が不足しています（不足: " + shortage.stripTrailingZeros().toPlainString() + "日）");
+            }
+        }
+
         application.setLeaveStartDate(startDate);
         application.setLeaveEndDate(endDate);
         application.setLeaveType(leaveType);

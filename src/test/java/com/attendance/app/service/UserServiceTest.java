@@ -6,6 +6,7 @@ import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.mapper.WorkScheduleClassMapper;
 import com.attendance.app.mapper.PaidLeaveBalanceMapper;
+import com.attendance.app.mapper.AttendanceApproverAssignmentMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,10 @@ class UserServiceTest {
     private SystemSettingMapper systemSettingMapper;
     @Mock
     private PaidLeaveBalanceMapper paidLeaveBalanceMapper;
+    @Mock
+    private AttendanceApproverAssignmentMapper approverAssignmentMapper;
+    @Mock
+    private LeaveApplicationService leaveApplicationService;
 
     @InjectMocks
     private UserService service;

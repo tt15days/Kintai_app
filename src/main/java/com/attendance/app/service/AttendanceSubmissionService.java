@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -101,6 +103,7 @@ public class AttendanceSubmissionService {
     /**
      * 指定月の勤怠申請を提出し、既存申請があれば再申請状態に更新します。
      */
+    @CacheEvict(cacheNames = "pendingSubmissionsCount", allEntries = true)
     public AttendanceSubmission submitMonth(Long userId, YearMonth yearMonth) {
         Optional<AttendanceSubmission> existing = getSubmission(userId, yearMonth);
         String key = toYearMonthKey(yearMonth);
@@ -165,6 +168,7 @@ public class AttendanceSubmissionService {
     /**
      * 現在ユーザーが承認可能な申請中一覧を返します。
      */
+    @Cacheable(cacheNames = "pendingSubmissionsCount", key = "#currentUser.userId")
     public List<AttendanceSubmission> getPendingSubmissions(User currentUser) {
         ensureApprover(currentUser);
 
@@ -181,6 +185,7 @@ public class AttendanceSubmissionService {
     /**
      * 申請中の勤怠申請を承認します。
      */
+    @CacheEvict(cacheNames = "pendingSubmissionsCount", allEntries = true)
     public void approve(Long submissionId, Long approverUserId, String comment) {
         User approver = userService.getUserById(approverUserId)
                 .orElseThrow(() -> new IllegalArgumentException("承認ユーザーが見つかりません"));
@@ -214,6 +219,7 @@ public class AttendanceSubmissionService {
     /**
      * 申請中の勤怠申請を差し戻します。
      */
+    @CacheEvict(cacheNames = "pendingSubmissionsCount", allEntries = true)
     public void returnForCorrection(Long submissionId, Long approverUserId, String comment) {
         User approver = userService.getUserById(approverUserId)
                 .orElseThrow(() -> new IllegalArgumentException("承認ユーザーが見つかりません"));
@@ -247,6 +253,7 @@ public class AttendanceSubmissionService {
     /**
      * 申請者本人が申請中の勤怠申請を取り下げます。
      */
+    @CacheEvict(cacheNames = "pendingSubmissionsCount", allEntries = true)
     public void withdrawSubmission(Long userId, YearMonth yearMonth) {
         Optional<AttendanceSubmission> existing = getSubmission(userId, yearMonth);
         if (existing.isEmpty()) {
@@ -280,6 +287,7 @@ public class AttendanceSubmissionService {
     /**
      * 承認済み申請を管理者が差し戻し状態へ戻します。
      */
+    @CacheEvict(cacheNames = "pendingSubmissionsCount", allEntries = true)
     public void revokeApproval(Long submissionId, Long adminUserId) {
         AttendanceSubmission submission = attendanceSubmissionMapper.selectByIdForUpdate(submissionId)
                 .orElseThrow(() -> new IllegalArgumentException("申請が見つかりません"));

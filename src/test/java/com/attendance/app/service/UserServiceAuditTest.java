@@ -54,6 +54,9 @@ class UserServiceAuditTest {
     @Mock
     private PaidLeaveBalanceMapper paidLeaveBalanceMapper;
 
+    @Mock
+    private LeaveApplicationService leaveApplicationService;
+
     @InjectMocks
     private UserService userService;
 

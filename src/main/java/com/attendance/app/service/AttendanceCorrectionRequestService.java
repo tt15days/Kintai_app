@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -59,6 +61,7 @@ public class AttendanceCorrectionRequestService {
      * @param reason             修正理由（必須）
      * @return 作成された修正申請
      */
+    @CacheEvict(cacheNames = "pendingCorrectionsCount", allEntries = true)
     public AttendanceCorrectionRequest submitRequest(
             Long userId,
             LocalDate attendanceDate,
@@ -138,6 +141,7 @@ public class AttendanceCorrectionRequestService {
      * @param requestId 申請ID
      * @param userId    操作ユーザーID（本人確認用）
      */
+    @CacheEvict(cacheNames = "pendingCorrectionsCount", allEntries = true)
     public void withdrawRequest(Long requestId, Long userId) {
         AttendanceCorrectionRequest request = correctionRequestMapper.selectByIdForUpdate(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("修正申請が見つかりません"));
@@ -162,6 +166,7 @@ public class AttendanceCorrectionRequestService {
      * @param approverUserId  承認者ユーザーID
      * @param comment         承認コメント（任意）
      */
+    @CacheEvict(cacheNames = "pendingCorrectionsCount", allEntries = true)
     public void approveRequest(Long requestId, Long approverUserId, String comment) {
         User approver = userService.getUserById(approverUserId)
                 .orElseThrow(() -> new IllegalArgumentException("承認ユーザーが見つかりません"));
@@ -196,6 +201,7 @@ public class AttendanceCorrectionRequestService {
      * @param approverUserId  承認者ユーザーID
      * @param comment         却下理由（任意）
      */
+    @CacheEvict(cacheNames = "pendingCorrectionsCount", allEntries = true)
     public void rejectRequest(Long requestId, Long approverUserId, String comment) {
         User approver = userService.getUserById(approverUserId)
                 .orElseThrow(() -> new IllegalArgumentException("承認ユーザーが見つかりません"));
@@ -225,6 +231,7 @@ public class AttendanceCorrectionRequestService {
      * @param approver 承認者ユーザー
      * @return 承認待ち修正申請一覧
      */
+    @Cacheable(cacheNames = "pendingCorrectionsCount", key = "#approver.userId")
     public List<AttendanceCorrectionRequest> getPendingRequests(User approver) {
         ensureApprover(approver);
         List<AttendanceCorrectionRequest> pendingRequests = correctionRequestMapper.selectByStatus(STATUS_PENDING);

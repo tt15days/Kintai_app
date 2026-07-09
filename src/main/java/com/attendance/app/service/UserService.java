@@ -9,6 +9,8 @@ import com.attendance.app.mapper.WorkScheduleClassMapper;
 import com.attendance.app.mapper.AttendanceApproverAssignmentMapper;
 import com.attendance.app.mapper.PaidLeaveBalanceMapper;
 import com.attendance.app.entity.PaidLeaveBalance;
+import com.attendance.app.entity.LeaveApplication;
+import com.attendance.app.entity.LeaveStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -57,6 +59,7 @@ public class UserService {
     private final SystemSettingMapper systemSettingMapper;
     private final AttendanceApproverAssignmentMapper approverAssignmentMapper;
     private final PaidLeaveBalanceMapper paidLeaveBalanceMapper;
+    private final LeaveApplicationService leaveApplicationService;
 
     /**
      * 指定されたユーザーIDでユーザー情報を取得します。
@@ -241,6 +244,8 @@ public class UserService {
             approverAssignmentMapper.deleteUserApproverByApprover(userId);
             approverAssignmentMapper.deleteDepartmentApproverByApprover(userId);
             log.info("無効化されたユーザーの承認者割り当てを解除しました: userId={}", userId);
+            
+            deletePendingLeaveApplications(userId);
         }
 
         log.info("ユーザー情報を更新しました: userId={}", userId);
@@ -339,6 +344,8 @@ public class UserService {
         userMapper.softDeleteById(userId);
         log.info("ユーザーを削除しました: userId={}", userId);
 
+        deletePendingLeaveApplications(userId);
+
         auditLogService.recordUserEvent(
                 AuditEventType.USER_DELETED,
                 actorUserId,
@@ -352,6 +359,7 @@ public class UserService {
      * @param userId 削除対象のユーザーID
      */
     public void hardDeleteUser(Long userId) {
+        deletePendingLeaveApplications(userId);
         userMapper.deleteById(userId);
         log.info("ユーザーをハードデリートしました: userId={}", userId);
     }
@@ -628,5 +636,15 @@ public class UserService {
         userMapper.updatePaidLeaveSettings(userId, annualLeaveGrantDays, annualLeaveIncrement, maxPaidLeaveDays);
         log.info("ユーザー別有給設定を更新: userId={}, grantDays={}, increment={}, maxDays={}",
                 userId, annualLeaveGrantDays, annualLeaveIncrement, maxPaidLeaveDays);
+    }
+
+    private void deletePendingLeaveApplications(Long userId) {
+        List<LeaveApplication> pendingApps = leaveApplicationService.getApplicationsByUserIdAndStatus(userId, LeaveStatus.PENDING);
+        for (LeaveApplication app : pendingApps) {
+            leaveApplicationService.deleteApplication(app.getApplicationId());
+        }
+        if (!pendingApps.isEmpty()) {
+            log.info("無効化・削除されたユーザーの申請中休暇を削除しました: userId={}, count={}", userId, pendingApps.size());
+        }
     }
 }

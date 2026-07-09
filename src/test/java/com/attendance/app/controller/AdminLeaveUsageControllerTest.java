@@ -17,7 +17,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -54,10 +53,10 @@ class AdminLeaveUsageControllerTest {
 
         int currentYear = LocalDate.now().getYear();
 
-        // 累計残日数スタブ (#17)
-        when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(new BigDecimal("4.0"));
-        when(paidLeaveBalanceService.getTotalRemainingDays(2L)).thenReturn(new BigDecimal("6.5"));
-        when(paidLeaveBalanceService.getTotalRemainingDays(3L)).thenReturn(BigDecimal.ZERO);
+        // 累計残日数 (#17) - ユーザーオブジェクトの paidLeaveDays フィールドを使用
+        user1.setPaidLeaveDays(new BigDecimal("4.0"));
+        user2.setPaidLeaveDays(new BigDecimal("6.5"));
+        user3.setPaidLeaveDays(BigDecimal.ZERO);
 
         // ユーザー1：5日以上の取得義務を達成している (6.0日取得)
         PaidLeaveBalance balance1 = new PaidLeaveBalance();
@@ -65,7 +64,6 @@ class AdminLeaveUsageControllerTest {
         balance1.setGrantYear(currentYear);
         balance1.setGrantedDays(new BigDecimal("10.0"));
         balance1.setUsedDays(new BigDecimal("6.0"));
-        when(paidLeaveBalanceService.getByUserAndYear(1L, currentYear)).thenReturn(Optional.of(balance1));
 
         // ユーザー2：取得日数が5日未満 (3.5日取得)
         PaidLeaveBalance balance2 = new PaidLeaveBalance();
@@ -73,10 +71,10 @@ class AdminLeaveUsageControllerTest {
         balance2.setGrantYear(currentYear);
         balance2.setGrantedDays(new BigDecimal("10.0"));
         balance2.setUsedDays(new BigDecimal("3.5"));
-        when(paidLeaveBalanceService.getByUserAndYear(2L, currentYear)).thenReturn(Optional.of(balance2));
 
-        // ユーザー3：有給休暇残高のレコードが存在しない
-        when(paidLeaveBalanceService.getByUserAndYear(3L, currentYear)).thenReturn(Optional.empty());
+        // 有給残高を一括取得するモックを定義
+        when(paidLeaveBalanceService.getByUsersAndYear(List.of(1L, 2L, 3L), currentYear))
+                .thenReturn(List.of(balance1, balance2));
 
         ExtendedModelMap model = new ExtendedModelMap();
         String view = controller.showLeaveUsage(model);

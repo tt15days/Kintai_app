@@ -474,6 +474,7 @@ class LeaveApplicationServiceTest {
                 .applicationId(id)
                 .userId(2L)
                 .leaveType(LeaveType.PAID_LEAVE)
+                .leaveDurationType("FULL_DAY")
                 .leaveStartDate(LocalDate.of(2026, 6, 1))
                 .leaveEndDate(LocalDate.of(2026, 6, 1))
                 .status(LeaveStatus.PENDING)

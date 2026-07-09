@@ -1,8 +1,8 @@
 package com.attendance.app.controller;
 
 import com.attendance.app.entity.Holiday;
-import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.service.AttendancePeriodSettingService;
+import com.attendance.app.service.SystemSettingService;
 import com.attendance.app.service.BatchSettingService;
 import com.attendance.app.service.CsvFilenamePatternService;
 import com.attendance.app.service.HolidayService;
@@ -30,7 +30,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SettingsController {
 
-    private final SystemSettingMapper systemSettingMapper;
+    private final SystemSettingService systemSettingService;
     private final AttendancePeriodSettingService attendancePeriodSettingService;
     private final BatchSettingService batchSettingService;
     private final CsvFilenamePatternService csvFilenamePatternService;
@@ -39,11 +39,11 @@ public class SettingsController {
 
     @GetMapping
     public String showSettings(Model model) {
-        String grantDate = systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DATE");
-        String grantDays = systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DAYS");
-        String copyrightText = systemSettingMapper.selectValueByKey("COPYRIGHT_TEXT");
-        String systemName = systemSettingMapper.selectValueByKey("SYSTEM_NAME");
-        String empNoPrefix = systemSettingMapper.selectValueByKey("EMP_NO_PREFIX");
+        String grantDate = systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DATE");
+        String grantDays = systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DAYS");
+        String copyrightText = systemSettingService.getSettingValue("COPYRIGHT_TEXT");
+        String systemName = systemSettingService.getSettingValue("SYSTEM_NAME");
+        String empNoPrefix = systemSettingService.getSettingValue("EMP_NO_PREFIX");
 
         if (grantDate == null) grantDate = "04-01";
         if (grantDays == null) grantDays = "10";
@@ -104,8 +104,8 @@ public class SettingsController {
             return "redirect:/admin/settings";
         }
         
-        systemSettingMapper.upsertValue("PAID_LEAVE_GRANT_DATE", paidLeaveGrantDate);
-        systemSettingMapper.upsertValue("PAID_LEAVE_GRANT_DAYS", paidLeaveGrantDays.trim());
+        systemSettingService.updateSettingValue("PAID_LEAVE_GRANT_DATE", paidLeaveGrantDate);
+        systemSettingService.updateSettingValue("PAID_LEAVE_GRANT_DAYS", paidLeaveGrantDays.trim());
 
         redirectAttributes.addFlashAttribute("message", "システム設定を更新しました。");
         return "redirect:/admin/settings";
@@ -124,7 +124,7 @@ public class SettingsController {
             return "redirect:/admin/settings";
         }
         try {
-            systemSettingMapper.upsertValue("COPYRIGHT_TEXT", copyrightText);
+            systemSettingService.updateSettingValue("COPYRIGHT_TEXT", copyrightText);
             redirectAttributes.addFlashAttribute("message", "コピーライト表示設定を更新しました");
             log.info("コピーライト表示設定を更新: {}", copyrightText);
         } catch (Exception e) {
@@ -147,7 +147,7 @@ public class SettingsController {
             return "redirect:/admin/settings";
         }
         try {
-            systemSettingMapper.upsertValue("SYSTEM_NAME", systemName);
+            systemSettingService.updateSettingValue("SYSTEM_NAME", systemName);
             redirectAttributes.addFlashAttribute("message", "システム名表示設定を更新しました");
             log.info("システム名表示設定を更新: {}", systemName);
         } catch (Exception e) {
@@ -167,7 +167,7 @@ public class SettingsController {
             return "redirect:/admin/settings";
         }
         try {
-            systemSettingMapper.upsertValue("EMP_NO_PREFIX", prefix);
+            systemSettingService.updateSettingValue("EMP_NO_PREFIX", prefix);
             redirectAttributes.addFlashAttribute("message", "社員番号プレフィックス設定を更新しました");
             log.info("社員番号プレフィックス設定を更新: {}", prefix);
         } catch (Exception e) {

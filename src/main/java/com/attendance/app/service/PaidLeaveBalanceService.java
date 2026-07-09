@@ -81,6 +81,21 @@ public class PaidLeaveBalanceService {
     }
 
     /**
+     * 複数ユーザーの指定年度の有給残高を一括取得します。
+     *
+     * @param userIds   ユーザーIDリスト
+     * @param grantYear 付与年度
+     * @return 有給残高リスト
+     */
+    @Transactional(readOnly = true)
+    public List<PaidLeaveBalance> getByUsersAndYear(List<Long> userIds, Integer grantYear) {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        return paidLeaveBalanceMapper.selectByUsersAndYear(userIds, grantYear);
+    }
+
+    /**
      * 有給休暇の使用日数を残高から減算します。
      * 失効日が最も早い有効残高から順に消化します（先入れ先出し方式）。
      * 残高が不足している場合は例外を送出し、呼び出し元のトランザクションをロールバックさせます。

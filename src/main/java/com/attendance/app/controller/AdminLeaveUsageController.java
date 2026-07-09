@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/admin/leave-usage")
@@ -36,23 +37,31 @@ public class AdminLeaveUsageController {
         Map<Long, Boolean> obligationMetMap = new HashMap<>();
         Map<Long, BigDecimal> remainingTotalMap = new HashMap<>();
 
+        // N+1対策として一括取得
+        List<Long> userIds = users.stream().map(u -> u.getUserId()).toList();
+        List<PaidLeaveBalance> currentYearBalances = paidLeaveBalanceService.getByUsersAndYear(userIds, currentYear);
+        Map<Long, PaidLeaveBalance> currentYearBalanceMap = currentYearBalances.stream()
+            .collect(Collectors.toMap(b -> b.getUserId(), b -> b));
+
         for (User user : users) {
-            remainingTotalMap.put(user.getUserId(), paidLeaveBalanceService.getTotalRemainingDays(user.getUserId()));
+            // UserエンティティのpaidLeaveDays（同期済み）を使用
+            remainingTotalMap.put(user.getUserId(), user.getPaidLeaveDays() != null ? user.getPaidLeaveDays() : BigDecimal.ZERO);
+            
             // 現在の年の有給休暇残高を取得
-            paidLeaveBalanceService.getByUserAndYear(user.getUserId(), currentYear)
-                .ifPresentOrElse(balance -> {
-                    balanceMap.put(user.getUserId(), balance);
-                    // 年5日取得義務を満たしているかチェック（取得済み日数が5以上）
-                    boolean obligationMet = balance.getUsedDays().compareTo(new BigDecimal("5.0")) >= 0;
-                    obligationMetMap.put(user.getUserId(), obligationMet);
-                }, () -> {
-                    // まだ付与されていない場合はダミーデータ（あるいは null のまま表示で対応）
-                    PaidLeaveBalance emptyBalance = new PaidLeaveBalance();
-                    emptyBalance.setGrantedDays(BigDecimal.ZERO);
-                    emptyBalance.setUsedDays(BigDecimal.ZERO);
-                    balanceMap.put(user.getUserId(), emptyBalance);
-                    obligationMetMap.put(user.getUserId(), false);
-                });
+            PaidLeaveBalance balance = currentYearBalanceMap.get(user.getUserId());
+            if (balance != null) {
+                balanceMap.put(user.getUserId(), balance);
+                // 年5日取得義務を満たしているかチェック（取得済み日数が5以上）
+                boolean obligationMet = balance.getUsedDays().compareTo(new BigDecimal("5.0")) >= 0;
+                obligationMetMap.put(user.getUserId(), obligationMet);
+            } else {
+                // まだ付与されていない場合はダミーデータ（あるいは null のまま表示で対応）
+                PaidLeaveBalance emptyBalance = new PaidLeaveBalance();
+                emptyBalance.setGrantedDays(BigDecimal.ZERO);
+                emptyBalance.setUsedDays(BigDecimal.ZERO);
+                balanceMap.put(user.getUserId(), emptyBalance);
+                obligationMetMap.put(user.getUserId(), false);
+            }
         }
 
         model.addAttribute("users", users);
