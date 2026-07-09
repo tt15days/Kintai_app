@@ -23,11 +23,12 @@ public class AutoGrantPaidLeaveService {
 
     private final UserService userService;
     private final BatchSettingService batchSettingService;
+    private final PaidLeaveBalanceService paidLeaveBalanceService;
 
     /**
      * 毎日深夜0時に実行される有給休暇自動付与バッチ
      */
-    @Scheduled(cron = "0 0 0 * * ?")
+    @Scheduled(cron = "0 0 0 * * ?", zone = "Asia/Tokyo")
     public void grantPaidLeaveBatch() {
         log.info("有給休暇自動付与バッチを開始します。");
 
@@ -40,7 +41,7 @@ public class AutoGrantPaidLeaveService {
                 return;
             }
 
-            LocalDate today = LocalDate.now();
+            LocalDate today = LocalDate.now(ZoneId.of("Asia/Tokyo"));
             String todayStr = String.format("%02d-%02d", today.getMonthValue(), today.getDayOfMonth());
 
             if (!grantDateStr.equals(todayStr)) {
@@ -50,17 +51,26 @@ public class AutoGrantPaidLeaveService {
 
             BigDecimal defaultGrantDays = new BigDecimal(grantDaysStr);
             List<User> users = userService.getActiveUsers();
-            
+
             for (User user : users) {
+                if (paidLeaveBalanceService.getByUserAndYear(user.getUserId(), today.getYear()).isPresent()) {
+                    log.info("ユーザー {} は{}年分を付与済みのためスキップします。", user.getUserId(), today.getYear());
+                    continue;
+                }
+
                 BigDecimal grantDays = user.getAnnualLeaveGrantDays() != null
                         ? BigDecimal.valueOf(user.getAnnualLeaveGrantDays())
                         : defaultGrantDays;
 
-                // ユーザーテーブルの有給残日数の加算更新と次回付与日数のインクリメントを同期
-                // （内部で paid_leave_balance テーブルへのインサートおよび同期処理も実行されます）
-                userService.grantAnnualPaidLeave(user.getUserId());
-                
-                log.info("ユーザー {} に有給休暇 {} 日を付与しました。", user.getUserId(), grantDays);
+                try {
+                    // ユーザーテーブルの有給残日数の加算更新と次回付与日数のインクリメントを同期
+                    // （内部で paid_leave_balance テーブルへのインサートおよび同期処理も実行されます）
+                    userService.grantAnnualPaidLeave(user.getUserId(), grantDays.intValue());
+
+                    log.info("ユーザー {} に有給休暇 {} 日を付与しました。", user.getUserId(), grantDays);
+                } catch (Exception e) {
+                    log.error("ユーザー {} への有給休暇付与に失敗しました。", user.getUserId(), e);
+                }
             }
 
             log.info("有給休暇自動付与バッチが正常に終了しました。");

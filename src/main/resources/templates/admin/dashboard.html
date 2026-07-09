@@ -23,25 +23,25 @@
         <div class="card mb-8">
             <h3 class="m-0 mb-4 text-[1.15rem] font-bold text-txt-primary"><i class="fa-solid fa-bars"></i> クイックメニュー</h3>
             <div class="flex flex-wrap gap-4">
-                <a href="/admin/users/create" class="btn btn-success px-5 py-3 text-sm gap-2">
+                <a th:href="@{/admin/users/create}" class="btn btn-success px-5 py-3 text-sm gap-2">
                     <i class="fa-solid fa-user-plus"></i> 新規ユーザー追加
                 </a>
-                <a href="/admin/users" class="btn btn-primary px-5 py-3 text-sm gap-2">
+                <a th:href="@{/admin/users}" class="btn btn-primary px-5 py-3 text-sm gap-2">
                     <i class="fa-solid fa-users"></i> ユーザー一覧
                 </a>
-                <a href="/admin/attendance" class="btn btn-flat px-5 py-3 text-sm gap-2 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
+                <a th:href="@{/admin/attendance}" class="btn btn-flat px-5 py-3 text-sm gap-2 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
                     <i class="fa-solid fa-chart-bar"></i> 勤怠一覧・管理
                 </a>
-                <a href="/admin/settings#holidays-section" class="btn btn-flat px-5 py-3 text-sm gap-2 bg-warning/10 text-warning border-warning/20 hover:bg-warning/20">
+                <a th:href="@{/admin/settings} + '#holidays-section'" class="btn btn-flat px-5 py-3 text-sm gap-2 bg-warning/10 text-warning border-warning/20 hover:bg-warning/20">
                     <i class="fa-solid fa-calendar"></i> 祝日設定
                 </a>
-                <a href="/admin/work-schedules" class="btn btn-flat px-5 py-3 text-sm gap-2 bg-accent/10 text-accent border-accent/20 hover:bg-accent/20">
+                <a th:href="@{/admin/work-schedules}" class="btn btn-flat px-5 py-3 text-sm gap-2 bg-accent/10 text-accent border-accent/20 hover:bg-accent/20">
                     <i class="fa-solid fa-building"></i> 勤務クラス管理
                 </a>
-                <a href="/admin/article36" class="btn btn-danger px-5 py-3 text-sm gap-2">
+                <a th:href="@{/admin/article36}" class="btn btn-danger px-5 py-3 text-sm gap-2">
                     <i class="fa-solid fa-exclamation-triangle"></i> 36協定チェック
                 </a>
-                <a href="/admin/announcements" class="btn btn-flat px-5 py-3 text-sm gap-2">
+                <a th:href="@{/admin/announcements}" class="btn btn-flat px-5 py-3 text-sm gap-2">
                     <i class="fa-solid fa-bullhorn"></i> お知らせ管理
                 </a>
             </div>
@@ -53,7 +53,7 @@
             <p class="text-txt-secondary text-[0.95rem] mt-0 mb-4">
                 勤怠期間、バッチスケジュール、アラート閾値、年次有給付与はシステム設定画面で管理します。
             </p>
-            <a href="/admin/settings" class="btn btn-primary px-5 py-3 text-sm gap-2">
+            <a th:href="@{/admin/settings}" class="btn btn-primary px-5 py-3 text-sm gap-2">
                 <i class="fa-solid fa-sliders"></i> システム設定を開く
             </a>
 

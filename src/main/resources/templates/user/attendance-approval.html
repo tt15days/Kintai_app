@@ -190,13 +190,17 @@
 
 <th:block layout:fragment="js">
     <script>
+        let contextPath = document.querySelector('meta[name="context-path"]')?.getAttribute('content') || '';
+        if (contextPath === '/') contextPath = '';
+        else if (contextPath.endsWith('/')) contextPath = contextPath.slice(0, -1);
+
         function openApproveModal(btn) {
             var submissionId = btn.getAttribute('data-submission-id');
             var applicantName = btn.getAttribute('data-applicant-name');
             var yearMonth = btn.getAttribute('data-year-month');
             document.getElementById('approveApplicantName').textContent = applicantName;
             document.getElementById('approveYearMonth').textContent = yearMonth;
-            document.getElementById('approveForm').action = '/attendance/approval/' + submissionId + '/approve';
+            document.getElementById('approveForm').action = contextPath + '/attendance/approval/' + submissionId + '/approve';
             document.getElementById('approveComment').value = '';
             
             var modal = document.getElementById('approveModal');
@@ -222,7 +226,7 @@
             var yearMonth = btn.getAttribute('data-year-month');
             document.getElementById('returnApplicantName').textContent = applicantName;
             document.getElementById('returnYearMonth').textContent = yearMonth;
-            document.getElementById('returnForm').action = '/attendance/approval/' + submissionId + '/return';
+            document.getElementById('returnForm').action = contextPath + '/attendance/approval/' + submissionId + '/return';
             document.getElementById('returnComment').value = '';
             
             var modal = document.getElementById('returnModal');

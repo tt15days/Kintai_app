@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -539,15 +540,30 @@ public class UserService {
     @Transactional
     public void grantAnnualPaidLeave(Long userId) {
         User user = findUserForUpdateOrThrow(userId);
-
         int grantDays = user.getAnnualLeaveGrantDays() != null
                 ? user.getAnnualLeaveGrantDays() : DEFAULT_ANNUAL_LEAVE_GRANT_DAYS;
+        grantAnnualPaidLeave(userId, grantDays);
+    }
+
+    /**
+     * ユーザーに年次有給休暇を付与します（付与日数指定版）。
+     * ユーザー別の次回付与日数を現在の残日数へ加算し、上限日数で打ち止めにします。
+     * 付与後は次年度用の付与日数も自動更新します。
+     *
+     * @param userId    付与対象のユーザーID
+     * @param grantDays 今回付与する日数
+     */
+    @Transactional
+    public void grantAnnualPaidLeave(Long userId, int grantDays) {
+        User user = findUserForUpdateOrThrow(userId);
+
         BigDecimal increment = user.getAnnualLeaveIncrement() != null
                 ? user.getAnnualLeaveIncrement() : BigDecimal.ONE;
         int maxDays = user.getMaxPaidLeaveDays() != null
                 ? user.getMaxPaidLeaveDays() : DEFAULT_MAX_PAID_LEAVE_DAYS;
 
-        int currentYear = LocalDate.now().getYear();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Tokyo"));
+        int currentYear = today.getYear();
 
         // 二重付与防止: すでに当該年度の付与レコードがあればスキップ
         Optional<PaidLeaveBalance> existingOpt = paidLeaveBalanceMapper.selectByUserAndYear(userId, currentYear);
@@ -556,24 +572,26 @@ public class UserService {
                     .userId(userId)
                     .grantYear(currentYear)
                     .grantedDays(BigDecimal.valueOf(grantDays))
-                    .grantDate(LocalDate.now())
-                    .expiryDate(LocalDate.now().plusYears(2).minusDays(1))
+                    .grantDate(today)
+                    .expiryDate(today.plusYears(2).minusDays(1))
                     .carriedOverDays(BigDecimal.ZERO)
                     .usedDays(BigDecimal.ZERO)
                     .build();
             paidLeaveBalanceMapper.insert(balance);
+
+            // 全有効残高の合計値を取得して、users.paid_leave_days を更新する
+            BigDecimal newDays = getCalculatedTotalRemainingDays(userId, maxDays);
+            userMapper.updatePaidLeaveDays(userId, newDays);
+
+            // 来年度向けに annual_leave_grant_days を自動増加（20日上限）
+            int nextGrantDays = (int) Math.min(grantDays + increment.doubleValue(), 20.0);
+            userMapper.updatePaidLeaveSettings(userId, nextGrantDays, increment, maxDays);
+
+            log.info("有給付与: userId={}, grantDays={}, afterSync={}, nextGrantDays={}",
+                    userId, grantDays, newDays, nextGrantDays);
+        } else {
+            log.info("有給付与: userId={} は{}年分を付与済みのためスキップ", userId, currentYear);
         }
-
-        // 全有効残高の合計値を取得して、users.paid_leave_days を更新する
-        BigDecimal newDays = getCalculatedTotalRemainingDays(userId, maxDays);
-        userMapper.updatePaidLeaveDays(userId, newDays);
-
-        // 来年度向けに annual_leave_grant_days を自動増加（20日上限）
-        int nextGrantDays = (int) Math.min(grantDays + increment.doubleValue(), 20.0);
-        userMapper.updatePaidLeaveSettings(userId, nextGrantDays, increment, maxDays);
-
-        log.info("有給付与: userId={}, grantDays={}, afterSync={}, nextGrantDays={}",
-                userId, grantDays, newDays, nextGrantDays);
     }
 
     private BigDecimal getCalculatedTotalRemainingDays(Long userId, int maxDays) {

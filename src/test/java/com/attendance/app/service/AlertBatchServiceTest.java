@@ -40,6 +40,9 @@ public class AlertBatchServiceTest {
     @Mock
     private UserNotificationMapper userNotificationMapper;
 
+    @Mock
+    private AttendancePeriodSettingService attendancePeriodSettingService;
+
     @InjectMocks
     private AlertBatchService alertBatchService;
 
@@ -52,6 +55,8 @@ public class AlertBatchServiceTest {
         lenient().when(batchSettingService.getAlertArticle36Limit2()).thenReturn(45);
         lenient().when(batchSettingService.getAlertPaidLeaveMonths()).thenReturn(9);
         lenient().when(batchSettingService.getAlertPaidLeaveDays()).thenReturn(3);
+        lenient().when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
+        lenient().when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
     }
 
     @Nested
@@ -63,12 +68,12 @@ public class AlertBatchServiceTest {
         void testRunAlertBatch() {
             // Mock System Date to 2023-11-15
             LocalDate mockNow = LocalDate.of(2023, 11, 15);
-            try (MockedStatic<LocalDate> mockedLocalDate = mockStatic(LocalDate.class)) {
+            try (MockedStatic<LocalDate> mockedLocalDate = mockStatic(LocalDate.class, CALLS_REAL_METHODS)) {
                 mockedLocalDate.when(() -> LocalDate.now()).thenReturn(mockNow);
 
-                // 前月は 2023-10
-                LocalDate expectedStart = LocalDate.of(2023, 10, 1);
-                LocalDate expectedEnd = LocalDate.of(2023, 10, 31);
+                // 前月は 2023-10。勤怠期間は設定された締め日（開始日21日・終了日20日）基準
+                LocalDate expectedStart = LocalDate.of(2023, 9, 21);
+                LocalDate expectedEnd = LocalDate.of(2023, 10, 20);
 
                 when(alertBatchMapper.findUsersExceedingOvertimeLimit(expectedStart, expectedEnd, 30))
                         .thenReturn(List.of());
@@ -154,6 +159,45 @@ public class AlertBatchServiceTest {
             assertThat(notification.getUserId()).isEqualTo(3L);
             assertThat(notification.getNotificationType()).isEqualTo("ALERT_PAID_LEAVE");
             assertThat(notification.getMessage()).contains("消化日数が 1.5 日となっており、基準である 3 日を下回っています");
+        }
+
+        @Test
+        @DisplayName("同一期間の36協定アラートが通知済みの場合は重複通知しない")
+        void testArticle36Alert_AlreadyNotified_Skipped() {
+            YearMonth targetMonth = YearMonth.of(2023, 10);
+            Article36AlertDto dto = new Article36AlertDto();
+            dto.setUserId(1L);
+            dto.setTotalOvertimeHours(BigDecimal.valueOf(35.5));
+
+            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), eq(30)))
+                    .thenReturn(List.of(dto));
+            when(userNotificationMapper.countByUserAndTypeSince(eq(1L), eq("ALERT_ARTICLE_36_LIMIT1"), any()))
+                    .thenReturn(1);
+
+            alertBatchService.runAlertBatchManually(targetMonth);
+
+            verify(userNotificationMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("当月分の有給消化アラートが通知済みの場合は重複通知しない")
+        void testPaidLeaveAlert_AlreadyNotified_Skipped() {
+            YearMonth targetMonth = YearMonth.of(2023, 10);
+            PaidLeaveAlertDto dto = new PaidLeaveAlertDto();
+            dto.setUserId(3L);
+            dto.setGrantDate(LocalDate.of(2023, 1, 1));
+            dto.setUsedDays(BigDecimal.valueOf(1.5));
+
+            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), anyInt()))
+                    .thenReturn(List.of());
+            when(alertBatchMapper.findUsersWithInsufficientPaidLeave(eq(9), eq(3), any()))
+                    .thenReturn(List.of(dto));
+            when(userNotificationMapper.countByUserAndTypeSince(eq(3L), eq("ALERT_PAID_LEAVE"), any()))
+                    .thenReturn(1);
+
+            alertBatchService.runAlertBatchManually(targetMonth);
+
+            verify(userNotificationMapper, never()).insert(any());
         }
     }
 }

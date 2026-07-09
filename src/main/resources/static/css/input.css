@@ -193,6 +193,9 @@
     .alert-warning {
         @apply bg-warning/15 border border-warning/30 text-warning;
     }
+    .alert-primary {
+        @apply bg-primary/10 border border-primary/20 text-primary px-4 py-3 rounded-xl text-sm;
+    }
 
     /* --- バッジ --- */
     .badge {
@@ -226,6 +229,15 @@
     }
     .table-custom td {
         @apply md:p-2 p-1 text-sm text-txt-primary;
+    }
+    .table-danger {
+        @apply bg-danger/8;
+    }
+    .table-primary {
+        @apply bg-primary/8;
+    }
+    .row-modified {
+        @apply bg-warning/10;
     }
 
     .nav-link {

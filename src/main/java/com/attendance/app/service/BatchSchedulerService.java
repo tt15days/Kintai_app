@@ -1,6 +1,5 @@
 package com.attendance.app.service;
 
-import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -156,7 +155,7 @@ public class BatchSchedulerService {
     /**
      * 全アクティブユーザーに対して年次有給休暇を一括付与します。
      * ユーザーごとの次回付与日数（{@code annualLeaveGrantDays}）を有給残高として付与し、
-     * {@link UserService#grantAnnualPaidLeave(Long)} により残日数・次回付与日数を更新します。
+     * {@link UserService#grantAnnualPaidLeave(Long, int)} により残日数・次回付与日数を更新します。
      * 当年分がすでに付与済みのユーザーはスキップします（{@code paid_leave_balance} の
      * {@code UNIQUE(user_id, grant_year)} 制約により二重付与できないため）。
      * 管理者画面からの手動実行専用です。例外はハンドリングせず呼び出し元に伝播します。
@@ -181,18 +180,14 @@ public class BatchSchedulerService {
                     ? BigDecimal.valueOf(user.getAnnualLeaveGrantDays())
                     : BigDecimal.valueOf(DEFAULT_ANNUAL_LEAVE_GRANT_DAYS);
 
-            PaidLeaveBalance balance = new PaidLeaveBalance();
-            balance.setUserId(user.getUserId());
-            balance.setGrantYear(today.getYear());
-            balance.setGrantedDays(grantDays);
-            balance.setUsedDays(BigDecimal.ZERO);
-            balance.setGrantDate(today);
-            balance.setExpiryDate(today.plusYears(2).minusDays(1));
-            paidLeaveBalanceService.insert(balance);
-
-            // ユーザーテーブルの有給残日数の加算更新と次回付与日数のインクリメントを同期
-            userService.grantAnnualPaidLeave(user.getUserId());
-            grantedCount++;
+            try {
+                // ユーザーテーブルの有給残日数の加算更新と次回付与日数のインクリメントを同期
+                // （内部で paid_leave_balance テーブルへのインサートも実行されます）
+                userService.grantAnnualPaidLeave(user.getUserId(), grantDays.intValue());
+                grantedCount++;
+            } catch (Exception e) {
+                log.error("年次有給付与: userId={} への付与に失敗しました。", user.getUserId(), e);
+            }
         }
         log.info(BATCH_LOG_DONE, "年次有給付与: 付与" + grantedCount + "名, スキップ" + skippedCount + "名");
         batchSettingService.recordAnnualLeaveGrantExecutedAt(LocalDateTime.now(JAPAN_ZONE));

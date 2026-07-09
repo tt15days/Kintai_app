@@ -222,6 +222,10 @@
     <!-- JavaScript 処理 -->
     <th:block layout:fragment="js">
         <script>
+            let contextPath = document.querySelector('meta[name="context-path"]')?.getAttribute('content') || '';
+            if (contextPath === '/') contextPath = '';
+            else if (contextPath.endsWith('/')) contextPath = contextPath.slice(0, -1);
+
             // 非同期通知既読処理（HTMLの onclick から呼び出すためグローバルスコープに定義）
             async function markDashboardNotificationAsRead(id, element) {
                 const csrfTokenHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
@@ -232,7 +236,7 @@
                     if (csrfTokenHeader && csrfToken) {
                         headers[csrfTokenHeader] = csrfToken;
                     }
-                    const response = await fetch(`/dashboard/notifications/${id}/read`, {
+                    const response = await fetch(`${contextPath}/dashboard/notifications/${id}/read`, {
                         method: 'POST',
                         headers: headers
                     });
@@ -285,7 +289,7 @@
                         const token = document.querySelector('meta[name="_csrf"]').getAttribute('content');
                         const header = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
 
-                        fetch('/dashboard/analyze', {
+                        fetch(`${contextPath}/dashboard/analyze`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',

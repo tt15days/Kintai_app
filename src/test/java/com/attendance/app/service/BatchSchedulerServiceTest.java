@@ -103,8 +103,8 @@ public class BatchSchedulerServiceTest {
 
         assertEquals(2, result.grantedCount());
         assertEquals(0, result.skippedCount());
-        verify(paidLeaveBalanceService, times(2)).insert(any(PaidLeaveBalance.class));
-        verify(userService, times(2)).grantAnnualPaidLeave(any());
+        verify(userService).grantAnnualPaidLeave(eq(1L), eq(10));
+        verify(userService).grantAnnualPaidLeave(eq(2L), eq(11));
         verify(batchSettingService).recordAnnualLeaveGrantExecutedAt(any(LocalDateTime.class));
     }
 
@@ -123,9 +123,8 @@ public class BatchSchedulerServiceTest {
 
         assertEquals(1, result.grantedCount());
         assertEquals(1, result.skippedCount());
-        verify(paidLeaveBalanceService, times(1)).insert(any(PaidLeaveBalance.class));
-        verify(userService, times(1)).grantAnnualPaidLeave(eq(2L));
-        verify(userService, never()).grantAnnualPaidLeave(eq(1L));
+        verify(userService, times(1)).grantAnnualPaidLeave(eq(2L), eq(11));
+        verify(userService, never()).grantAnnualPaidLeave(eq(1L), anyInt());
         verify(batchSettingService).recordAnnualLeaveGrantExecutedAt(any(LocalDateTime.class));
     }
 

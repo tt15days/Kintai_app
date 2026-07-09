@@ -426,6 +426,25 @@ public class AttendanceRecordService {
 
         int currentBreak = record.getBreakTimeMinutes() != null ? record.getBreakTimeMinutes() : 0;
         record.setBreakTimeMinutes(currentBreak + breakTimeMinutes);
+
+        if (record.getStartTime() != null && record.getEndTime() != null) {
+            WorkScheduleDefinition schedule = getScheduleForUserAndRecord(userId, Optional.of(record));
+            LocalDate attendanceDate = DateTimeUtil.toLocalDate(record.getAttendanceDate());
+            Double workingHours = calculateWorkingHoursExcludingBreakOverlaps(record.getStartTime(), record.getEndTime(), attendanceDate, schedule);
+            Double overtimeHours = calculateExcessOvertime(attendanceDate, schedule, record.getEndTime());
+            Double nightShiftHours = calculateNightShiftHours(record.getStartTime(), record.getEndTime(), attendanceDate, schedule);
+
+            boolean isHolidayWork = record.getHolidayWorkHours() != null && record.getHolidayWorkHours() > 0;
+            if (isHolidayWork) {
+                record.setWorkingHours(0.0);
+                record.setHolidayWorkHours(workingHours);
+            } else {
+                record.setWorkingHours(workingHours);
+            }
+            record.setOvertimeHours(overtimeHours);
+            record.setNightShiftHours(nightShiftHours);
+        }
+
         record.setUpdatedAt(DateTimeUtil.now());
 
         attendanceRecordMapper.update(record);
@@ -474,7 +493,9 @@ public class AttendanceRecordService {
         }
 
         long overtimeMinutes = java.time.Duration.between(standardEndInstant, endInstant).toMinutes();
-        return overtimeMinutes / 60.0;
+        long breakOverlapMinutes = calculateBreakOverlapMinutes(standardEndInstant, endInstant, attendanceDate, schedule);
+        long adjustedOvertimeMinutes = Math.max(0, overtimeMinutes - breakOverlapMinutes);
+        return adjustedOvertimeMinutes / 60.0;
     }
 
     /**

@@ -49,6 +49,14 @@
            AND user_id          = #{userId}
     </update>
 
+    <select id="countByUserAndTypeSince" resultType="int">
+        SELECT COUNT(*)
+          FROM user_notifications
+         WHERE user_id = #{userId}
+           AND notification_type = #{notificationType}
+           AND created_at &gt;= #{since, typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler}
+    </select>
+
     <update id="markAllAsRead">
         UPDATE user_notifications
            SET is_read = true

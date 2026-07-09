@@ -92,8 +92,9 @@ class DashboardControllerTest {
 
         when(attendanceRecordService.getRecordsByUserAndMonth(eq(1L), any(YearMonth.class)))
                 .thenReturn(List.of(record));
+        when(attendanceRecordService.resolveOvertimeHours(record)).thenReturn(1.5);
         when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(new BigDecimal("15.5"));
-        
+
         PaidLeaveBalance balance = new PaidLeaveBalance();
         balance.setGrantedDays(new BigDecimal("10"));
         balance.setCarriedOverDays(new BigDecimal("5"));
@@ -296,6 +297,7 @@ class DashboardControllerTest {
 
         when(attendanceRecordService.getRecordsByUserAndMonth(eq(1L), any(YearMonth.class)))
                 .thenReturn(List.of(record));
+        when(attendanceRecordService.resolveOvertimeHours(record)).thenReturn(35.0);
         when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(new BigDecimal("18.0")); // 有休あり
 
         // Act
@@ -370,8 +372,9 @@ class DashboardControllerTest {
 
         when(attendanceRecordService.getRecordsByUserAndMonth(eq(1L), any(YearMonth.class)))
                 .thenReturn(List.of(record));
+        when(attendanceRecordService.resolveOvertimeHours(record)).thenReturn(1.5);
         when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(new BigDecimal("15.5"));
-        
+
         PaidLeaveBalance balance = new PaidLeaveBalance();
         balance.setGrantedDays(new BigDecimal("10"));
         balance.setCarriedOverDays(new BigDecimal("5"));

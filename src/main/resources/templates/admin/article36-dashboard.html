@@ -82,8 +82,9 @@
                                 <span th:if="${article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'NORMAL'}" class="badge badge-success">正常範囲</span>
                             </td>
                             <td>
-                                <form th:action="@{/admin/article36/notify/{userId}(userId=${user.userId})}" method="post" class="margin: 0;">
+                                <form th:action="@{/admin/article36/notify/{userId}(userId=${user.userId})}" method="post" class="m-0">
                                     <input type="hidden" name="yearMonth" th:value="${baseMonthKey}" />
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                                     <button type="submit" class="btn gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                                             th:disabled="${article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'NORMAL'}"
                                             th:classappend="${article36StatusCellMap[baseMonthKey + '_' + user.userId] == 'NORMAL' ? 'bg-black/5 text-txt-secondary cursor-not-allowed border border-glass-border' : 'btn-primary'}">

@@ -21,9 +21,7 @@ import org.springframework.http.HttpStatus;
 
 import com.attendance.app.entity.PaidLeaveBalance;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.YearMonth;
 import java.util.List;
 
@@ -44,7 +42,6 @@ public class DashboardController {
     private static final String DASHBOARD_VIEW = "dashboard";
     private static final String CHANGE_PASSWORD_VIEW = "user/change-password";
     private static final String DASHBOARD_PASSWORD_CHANGED_REDIRECT = "redirect:/dashboard?passwordChanged=true";
-    private static final LocalTime DEFAULT_STANDARD_END_TIME = LocalTime.of(18, 0);
 
     private final UserService userService;
     private final AttendanceRecordService attendanceRecordService;
@@ -83,7 +80,7 @@ public class DashboardController {
                     .mapToDouble(r -> this.resolveWorkingHours(r))
                     .sum();
             double totalOvertime = records.stream()
-                    .mapToDouble(r -> this.resolveOvertimeHours(r))
+                    .mapToDouble(r -> attendanceRecordService.resolveOvertimeHours(r))
                     .sum();
             double totalNightShift = records.stream()
                     .filter(r -> r.getNightShiftHours() != null)
@@ -305,7 +302,7 @@ public class DashboardController {
                     .mapToDouble(r -> this.resolveWorkingHours(r))
                     .sum();
             double totalOvertime = records.stream()
-                    .mapToDouble(r -> this.resolveOvertimeHours(r))
+                    .mapToDouble(r -> attendanceRecordService.resolveOvertimeHours(r))
                     .sum();
             double totalNightShift = records.stream()
                     .filter(r -> r.getNightShiftHours() != null)
@@ -390,34 +387,6 @@ public class DashboardController {
         }
 
         long minutes = Duration.between(record.getStartTime(), record.getEndTime()).toMinutes();
-        if (minutes <= 0) {
-            return 0.0;
-        }
-        return minutes / 60.0;
-    }
-
-    /**
-     * 既存データ互換のため、overtimeHours が未設定の場合は基準終了時刻と終了時刻から算出する。
-     */
-    private double resolveOvertimeHours(AttendanceRecord record) {
-        if (record == null) {
-            return 0.0;
-        }
-        if (record.getOvertimeHours() != null) {
-            return record.getOvertimeHours();
-        }
-        if (record.getAttendanceDate() == null || record.getEndTime() == null) {
-            return 0.0;
-        }
-
-        LocalDate attendanceDate = com.attendance.app.util.DateTimeUtil.toLocalDate(record.getAttendanceDate());
-        LocalTime standardEndTime = DEFAULT_STANDARD_END_TIME;
-        Instant standardEndInstant = com.attendance.app.util.DateTimeUtil.toInstant(attendanceDate, standardEndTime);
-        if (standardEndInstant == null || !record.getEndTime().isAfter(standardEndInstant)) {
-            return 0.0;
-        }
-
-        long minutes = Duration.between(standardEndInstant, record.getEndTime()).toMinutes();
         if (minutes <= 0) {
             return 0.0;
         }

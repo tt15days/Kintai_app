@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
@@ -24,6 +25,7 @@ public class AlertBatchService {
     private final AlertBatchMapper alertBatchMapper;
     private final BatchSettingService batchSettingService;
     private final UserNotificationMapper userNotificationMapper;
+    private final AttendancePeriodSettingService attendancePeriodSettingService;
 
     /**
      * 毎月1日の深夜3時に実行されるアラートバッチ（前月の36協定・有給消化をチェック）
@@ -35,10 +37,12 @@ public class AlertBatchService {
         log.info("アラートバッチ処理を開始します。");
 
         LocalDate currentDate = LocalDate.now();
-        // 36協定は前月分を対象とする
+        // 36協定は直近で締まった勤怠期間（設定された締め日基準）を対象とする
         YearMonth lastMonth = YearMonth.from(currentDate).minusMonths(1);
-        LocalDate startDate = lastMonth.atDay(1);
-        LocalDate endDate = lastMonth.atEndOfMonth();
+        int startDay = attendancePeriodSettingService.getStartDay();
+        int endDay = attendancePeriodSettingService.getEndDay();
+        LocalDate startDate = lastMonth.minusMonths(1).atDay(startDay);
+        LocalDate endDate = lastMonth.atDay(endDay);
 
         checkArticle36Alerts(startDate, endDate);
         checkPaidLeaveAlerts(currentDate);
@@ -53,8 +57,10 @@ public class AlertBatchService {
     public void runAlertBatchManually(YearMonth targetMonth) {
         log.info("手動アラートバッチ処理を開始します。対象年月: {}", targetMonth);
 
-        LocalDate startDate = targetMonth.atDay(1);
-        LocalDate endDate = targetMonth.atEndOfMonth();
+        int startDay = attendancePeriodSettingService.getStartDay();
+        int endDay = attendancePeriodSettingService.getEndDay();
+        LocalDate startDate = targetMonth.minusMonths(1).atDay(startDay);
+        LocalDate endDate = targetMonth.atDay(endDay);
         LocalDate currentDate = LocalDate.now();
 
         checkArticle36Alerts(startDate, endDate);
@@ -71,6 +77,7 @@ public class AlertBatchService {
 
         // 第1閾値を超過しているユーザーを取得（第2閾値超過者も含まれる）
         List<Article36AlertDto> alertUsers = alertBatchMapper.findUsersExceedingOvertimeLimit(startDate, endDate, limit1);
+        Instant periodSince = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
 
         int count = 0;
         for (Article36AlertDto dto : alertUsers) {
@@ -90,6 +97,11 @@ public class AlertBatchService {
                         startDate, endDate, hours, limit1);
             }
 
+            if (userNotificationMapper.countByUserAndTypeSince(dto.getUserId(), type, periodSince) > 0) {
+                // 同一対象期間について既に同種の通知が送信済みのためスキップ
+                continue;
+            }
+
             createNotification(dto.getUserId(), message, type);
             count++;
         }
@@ -103,13 +115,20 @@ public class AlertBatchService {
         log.info("有給消化アラートチェック開始 (基準日: {}, 経過月数: {}, 基準日数: {})", currentDate, months, days);
 
         List<PaidLeaveAlertDto> alertUsers = alertBatchMapper.findUsersWithInsufficientPaidLeave(months, days, currentDate);
+        String type = "ALERT_PAID_LEAVE";
+        Instant monthSince = YearMonth.from(currentDate).atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
 
         int count = 0;
         for (PaidLeaveAlertDto dto : alertUsers) {
+            if (userNotificationMapper.countByUserAndTypeSince(dto.getUserId(), type, monthSince) > 0) {
+                // 当月分の有給消化アラートを既に通知済みのためスキップ
+                continue;
+            }
+
             String message = String.format("【重要: 有給消化】有給休暇が付与された日（%s）から %d ヶ月が経過しましたが、消化日数が %s 日となっており、基準である %d 日を下回っています。計画的な有給取得をお願いします。",
                     dto.getGrantDate(), months, dto.getUsedDays().toString(), days);
 
-            createNotification(dto.getUserId(), message, "ALERT_PAID_LEAVE");
+            createNotification(dto.getUserId(), message, type);
             count++;
         }
         log.info("有給消化アラート: {} 件の通知を作成しました。", count);
