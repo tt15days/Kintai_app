@@ -4,6 +4,7 @@ import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.entity.User;
 import com.attendance.app.service.PaidLeaveBalanceService;
 import com.attendance.app.service.UserService;
+import com.attendance.app.util.DateTimeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,7 +14,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +34,7 @@ public class AdminLeaveUsageController {
         try {
             List<User> users = userService.getActiveUsers();
 
-            int currentYear = LocalDate.now().getYear();
+            int currentYear = DateTimeUtil.todayJapan().getYear();
 
             Map<Long, PaidLeaveBalance> balanceMap = new HashMap<>();
             Map<Long, Boolean> obligationMetMap = new HashMap<>();

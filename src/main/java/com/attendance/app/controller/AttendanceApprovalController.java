@@ -340,7 +340,7 @@ public class AttendanceApprovalController {
             totalPaidLeaveHours = totalPaidLeaveDays.doubleValue() * attendanceRecordService.getStandardWorkingHours(userId, currentMonth);
 
             // 当年の有給使用日数と残日数を計算
-            int currentYear = LocalDate.now().getYear();
+            int currentYear = DateTimeUtil.todayJapan().getYear();
             yearlyUsedPaidLeaveDays = leaveApplicationService.calculateYearlyUsedPaidLeaveDays(userId, currentYear);
             remainingPaidLeaveDays = paidLeaveBalanceService.getTotalRemainingDays(userId);
             article36Status = attendanceRecordService.checkArticle36(totalOvertimeHours);
@@ -377,7 +377,7 @@ public class AttendanceApprovalController {
         model.addAttribute("article36Status", article36Status);
         model.addAttribute("article36MonthlyLimit", batchSettingService.getAlertArticle36Limit2());
         model.addAttribute("article36MonthlyWarning", batchSettingService.getAlertArticle36Limit1());
-        model.addAttribute("currentYear", LocalDate.now().getYear());
+        model.addAttribute("currentYear", DateTimeUtil.todayJapan().getYear());
         model.addAttribute("submissionStatusPending", AttendanceSubmissionService.STATUS_PENDING);
         model.addAttribute("submissionStatusApproved", AttendanceSubmissionService.STATUS_APPROVED);
         model.addAttribute("submissionStatusReturned", AttendanceSubmissionService.STATUS_RETURNED);
@@ -641,13 +641,13 @@ public class AttendanceApprovalController {
 
     private YearMonth parseYearMonthOrNow(String yearMonth) {
         if (yearMonth == null || yearMonth.isEmpty()) {
-            return attendanceSubmissionService.resolvePayrollMonth(LocalDate.now());
+            return attendanceSubmissionService.resolvePayrollMonth(DateTimeUtil.todayJapan());
         }
         try {
             return YearMonth.parse(yearMonth);
         } catch (Exception e) {
             log.warn(INVALID_YEAR_MONTH_LOG, yearMonth);
-            return attendanceSubmissionService.resolvePayrollMonth(LocalDate.now());
+            return attendanceSubmissionService.resolvePayrollMonth(DateTimeUtil.todayJapan());
         }
     }
 

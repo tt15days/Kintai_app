@@ -55,7 +55,7 @@ public class ProfileController {
             User currentUser = securityUtil.getCurrentUser();
             List<WorkScheduleClass> workScheduleClasses = workScheduleClassService.getAllClasses();
 
-            int currentYear = java.time.LocalDate.now().getYear();
+            int currentYear = com.attendance.app.util.DateTimeUtil.todayJapan().getYear();
             java.math.BigDecimal yearlyUsedPaidLeaveDays = leaveApplicationService.calculateYearlyUsedPaidLeaveDays(
                     currentUser.getUserId(), currentYear);
             // 有給残日数は paid_leave_balance テーブル（年度別残高）を正とする

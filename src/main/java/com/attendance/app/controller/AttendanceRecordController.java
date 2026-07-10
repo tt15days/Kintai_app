@@ -21,6 +21,7 @@ import com.attendance.app.service.PaidLeaveBalanceService;
 import com.attendance.app.service.ReportService;
 import com.attendance.app.service.UserNotificationService;
 import com.attendance.app.service.UserService;
+import com.attendance.app.util.DateTimeUtil;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -206,12 +207,12 @@ public class AttendanceRecordController {
             }
             totalPaidLeaveHours = totalPaidLeaveDays.doubleValue() * attendanceRecordService.getStandardWorkingHours(userId, current);
 
-            int currentYear = LocalDate.now().getYear();
+            int currentYear = DateTimeUtil.todayJapan().getYear();
             yearlyUsedPaidLeaveDays = leaveApplicationService.calculateYearlyUsedPaidLeaveDays(userId, currentYear);
             remainingPaidLeaveDays = paidLeaveBalanceService.getTotalRemainingDays(userId);
 
             // today's record
-            todayRecord = attendanceRecordService.getRecordByUserAndDate(userId, LocalDate.now());
+            todayRecord = attendanceRecordService.getRecordByUserAndDate(userId, DateTimeUtil.todayJapan());
 
             model.addAttribute("records", records);
             model.addAttribute("leaveMap", leaveMap);
@@ -261,7 +262,7 @@ public class AttendanceRecordController {
         model.addAttribute("article36Status", attendanceRecordService.checkArticle36(totalOvertimeHours));
         model.addAttribute("article36MonthlyLimit", batchSettingService.getAlertArticle36Limit2());
         model.addAttribute("article36MonthlyWarning", batchSettingService.getAlertArticle36Limit1());
-        model.addAttribute("currentYear", LocalDate.now().getYear());
+        model.addAttribute("currentYear", DateTimeUtil.todayJapan().getYear());
         model.addAttribute("submissionStatusPending", AttendanceSubmissionService.STATUS_PENDING);
         model.addAttribute("submissionStatusApproved", AttendanceSubmissionService.STATUS_APPROVED);
         model.addAttribute("submissionStatusReturned", AttendanceSubmissionService.STATUS_RETURNED);
@@ -496,7 +497,7 @@ public class AttendanceRecordController {
         try {
             Long userId = securityUtil.getCurrentUserId();
             Optional<AttendanceRecord> todayRecord = attendanceRecordService.getRecordByUserAndDate(userId,
-                    LocalDate.now());
+                    DateTimeUtil.todayJapan());
             model.addAttribute("userId", userId);
             model.addAttribute("todayRecord", todayRecord.orElse(null));
             model.addAttribute("eventTypes", eventTypeService.getAllActiveEventTypes());
@@ -517,7 +518,7 @@ public class AttendanceRecordController {
         try {
             Long userId = securityUtil.getCurrentUserId();
             attendanceSubmissionService.assertEditableMonth(userId,
-                    attendanceSubmissionService.resolvePayrollMonth(LocalDate.now()));
+                    attendanceSubmissionService.resolvePayrollMonth(DateTimeUtil.todayJapan()));
             AttendanceRecord record = attendanceRecordService.quickStartAttendance(userId);
             String startTimeStr = com.attendance.app.util.DateTimeUtil.toLocalTime(record.getStartTime())
                     .format(DateTimeFormatter.ofPattern("HH:mm"));
@@ -544,7 +545,7 @@ public class AttendanceRecordController {
         try {
             Long userId = securityUtil.getCurrentUserId();
             attendanceSubmissionService.assertEditableMonth(userId,
-                    attendanceSubmissionService.resolvePayrollMonth(LocalDate.now()));
+                    attendanceSubmissionService.resolvePayrollMonth(DateTimeUtil.todayJapan()));
             AttendanceRecord record = attendanceRecordService.quickEndAttendance(userId, isHolidayWork);
             String endTimeStr = com.attendance.app.util.DateTimeUtil.toLocalTime(record.getEndTime())
                     .format(DateTimeFormatter.ofPattern("HH:mm"));
@@ -568,7 +569,7 @@ public class AttendanceRecordController {
         try {
             Long userId = securityUtil.getCurrentUserId();
             attendanceSubmissionService.assertEditableMonth(userId,
-                    attendanceSubmissionService.resolvePayrollMonth(LocalDate.now()));
+                    attendanceSubmissionService.resolvePayrollMonth(DateTimeUtil.todayJapan()));
 
             attendanceRecordService.addBreakTime(userId, breakTimeMinutes);
             redirectAttributes.addFlashAttribute("message", "休憩時間（" + breakTimeMinutes + "分）を記録しました");
@@ -758,7 +759,7 @@ public class AttendanceRecordController {
      * 当日が含まれる勤怠対象月（設定に従った開始日から当月終了日まで）を返します。
      */
     private YearMonth resolveDefaultTargetMonth() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = DateTimeUtil.todayJapan();
         YearMonth currentMonth = YearMonth.from(today);
         int startDay = attendancePeriodSettingService.getStartDay();
         return today.getDayOfMonth() >= startDay ? currentMonth.plusMonths(1) : currentMonth;
