@@ -1,6 +1,7 @@
 package com.attendance.app.service;
 
 import com.attendance.app.entity.AttendanceRecord;
+import com.attendance.app.entity.AttendanceSubmission;
 import com.attendance.app.entity.LeaveApplication;
 import com.attendance.app.entity.LeaveStatus;
 import com.attendance.app.entity.User;
@@ -51,6 +52,7 @@ public class ReportService {
     private final CsvFilenamePatternService csvFilenamePatternService;
     private final AttendanceRecordMapper attendanceRecordMapper;
     private final LeaveApplicationMapper leaveApplicationMapper;
+    private final AttendanceSubmissionService attendanceSubmissionService;
 
     /**
      * 指定ユーザーの月次勤怠CSVをバイト配列で返します。
@@ -60,7 +62,12 @@ public class ReportService {
      * @return CSV バイト配列（UTF-8 BOMなし）
      */
     public byte[] generateUserAttendanceCsv(User user, YearMonth yearMonth) {
-        AttendanceRecordService.MonthRange monthRange = attendanceRecordService.getMonthRange(yearMonth);
+        AttendanceRecordService.MonthRange defaultMonthRange = attendanceRecordService.getMonthRange(yearMonth);
+        // 勤怠申請提出時にスナップショットされた期間があれば、取得した記録の範囲と一致させる
+        AttendanceRecordService.MonthRange monthRange = attendanceSubmissionService.getSubmission(user.getUserId(), yearMonth)
+                .filter(s -> s.getStartDate() != null && s.getEndDate() != null)
+                .map(s -> AttendanceRecordService.MonthRange.of(yearMonth, s.getStartDate(), s.getEndDate()))
+                .orElse(defaultMonthRange);
         List<AttendanceRecord> records = attendanceRecordService.getRecordsByUserAndMonth(user.getUserId(), yearMonth);
         List<LeaveApplication> leaves = leaveApplicationService.getApplicationsByUserAndDateRange(
                 user.getUserId(), monthRange.getStartDate(), monthRange.getEndDate());
@@ -113,21 +120,49 @@ public class ReportService {
         List<User> users = userService.getActiveUsers();
         AttendanceRecordService.MonthRange monthRange = attendanceRecordService.getMonthRange(yearMonth);
 
+        // ユーザーごとの実対象期間（勤怠申請提出時にスナップショットされた期間があればそれを優先。
+        // 期間設定変更後に未申請のユーザーは既定のmonthRangeを使う）
+        Map<Long, AttendanceRecordService.MonthRange> monthRangeByUser = new HashMap<>();
+        for (AttendanceSubmission submission : attendanceSubmissionService.getSubmissionsByTargetYearMonth(yearMonth)) {
+            if (submission.getStartDate() != null && submission.getEndDate() != null) {
+                monthRangeByUser.put(submission.getUserId(),
+                        AttendanceRecordService.MonthRange.of(yearMonth, submission.getStartDate(), submission.getEndDate()));
+            }
+        }
+        LocalDate fetchStart = monthRange.getStartDate();
+        LocalDate fetchEnd = monthRange.getEndDate();
+        for (AttendanceRecordService.MonthRange range : monthRangeByUser.values()) {
+            if (range.getStartDate().isBefore(fetchStart)) {
+                fetchStart = range.getStartDate();
+            }
+            if (range.getEndDate().isAfter(fetchEnd)) {
+                fetchEnd = range.getEndDate();
+            }
+        }
+
         // 全ユーザー分の勤怠記録・休暇申請を一括取得し、userId でグルーピング(N+1回避)
-        Instant rangeStart = DateTimeUtil.toInstant(monthRange.getStartDate());
-        Instant rangeEnd = DateTimeUtil.toInstant(monthRange.getEndDate().plusDays(1));
+        Instant rangeStart = DateTimeUtil.toInstant(fetchStart);
+        Instant rangeEnd = DateTimeUtil.toInstant(fetchEnd.plusDays(1));
         Map<Long, List<AttendanceRecord>> recordsByUser = attendanceRecordMapper.selectAllByDateRange(rangeStart, rangeEnd)
                 .stream().collect(Collectors.groupingBy(AttendanceRecord::getUserId));
         Map<Long, List<LeaveApplication>> leavesByUser = leaveApplicationMapper.selectAllByDateRange(
-                        monthRange.getStartDate(), monthRange.getEndDate())
+                        fetchStart, fetchEnd)
                 .stream().collect(Collectors.groupingBy(LeaveApplication::getUserId));
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try (ZipOutputStream zos = new ZipOutputStream(baos, StandardCharsets.UTF_8)) {
             for (User user : users) {
-                byte[] csvBytes = buildAttendanceCsv(user, monthRange,
-                        recordsByUser.getOrDefault(user.getUserId(), Collections.emptyList()),
+                AttendanceRecordService.MonthRange userRange = monthRangeByUser.getOrDefault(user.getUserId(), monthRange);
+                List<AttendanceRecord> userRecords = recordsByUser.getOrDefault(user.getUserId(), Collections.emptyList())
+                        .stream()
+                        .filter(r -> {
+                            LocalDate d = DateTimeUtil.toLocalDate(r.getAttendanceDate());
+                            return d != null && !d.isBefore(userRange.getStartDate()) && !d.isAfter(userRange.getEndDate());
+                        })
+                        .collect(Collectors.toList());
+                byte[] csvBytes = buildAttendanceCsv(user, userRange,
+                        userRecords,
                         leavesByUser.getOrDefault(user.getUserId(), Collections.emptyList()));
                 String entryName = csvFilenamePatternService.buildCsvFilename(user, yearMonth, downloadedAt);
                 zos.putNextEntry(new ZipEntry(entryName));

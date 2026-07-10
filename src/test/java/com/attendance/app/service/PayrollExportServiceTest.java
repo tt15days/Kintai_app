@@ -42,6 +42,9 @@ public class PayrollExportServiceTest {
     @Mock
     private LeaveApplicationMapper leaveApplicationMapper;
 
+    @Mock
+    private AttendanceSubmissionService attendanceSubmissionService;
+
     @InjectMocks
     private PayrollExportService payrollExportService;
 
@@ -58,6 +61,9 @@ public class PayrollExportServiceTest {
 
         testYearMonth = YearMonth.of(2023, 10);
         monthRange = AttendanceRecordService.MonthRange.of(testYearMonth, 1, 31);
+
+        org.mockito.Mockito.lenient().when(attendanceSubmissionService.getSubmissionsByTargetYearMonth(any()))
+                .thenReturn(Collections.emptyList());
     }
 
     @Test
@@ -68,6 +74,7 @@ public class PayrollExportServiceTest {
 
         AttendanceRecord record = new AttendanceRecord();
         record.setUserId(1L);
+        record.setAttendanceDate(java.time.Instant.parse("2023-10-05T00:00:00Z"));
         record.setWorkingHours(8.0);
         record.setOvertimeHours(1.5);
         when(attendanceRecordMapper.selectAllByDateRange(any(), any()))
@@ -120,6 +127,7 @@ public class PayrollExportServiceTest {
 
         AttendanceRecord record = new AttendanceRecord();
         record.setUserId(1L);
+        record.setAttendanceDate(java.time.Instant.parse("2023-10-05T00:00:00Z"));
         record.setWorkingHours(8.0);
         record.setOvertimeHours(1.5);
         when(attendanceRecordMapper.selectAllByDateRange(any(), any()))
@@ -167,6 +175,7 @@ public class PayrollExportServiceTest {
         // User1 attendance records
         AttendanceRecord r1 = new AttendanceRecord();
         r1.setUserId(1L);
+        r1.setAttendanceDate(java.time.Instant.parse("2023-10-05T00:00:00Z"));
         r1.setWorkingHours(8.0);
         r1.setOvertimeHours(1.0);
         r1.setNightShiftHours(1.0);
@@ -174,6 +183,7 @@ public class PayrollExportServiceTest {
 
         AttendanceRecord r2 = new AttendanceRecord();
         r2.setUserId(1L);
+        r2.setAttendanceDate(java.time.Instant.parse("2023-10-06T00:00:00Z"));
         r2.setWorkingHours(7.5);
         r2.setOvertimeHours(0.0);
         r2.setNightShiftHours(0.0);
@@ -254,5 +264,55 @@ public class PayrollExportServiceTest {
         // User2 data row check
         // EMP002,テスト 次郎, 出勤日数:0, 欠勤日数:2 (unpaid + absence), 有休消化日数:1, 総労働:0.00, 残業:0.00, 深夜:0.00, 休日:0.00
         assertThat(lines[2]).isEqualTo("EMP002,テスト 次郎,0,2,1,0時間0分,0時間0分,0時間0分,0時間0分");
+    }
+
+    @Test
+    void testGeneratePayrollCsvGzip_UserWithSubmissionSnapshotOutsideDefaultRange_isIncluded() throws IOException {
+        // 期間設定変更前に提出したユーザーの申請スナップショット期間が、既定monthRangeより前にずれているケース
+        when(userService.getActiveUsers()).thenReturn(List.of(testUser));
+        when(attendanceRecordService.getMonthRange(testYearMonth)).thenReturn(monthRange);
+
+        LocalDate snapshotStart = monthRange.getStartDate().minusDays(5);
+        LocalDate snapshotEnd = monthRange.getStartDate().minusDays(1);
+        AttendanceSubmission submission = AttendanceSubmission.builder()
+                .userId(1L)
+                .startDate(snapshotStart)
+                .endDate(snapshotEnd)
+                .build();
+        when(attendanceSubmissionService.getSubmissionsByTargetYearMonth(testYearMonth))
+                .thenReturn(List.of(submission));
+
+        // 既定monthRangeの外（スナップショット期間内）の記録
+        AttendanceRecord outOfRangeRecord = new AttendanceRecord();
+        outOfRangeRecord.setUserId(1L);
+        outOfRangeRecord.setAttendanceDate(java.time.Instant.parse(snapshotStart.plusDays(1) + "T00:00:00Z"));
+        outOfRangeRecord.setWorkingHours(6.0);
+
+        when(attendanceRecordMapper.selectAllByDateRange(any(), any()))
+                .thenReturn(List.of(outOfRangeRecord));
+        when(leaveApplicationMapper.selectAllByDateRange(any(), any()))
+                .thenReturn(Collections.emptyList());
+
+        byte[] gzipBytes = payrollExportService.generatePayrollCsvGzip(
+                testYearMonth, PayrollExportFormat.MONEYFORWARD, java.nio.charset.StandardCharsets.UTF_8);
+
+        StringBuilder decodedContent = new StringBuilder();
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(gzipBytes);
+             GZIPInputStream gzipIn = new GZIPInputStream(bais);
+             InputStreamReader isr = new InputStreamReader(gzipIn, java.nio.charset.StandardCharsets.UTF_8)) {
+            char[] buffer = new char[1024];
+            int read;
+            while ((read = isr.read(buffer)) != -1) {
+                decodedContent.append(buffer, 0, read);
+            }
+        }
+        String csvString = decodedContent.toString();
+        if (!csvString.isEmpty() && csvString.charAt(0) == '﻿') {
+            csvString = csvString.substring(1);
+        }
+        String[] lines = csvString.split("\r\n");
+
+        // 一括取得レンジがユーザーの申請スナップショット期間まで広がり、出勤日数に計上されること
+        assertThat(lines[1]).isEqualTo("EMP001,テスト 太郎,1,0,0,6時間0分,0時間0分,0時間0分,0時間0分");
     }
 }

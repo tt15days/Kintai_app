@@ -163,6 +163,14 @@
         @apply bg-black/5 hover:bg-black/10 border border-glass-border text-txt-primary;
     }
 
+    /* --- 分析完了状態のボタン（クリック不可を示すニュートラル配色） --- */
+    .btn-analyzed {
+        background: var(--bg-gradient-end);
+        color: var(--text-secondary);
+        border-color: var(--glass-border);
+        cursor: default;
+    }
+
     /* --- フォーム関連 --- */
     .form-group {
         @apply mb-4;

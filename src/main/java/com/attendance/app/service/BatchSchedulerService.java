@@ -80,11 +80,13 @@ public class BatchSchedulerService {
             List<AttendanceRecordService.MonthlyUserSummary> summaries =
                     attendanceRecordService.getMonthlyAggregateForAllUsers(targetMonth);
 
+            int warningHours = batchSettingService.getAlertArticle36Limit1();
+            int limitHours = batchSettingService.getAlertArticle36Limit2();
             for (AttendanceRecordService.MonthlyUserSummary s : summaries) {
-                if (s.overtimeHours() >= AttendanceRecordService.ARTICLE36_MONTHLY_LIMIT_HOURS) {
+                if (s.overtimeHours() >= limitHours) {
                     log.warn("36協定超過: userId={}, yearMonth={}, overtimeHours={}",
                             s.userId(), targetMonth, s.overtimeHours());
-                } else if (s.overtimeHours() >= AttendanceRecordService.ARTICLE36_MONTHLY_WARNING_HOURS) {
+                } else if (s.overtimeHours() >= warningHours) {
                     log.warn("36協定注意: userId={}, yearMonth={}, overtimeHours={}",
                             s.userId(), targetMonth, s.overtimeHours());
                 } else {

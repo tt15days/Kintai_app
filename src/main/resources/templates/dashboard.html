@@ -301,25 +301,12 @@
                             })
                             .then(data => {
                                 // 結果をフェードインで表示
-                                contentArea.style.opacity = 0;
                                 contentArea.classList.remove('items-center', 'justify-center', 'text-center');
-                                contentArea.classList.add('items-start', 'justify-start', 'text-left');
+                                contentArea.classList.add('items-start', 'justify-start', 'text-left', 'animate-fade-in');
                                 contentArea.innerHTML = data.advice;
 
-                                let op = 0;
-                                const timer = setInterval(function () {
-                                    if (op >= 1) {
-                                        clearInterval(timer);
-                                    }
-                                    contentArea.style.opacity = op;
-                                    op += 0.1;
-                                }, 30);
-
                                 btn.innerText = '分析完了';
-                                btn.style.background = '#e2e8f0';
-                                btn.style.color = '#64748b';
-                                btn.style.borderColor = '#cbd5e1';
-                                btn.style.cursor = 'default';
+                                btn.classList.add('btn-analyzed');
                             })
                             .catch(error => {
                                 console.error('Analysis failed:', error);

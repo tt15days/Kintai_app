@@ -58,11 +58,6 @@ public class AttendanceRecordService {
     private static final LocalTime DEFAULT_BREAK_END_TIME = LocalTime.of(13, 0);
     private static final int DEFAULT_BREAK_MINUTES = 60;
 
-    /** 36協定: 月次残業時間の注意ライン（36時間） */
-    public static final double ARTICLE36_MONTHLY_WARNING_HOURS = 36.0;
-    /** 36協定: 月次残業時間の法定上限（45時間） */
-    public static final double ARTICLE36_MONTHLY_LIMIT_HOURS = 45.0;
-
     /**
      * ユーザーの勤務クラスに基づく所定開始・終了時刻などのスケジュール定義を取得します。
      * 勤務クラス未設定の場合はデフォルトのスケジュール（09:00-18:00）を返します。
@@ -1002,6 +997,21 @@ public class AttendanceRecordService {
 
         public static MonthRange of(YearMonth yearMonth, int startDay, int endDay) {
             return new MonthRange(yearMonth, startDay, endDay);
+        }
+
+        /** 勤怠申請提出時のスナップショット日付など、既存の開始・終了日をそのまま用いて構築します。 */
+        public MonthRange(YearMonth yearMonth, LocalDate startDate, LocalDate endDate) {
+            this.yearMonth = yearMonth;
+            this.startDate = startDate;
+            this.endDate = endDate;
+            this.previousMonth = yearMonth.minusMonths(1);
+            this.nextMonth = yearMonth.plusMonths(1);
+            this.daysInMonth = (int) ChronoUnit.DAYS.between(startDate, endDate) + 1;
+            this.displayMonth = yearMonth.format(DISPLAY_FORMATTER);
+        }
+
+        public static MonthRange of(YearMonth yearMonth, LocalDate startDate, LocalDate endDate) {
+            return new MonthRange(yearMonth, startDate, endDate);
         }
 
         public YearMonth getYearMonth() {

@@ -51,6 +51,9 @@ public class ReportServiceTest {
     @Mock
     private LeaveApplicationMapper leaveApplicationMapper;
 
+    @Mock
+    private AttendanceSubmissionService attendanceSubmissionService;
+
     @InjectMocks
     private ReportService reportService;
 
@@ -65,6 +68,9 @@ public class ReportServiceTest {
         testUser.setEmail("test@example.com");
 
         targetMonth = YearMonth.of(2026, 6);
+
+        lenient().when(attendanceSubmissionService.getSubmission(anyLong(), any())).thenReturn(java.util.Optional.empty());
+        lenient().when(attendanceSubmissionService.getSubmissionsByTargetYearMonth(any())).thenReturn(Collections.emptyList());
     }
 
     @Test

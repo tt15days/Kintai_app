@@ -36,6 +36,7 @@ public class PayrollExportService {
     private final UserService userService;
     private final AttendanceRecordService attendanceRecordService;
     private final LeaveApplicationService leaveApplicationService;
+    private final AttendanceSubmissionService attendanceSubmissionService;
     private final AttendanceRecordMapper attendanceRecordMapper;
     private final LeaveApplicationMapper leaveApplicationMapper;
 
@@ -52,13 +53,27 @@ public class PayrollExportService {
         List<User> users = userService.getActiveUsers();
         AttendanceRecordService.MonthRange monthRange = attendanceRecordService.getMonthRange(yearMonth);
 
+        // ユーザーごとの実対象期間（勤怠申請提出時にスナップショットされた期間があればそれを優先。
+        // 期間設定変更後に未申請のユーザーは既定のmonthRangeを使う）
+        Map<Long, LocalDate[]> effectiveRangeByUser = buildEffectiveRangeByUser(yearMonth, monthRange);
+        LocalDate fetchStart = monthRange.getStartDate();
+        LocalDate fetchEnd = monthRange.getEndDate();
+        for (LocalDate[] range : effectiveRangeByUser.values()) {
+            if (range[0].isBefore(fetchStart)) {
+                fetchStart = range[0];
+            }
+            if (range[1].isAfter(fetchEnd)) {
+                fetchEnd = range[1];
+            }
+        }
+
         // 全ユーザー分の勤怠記録・休暇申請を一括取得し、userId でグルーピング(N+1回避)
-        Instant rangeStart = com.attendance.app.util.DateTimeUtil.toInstant(monthRange.getStartDate());
-        Instant rangeEnd = com.attendance.app.util.DateTimeUtil.toInstant(monthRange.getEndDate().plusDays(1));
+        Instant rangeStart = com.attendance.app.util.DateTimeUtil.toInstant(fetchStart);
+        Instant rangeEnd = com.attendance.app.util.DateTimeUtil.toInstant(fetchEnd.plusDays(1));
         Map<Long, List<AttendanceRecord>> recordsByUser = attendanceRecordMapper.selectAllByDateRange(rangeStart, rangeEnd)
                 .stream().collect(Collectors.groupingBy(AttendanceRecord::getUserId));
         Map<Long, List<LeaveApplication>> leaveApplicationsByUser = leaveApplicationMapper.selectAllByDateRange(
-                        monthRange.getStartDate(), monthRange.getEndDate())
+                        fetchStart, fetchEnd)
                 .stream().collect(Collectors.groupingBy(LeaveApplication::getUserId));
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -85,8 +100,19 @@ public class PayrollExportService {
             );
 
             for (User user : users) {
-                // 勤怠記録と休暇申請の取得(一括取得結果からグルーピング済みのものを参照)
-                List<AttendanceRecord> records = recordsByUser.getOrDefault(user.getUserId(), Collections.emptyList());
+                LocalDate[] userRange = effectiveRangeByUser.getOrDefault(user.getUserId(),
+                        new LocalDate[]{monthRange.getStartDate(), monthRange.getEndDate()});
+                LocalDate userStart = userRange[0];
+                LocalDate userEnd = userRange[1];
+
+                // 勤怠記録と休暇申請の取得(一括取得結果からグルーピング済みのものを、ユーザー自身の対象期間にクリップして参照)
+                List<AttendanceRecord> records = recordsByUser.getOrDefault(user.getUserId(), Collections.emptyList())
+                        .stream()
+                        .filter(r -> {
+                            LocalDate d = com.attendance.app.util.DateTimeUtil.toLocalDate(r.getAttendanceDate());
+                            return d != null && !d.isBefore(userStart) && !d.isAfter(userEnd);
+                        })
+                        .collect(Collectors.toList());
                 List<LeaveApplication> leaveApplications = leaveApplicationsByUser.getOrDefault(user.getUserId(), Collections.emptyList());
 
                 int workingDays = 0;
@@ -118,11 +144,14 @@ public class PayrollExportService {
                 if (leaveApplications != null) {
                     Map<LocalDate, LeaveApplication> leaveMap = new HashMap<>();
                     for (LeaveApplication la : leaveApplications) {
-                        // 月範囲(monthRange)にクリップして展開(月跨ぎ休暇の範囲外日数を計上しない)
-                        LocalDate segStart = la.getLeaveStartDate().isBefore(monthRange.getStartDate())
-                                ? monthRange.getStartDate() : la.getLeaveStartDate();
-                        LocalDate segEnd = la.getLeaveEndDate().isAfter(monthRange.getEndDate())
-                                ? monthRange.getEndDate() : la.getLeaveEndDate();
+                        // ユーザーの対象期間にクリップして展開(月跨ぎ休暇や範囲外日数を計上しない)
+                        LocalDate segStart = la.getLeaveStartDate().isBefore(userStart)
+                                ? userStart : la.getLeaveStartDate();
+                        LocalDate segEnd = la.getLeaveEndDate().isAfter(userEnd)
+                                ? userEnd : la.getLeaveEndDate();
+                        if (segStart.isAfter(segEnd)) {
+                            continue;
+                        }
                         LocalDate d = segStart;
                         while (!d.isAfter(segEnd)) {
                             leaveMap.put(d, la);
@@ -160,6 +189,23 @@ public class PayrollExportService {
 
         log.info("給与連携CSV(GZIP)生成完了: yearMonth={}, format={}, users={}", yearMonth, format, users.size());
         return baos.toByteArray();
+    }
+
+    /**
+     * ユーザーごとの実対象期間（開始日・終了日）を返します。
+     * 対象月の勤怠申請提出時にスナップショットされた期間があればそれを優先し、
+     * 未提出（または期間未設定）のユーザーは既定の monthRange を使用します。
+     * 期間設定変更を跨いで提出されたユーザーが混在していても、各ユーザーの提出時点の期間で集計するための補正です。
+     */
+    private Map<Long, LocalDate[]> buildEffectiveRangeByUser(YearMonth yearMonth, AttendanceRecordService.MonthRange monthRange) {
+        Map<Long, LocalDate[]> result = new HashMap<>();
+        for (com.attendance.app.entity.AttendanceSubmission submission
+                : attendanceSubmissionService.getSubmissionsByTargetYearMonth(yearMonth)) {
+            if (submission.getStartDate() != null && submission.getEndDate() != null) {
+                result.put(submission.getUserId(), new LocalDate[]{submission.getStartDate(), submission.getEndDate()});
+            }
+        }
+        return result;
     }
 
     /**
