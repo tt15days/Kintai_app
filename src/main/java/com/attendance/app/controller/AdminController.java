@@ -601,13 +601,13 @@ public class AdminController {
      */
     private YearMonth parseYearMonthOrNow(String yearMonth) {
         if (yearMonth == null || yearMonth.isEmpty()) {
-            return attendanceSubmissionService.resolvePayrollMonth(LocalDate.now());
+            return attendanceSubmissionService.resolvePayrollMonth(DateTimeUtil.todayJapan());
         }
         try {
             return YearMonth.parse(yearMonth);
         } catch (Exception e) {
             log.warn(INVALID_YEAR_MONTH_LOG, yearMonth);
-            return attendanceSubmissionService.resolvePayrollMonth(LocalDate.now());
+            return attendanceSubmissionService.resolvePayrollMonth(DateTimeUtil.todayJapan());
         }
     }
 

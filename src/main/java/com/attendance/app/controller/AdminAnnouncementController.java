@@ -3,6 +3,7 @@ package com.attendance.app.controller;
 import com.attendance.app.entity.AdminAnnouncement;
 import com.attendance.app.security.SecurityUtil;
 import com.attendance.app.service.AdminAnnouncementService;
+import com.attendance.app.util.DateTimeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -45,7 +46,7 @@ public class AdminAnnouncementController {
     public String listAnnouncements(Model model) {
         model.addAttribute("announcements", adminAnnouncementService.getAllAnnouncements());
         model.addAttribute("newAnnouncement", new AdminAnnouncement());
-        model.addAttribute("today", LocalDate.now());
+        model.addAttribute("today", DateTimeUtil.todayJapan());
         return ANNOUNCEMENTS_VIEW;
     }
 

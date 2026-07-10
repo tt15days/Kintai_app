@@ -151,7 +151,7 @@ VALUES (
     1,
     NOW(),
     NOW()
-) ON CONFLICT (user_id, attendance_date) DO NOTHING;
+) ON CONFLICT (user_id, attendance_date) WHERE is_deleted = false DO NOTHING;
 
 INSERT INTO attendance_records (user_id, attendance_date, start_time, end_time, working_hours, event_type_id, created_at, updated_at)
 VALUES (
@@ -163,7 +163,7 @@ VALUES (
     1,
     NOW(),
     NOW()
-) ON CONFLICT (user_id, attendance_date) DO NOTHING;
+) ON CONFLICT (user_id, attendance_date) WHERE is_deleted = false DO NOTHING;
 
 INSERT INTO attendance_records (user_id, attendance_date, start_time, end_time, working_hours, overtime_hours, event_type_id, remarks)
 VALUES
@@ -175,7 +175,7 @@ VALUES
     (2, '2026-04-27 00:00:00+09', '2026-04-27 08:00:00+09', '2026-04-27 19:00:00+09', 10.0, 1.0,  1, 'Regular workday'),
     (2, '2026-04-28 00:00:00+09', '2026-04-28 12:45:00+09', '2026-04-28 23:15:00+09', 9.5,  5.25, 2, 'Late start'),
     (2, '2026-04-30 00:00:00+09', '2026-04-30 09:00:00+09', '2026-04-30 23:45:00+09', 13.75, 5.75, 1, 'Regular workday')
-ON CONFLICT (user_id, attendance_date) DO NOTHING;
+ON CONFLICT (user_id, attendance_date) WHERE is_deleted = false DO NOTHING;
 
 -- ============================================================
 -- サンプル勤怠記録挿入 (ユーザーID: 3 テストユーザー / 夜勤パターン)
@@ -192,7 +192,7 @@ VALUES
     (3, '2026-04-25 00:00:00+09', '2026-04-25 22:00:00+09', '2026-04-26 07:00:00+09', 8.0, 0.0, 1, '夜勤'),
     -- 夜勤・早退 (22:00-翌05:00 = 6h, 残業なし)
     (3, '2026-04-27 00:00:00+09', '2026-04-27 22:00:00+09', '2026-04-28 05:00:00+09', 6.0, 0.0, 3, '夜勤・早退')
-ON CONFLICT (user_id, attendance_date) DO NOTHING;
+ON CONFLICT (user_id, attendance_date) WHERE is_deleted = false DO NOTHING;
 
 -- ============================================================
 -- サンプル休暇申請挿入
@@ -218,8 +218,8 @@ INSERT INTO overtime_records (user_id, overtime_date, overtime_start, overtime_e
 VALUES (
     2,
     CURRENT_DATE,
-    '18:00:00'::TIME,
-    '20:00:00'::TIME,
+    (CURRENT_DATE + TIME '18:00:00') AT TIME ZONE 'Asia/Tokyo',
+    (CURRENT_DATE + TIME '20:00:00') AT TIME ZONE 'Asia/Tokyo',
     2.0,
     'プロジェクト作業',
     NOW(),
@@ -230,8 +230,8 @@ INSERT INTO overtime_records (user_id, overtime_date, overtime_start, overtime_e
 VALUES (
     2,
     CURRENT_DATE - INTERVAL '1 day',
-    '19:00:00'::TIME,
-    '21:00:00'::TIME,
+    ((CURRENT_DATE - INTERVAL '1 day') + TIME '19:00:00') AT TIME ZONE 'Asia/Tokyo',
+    ((CURRENT_DATE - INTERVAL '1 day') + TIME '21:00:00') AT TIME ZONE 'Asia/Tokyo',
     2.0,
     'クライアント対応',
     NOW(),
