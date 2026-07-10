@@ -4,6 +4,7 @@ import com.attendance.app.entity.LeaveApplication;
 import com.attendance.app.entity.LeaveStatus;
 import com.attendance.app.entity.LeaveType;
 import com.attendance.app.mapper.LeaveApplicationMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,12 +16,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,8 +44,16 @@ class LeaveApplicationServiceTest {
     @Mock
     private PaidLeaveBalanceService paidLeaveBalanceService;
 
+    @Mock
+    private HolidayService holidayService;
+
     @InjectMocks
     private LeaveApplicationService service;
+
+    @BeforeEach
+    void stubHolidayMaster() {
+        lenient().when(holidayService.getHolidaysByYear(anyInt())).thenReturn(Collections.emptySet());
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // createApplication
@@ -474,6 +486,7 @@ class LeaveApplicationServiceTest {
                 .applicationId(id)
                 .userId(2L)
                 .leaveType(LeaveType.PAID_LEAVE)
+                .leaveDurationType("FULL_DAY")
                 .leaveStartDate(LocalDate.of(2026, 6, 1))
                 .leaveEndDate(LocalDate.of(2026, 6, 1))
                 .status(LeaveStatus.PENDING)

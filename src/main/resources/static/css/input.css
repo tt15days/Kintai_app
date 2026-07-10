@@ -193,6 +193,9 @@
     .alert-warning {
         @apply bg-warning/15 border border-warning/30 text-warning;
     }
+    .alert-primary {
+        @apply bg-primary/10 border border-primary/20 text-primary px-4 py-3 rounded-xl text-sm;
+    }
 
     /* --- バッジ --- */
     .badge {
@@ -226,6 +229,15 @@
     }
     .table-custom td {
         @apply md:p-2 p-1 text-sm text-txt-primary;
+    }
+    .table-danger {
+        @apply bg-danger/8;
+    }
+    .table-primary {
+        @apply bg-primary/8;
+    }
+    .row-modified {
+        @apply bg-warning/10;
     }
 
     .nav-link {
@@ -344,5 +356,44 @@
         text-align: center;
         color: var(--text-secondary);
         font-size: 0.85rem;
+    }
+
+    /* --- 勤怠管理（ユーザー）: 時刻入力の表示調整 --- */
+    @media (max-width: 767px) {
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            display: none;
+            -webkit-appearance: none;
+        }
+    }
+
+    .table-custom-compact th,
+    .table-custom-compact td {
+        padding: 6px 8px !important;
+    }
+
+    @media (max-width: 767px) {
+        .table-custom-compact th,
+        .table-custom-compact td {
+            padding: 4px 4px !important;
+        }
+    }
+
+    .table-custom-compact tbody tr {
+        border-top: none !important;
+    }
+
+    input[type="time"] {
+        text-align: center;
+    }
+    input[type="time"]::-webkit-datetime-edit {
+        text-align: center;
+        width: 100%;
+    }
+    input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+        justify-content: center;
+    }
+    input[type="time"]::-webkit-date-and-time-value {
+        text-align: center;
+        margin: 0 auto;
     }
 }

@@ -26,6 +26,11 @@ Thumbs.db
 *.tmp
 *.bak
 
+# Node.js (Tailwind CSS build)
+node_modules/
+package.json
+package-lock.json
+
 # Environment
 .env
 .env.local

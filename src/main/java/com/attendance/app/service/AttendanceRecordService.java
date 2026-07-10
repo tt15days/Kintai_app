@@ -214,7 +214,11 @@ public class AttendanceRecordService {
 
         Double workingHours = calculateWorkingHoursExcludingBreakOverlaps(startInstant, endInstant, attendanceDate, schedule);
         Double overtimeHours = calculateExcessOvertime(attendanceDate, schedule, endInstant);
+        // 休日出勤時は実働を holidayWorkHours に計上し、workingHours は0.0にする（quickEndAttendance と統一）
         Double holidayWorkHours = isHolidayWork ? workingHours : 0.0;
+        if (isHolidayWork) {
+            workingHours = 0.0;
+        }
         Double nightShiftHours = calculateNightShiftHours(startInstant, endInstant, attendanceDate, schedule);
         int breakTimeMinutes = (int) calculateBreakOverlapMinutes(startInstant, endInstant, attendanceDate, schedule);
 
@@ -262,7 +266,8 @@ public class AttendanceRecordService {
             attendanceDate,
             schedule.standardStartTime(),
             schedule.standardEndTime(),
-            endInstant);
+            endInstant,
+            overtimeHours);
 
         return record;
     }
@@ -404,7 +409,8 @@ public class AttendanceRecordService {
             attendanceDate,
             schedule.standardStartTime(),
             schedule.standardEndTime(),
-            record.getEndTime());
+            record.getEndTime(),
+            overtimeHours);
         log.info("勤務終了を記録しました: userId={}, time={}, workingHours={}", userId, currentTime, workingHours);
         return record;
     }
@@ -426,6 +432,25 @@ public class AttendanceRecordService {
 
         int currentBreak = record.getBreakTimeMinutes() != null ? record.getBreakTimeMinutes() : 0;
         record.setBreakTimeMinutes(currentBreak + breakTimeMinutes);
+
+        if (record.getStartTime() != null && record.getEndTime() != null) {
+            WorkScheduleDefinition schedule = getScheduleForUserAndRecord(userId, Optional.of(record));
+            LocalDate attendanceDate = DateTimeUtil.toLocalDate(record.getAttendanceDate());
+            Double workingHours = calculateWorkingHoursExcludingBreakOverlaps(record.getStartTime(), record.getEndTime(), attendanceDate, schedule);
+            Double overtimeHours = calculateExcessOvertime(attendanceDate, schedule, record.getEndTime());
+            Double nightShiftHours = calculateNightShiftHours(record.getStartTime(), record.getEndTime(), attendanceDate, schedule);
+
+            boolean isHolidayWork = record.getHolidayWorkHours() != null && record.getHolidayWorkHours() > 0;
+            if (isHolidayWork) {
+                record.setWorkingHours(0.0);
+                record.setHolidayWorkHours(workingHours);
+            } else {
+                record.setWorkingHours(workingHours);
+            }
+            record.setOvertimeHours(overtimeHours);
+            record.setNightShiftHours(nightShiftHours);
+        }
+
         record.setUpdatedAt(DateTimeUtil.now());
 
         attendanceRecordMapper.update(record);
@@ -474,7 +499,9 @@ public class AttendanceRecordService {
         }
 
         long overtimeMinutes = java.time.Duration.between(standardEndInstant, endInstant).toMinutes();
-        return overtimeMinutes / 60.0;
+        long breakOverlapMinutes = calculateBreakOverlapMinutes(standardEndInstant, endInstant, attendanceDate, schedule);
+        long adjustedOvertimeMinutes = Math.max(0, overtimeMinutes - breakOverlapMinutes);
+        return adjustedOvertimeMinutes / 60.0;
     }
 
     /**

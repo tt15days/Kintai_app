@@ -1,7 +1,7 @@
 package com.attendance.app.controller;
 
 import com.attendance.app.entity.Holiday;
-import com.attendance.app.mapper.SystemSettingMapper;
+import com.attendance.app.service.SystemSettingService;
 import com.attendance.app.service.AttendancePeriodSettingService;
 import com.attendance.app.service.BatchSettingService;
 import com.attendance.app.service.CsvFilenamePatternService;
@@ -33,7 +33,7 @@ import static org.mockito.Mockito.*;
 class SettingsControllerTest {
 
     @Mock
-    private SystemSettingMapper systemSettingMapper;
+    private SystemSettingService systemSettingService;
 
     @Mock
     private AttendancePeriodSettingService attendancePeriodSettingService;
@@ -58,10 +58,10 @@ class SettingsControllerTest {
     @DisplayName("showSettings: 設定値がnullの場合、デフォルト値がモデルに設定されること")
     void showSettings_withNullSettings_setsDefaultValues() {
         // Arrange
-        when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DATE")).thenReturn(null);
-        when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DAYS")).thenReturn(null);
-        when(systemSettingMapper.selectValueByKey("COPYRIGHT_TEXT")).thenReturn(null);
-        when(systemSettingMapper.selectValueByKey("SYSTEM_NAME")).thenReturn(null);
+        when(systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DATE")).thenReturn(null);
+        when(systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DAYS")).thenReturn(null);
+        when(systemSettingService.getSettingValue("COPYRIGHT_TEXT")).thenReturn(null);
+        when(systemSettingService.getSettingValue("SYSTEM_NAME")).thenReturn(null);
 
         when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
         when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
@@ -95,10 +95,10 @@ class SettingsControllerTest {
     @DisplayName("showSettings: 設定値が存在する場合、その値がモデルに設定されること")
     void showSettings_withExistingSettings_setsExistingValues() {
         // Arrange
-        when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DATE")).thenReturn("10-01");
-        when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DAYS")).thenReturn("20");
-        when(systemSettingMapper.selectValueByKey("COPYRIGHT_TEXT")).thenReturn("© Custom Copyright");
-        when(systemSettingMapper.selectValueByKey("SYSTEM_NAME")).thenReturn("Custom System");
+        when(systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DATE")).thenReturn("10-01");
+        when(systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DAYS")).thenReturn("20");
+        when(systemSettingService.getSettingValue("COPYRIGHT_TEXT")).thenReturn("© Custom Copyright");
+        when(systemSettingService.getSettingValue("SYSTEM_NAME")).thenReturn("Custom System");
 
         when(attendancePeriodSettingService.getStartDay()).thenReturn(1);
         when(attendancePeriodSettingService.getEndDay()).thenReturn(31);
@@ -127,8 +127,8 @@ class SettingsControllerTest {
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("message")).isEqualTo("システム設定を更新しました。");
-        verify(systemSettingMapper).upsertValue("PAID_LEAVE_GRANT_DATE", "04-01");
-        verify(systemSettingMapper).upsertValue("PAID_LEAVE_GRANT_DAYS", "10");
+        verify(systemSettingService).updateSettingValue("PAID_LEAVE_GRANT_DATE", "04-01");
+        verify(systemSettingService).updateSettingValue("PAID_LEAVE_GRANT_DAYS", "10");
     }
 
     @Test
@@ -141,7 +141,7 @@ class SettingsControllerTest {
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
                 .isEqualTo("有給付与日はMM-DD形式（例: 04-01）で入力してください。");
-        verify(systemSettingMapper, never()).upsertValue(any(), any());
+        verify(systemSettingService, never()).updateSettingValue(any(), any());
     }
 
     @Test
@@ -154,7 +154,7 @@ class SettingsControllerTest {
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
                 .isEqualTo("有給付与日数は1〜40の範囲で指定してください。");
-        verify(systemSettingMapper, never()).upsertValue(any(), any());
+        verify(systemSettingService, never()).updateSettingValue(any(), any());
     }
 
     @Test
@@ -167,7 +167,7 @@ class SettingsControllerTest {
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
                 .isEqualTo("有給付与日数は1〜40の範囲で指定してください。");
-        verify(systemSettingMapper, never()).upsertValue(any(), any());
+        verify(systemSettingService, never()).updateSettingValue(any(), any());
     }
 
     @Test
@@ -180,7 +180,7 @@ class SettingsControllerTest {
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
                 .isEqualTo("有給付与日数は有効な数値を入力してください。");
-        verify(systemSettingMapper, never()).upsertValue(any(), any());
+        verify(systemSettingService, never()).updateSettingValue(any(), any());
     }
 
     @Test
@@ -192,7 +192,7 @@ class SettingsControllerTest {
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("message")).isEqualTo("コピーライト表示設定を更新しました");
-        verify(systemSettingMapper).upsertValue("COPYRIGHT_TEXT", "© 2026 Test");
+        verify(systemSettingService).updateSettingValue("COPYRIGHT_TEXT", "© 2026 Test");
     }
 
     @Test
@@ -204,7 +204,7 @@ class SettingsControllerTest {
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("コピーライト表示文言を入力してください");
-        verify(systemSettingMapper, never()).upsertValue(any(), any());
+        verify(systemSettingService, never()).updateSettingValue(any(), any());
     }
 
     @Test
@@ -217,14 +217,14 @@ class SettingsControllerTest {
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("コピーライト表示文言は255文字以内で入力してください");
-        verify(systemSettingMapper, never()).upsertValue(any(), any());
+        verify(systemSettingService, never()).updateSettingValue(any(), any());
     }
 
     @Test
     @DisplayName("updateCopyrightSetting: 例外発生時のハンドリング")
     void updateCopyrightSetting_exception_returnsError() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-        doThrow(new RuntimeException("DB Error")).when(systemSettingMapper).upsertValue(any(), any());
+        doThrow(new RuntimeException("DB Error")).when(systemSettingService).updateSettingValue(any(), any());
 
         String viewName = controller.updateCopyrightSetting("© 2026 Test", redirectAttributes);
 
@@ -241,7 +241,7 @@ class SettingsControllerTest {
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("message")).isEqualTo("システム名表示設定を更新しました");
-        verify(systemSettingMapper).upsertValue("SYSTEM_NAME", "New System Name");
+        verify(systemSettingService).updateSettingValue("SYSTEM_NAME", "New System Name");
     }
 
     @Test
@@ -253,7 +253,7 @@ class SettingsControllerTest {
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("システム名を入力してください");
-        verify(systemSettingMapper, never()).upsertValue(any(), any());
+        verify(systemSettingService, never()).updateSettingValue(any(), any());
     }
 
     @Test
@@ -272,7 +272,7 @@ class SettingsControllerTest {
     @DisplayName("updateSystemNameSetting: 例外発生時のハンドリング")
     void updateSystemNameSetting_exception_returnsError() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-        doThrow(new RuntimeException("DB Error")).when(systemSettingMapper).upsertValue(any(), any());
+        doThrow(new RuntimeException("DB Error")).when(systemSettingService).updateSettingValue(any(), any());
 
         String viewName = controller.updateSystemNameSetting("New System Name", redirectAttributes);
 

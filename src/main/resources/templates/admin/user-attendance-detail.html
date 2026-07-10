@@ -89,7 +89,7 @@
                               th:if="${submission.actionComment != null and !submission.actionComment.isEmpty()}"
                               th:text="'コメント: ' + ${submission.actionComment}"></span>
                     </div>
-                    <                    <!-- 36協定警告バナー -->
+                    <!-- 36協定警告バナー -->
                     <div class="alert alert-danger mb-6" role="alert"
                          th:if="${article36Status != null and article36Status == 'ALERT'}">
                         <i class="fas fa-exclamation-triangle text-lg"></i>
@@ -300,12 +300,6 @@
                 </div>
             </div>
         </div>
-
-    <style th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
-        .row-modified {
-            background-color: rgba(245, 158, 11, 0.15) !important; /* amber/yellow highlight */
-        }
-    </style>
 
     <!-- Client-side bulk validation and highlights for admin editing -->
     <script th:if="${#authorization.expression('hasRole(''ADMIN'')')}">

@@ -20,7 +20,8 @@ import java.util.Optional;
  *   <li>3回失敗: 30分の一時ロックを設定し警告</li>
  *   <li>5回失敗: アカウント永久ロック（管理者ユーザーを除く）</li>
  * </ul>
- * 管理者ユーザー（UserRole.ADMIN）はロック対象外。
+ * 管理者ユーザー（UserRole.ADMIN）も一般ユーザーと同じ一時ロック（3回/30分）の対象とする。
+ * ただし全管理者ロックアウトを防ぐため、永久ロック（5回）は管理者には適用せず一時ロックを継続する。
  */
 @Slf4j
 @Service
@@ -35,7 +36,7 @@ public class LoginAttemptService {
 
     /**
      * ログイン失敗時の処理。失敗カウントをインクリメントしロック判定を行う。
-     * 管理者ユーザーはロック対象外。ユーザーが存在しない場合は NORMAL を返す。
+     * 管理者ユーザーも一時ロック対象だが、永久ロックは適用しない。ユーザーが存在しない場合は NORMAL を返す。
      *
      * @param email ログイン失敗したメールアドレス
      * @return 試行結果 {@link LoginAttemptResult}
@@ -47,36 +48,30 @@ public class LoginAttemptService {
             return LoginAttemptResult.NORMAL;
         }
         User user = userOpt.get();
+        boolean isAdmin = user.getUserRole() == UserRole.ADMIN;
 
-        if (user.getUserRole() == UserRole.ADMIN) {
-            int newCount = (user.getFailedLoginCount() != null ? user.getFailedLoginCount() : 0) + 1;
-            userMapper.updateLoginAttempt(user.getUserId(), newCount, null, false);
-            if (newCount >= LOCK_THRESHOLD) {
-                log.warn("[ALERT] 管理者アカウントへのブルートフォース攻撃の可能性があります: userId={}, 失敗回数={}", user.getUserId(), newCount);
-            } else if (newCount >= WARNING_THRESHOLD) {
-                log.warn("[WARNING] 管理者アカウントのログイン失敗回数が閾値を超えました: userId={}, 失敗回数={}", user.getUserId(), newCount);
-            } else {
-                log.info("管理者のログイン失敗: userId={}, failedCount={}", user.getUserId(), newCount);
-            }
-            return LoginAttemptResult.ADMIN_EXEMPT;
-        }
-
-        // すでに永続ロック済みの場合は再カウント不要
+        // すでに永続ロック済みの場合は再カウント不要（管理者は永久ロック対象外のため到達しない）
         if (Boolean.TRUE.equals(user.getAccountLocked())) {
             return LoginAttemptResult.LOCKED;
         }
 
         int newCount = (user.getFailedLoginCount() != null ? user.getFailedLoginCount() : 0) + 1;
 
-        if (newCount >= LOCK_THRESHOLD) {
+        if (newCount >= LOCK_THRESHOLD && !isAdmin) {
             userMapper.updateLoginAttempt(user.getUserId(), newCount, null, true);
             log.warn("アカウントを永久ロックしました: userId={}, failedCount={}", user.getUserId(), newCount);
             return LoginAttemptResult.LOCKED;
         } else if (newCount >= WARNING_THRESHOLD) {
+            // 管理者は全管理者ロックアウト防止のため永久ロックを適用せず、一時ロックを繰り返し延長する
             Instant lockedUntil = Instant.now().plus(TEMP_LOCK_MINUTES, ChronoUnit.MINUTES);
             userMapper.updateLoginAttempt(user.getUserId(), newCount, lockedUntil, false);
-            log.warn("一時ロックを設定しました: userId={}, failedCount={}, lockedUntil={}",
-                    user.getUserId(), newCount, lockedUntil);
+            if (isAdmin && newCount >= LOCK_THRESHOLD) {
+                log.warn("[ALERT] 管理者アカウントへのブルートフォース攻撃の可能性があります（永久ロックは適用せず一時ロックを継続）: userId={}, failedCount={}, lockedUntil={}",
+                        user.getUserId(), newCount, lockedUntil);
+            } else {
+                log.warn("一時ロックを設定しました: userId={}, failedCount={}, lockedUntil={}",
+                        user.getUserId(), newCount, lockedUntil);
+            }
             return LoginAttemptResult.TEMP_LOCKED;
         } else {
             userMapper.updateLoginAttempt(user.getUserId(), newCount, null, false);

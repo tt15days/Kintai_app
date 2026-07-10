@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org" layout:decorate="~{layout/base}" th:with="activePage='dashboard'">
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" layout:decorate="~{layout/base}" th:with="activePage='profile'">
 
 <head>
     <title>プロフィール</title>
@@ -14,11 +14,11 @@
 
                 <div th:if="${successMessage}" class="alert alert-success">
                     <span><i class="fas fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
-                    <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert], .bg-success\/15, .bg-danger\/12').remove()">×</button>
+                    <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert], .bg-success\/15, .bg-danger\/12').remove()" aria-label="閉じる">×</button>
                 </div>
                 <div th:if="${errorMessage}" class="alert alert-danger">
                     <span><i class="fas fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
-                    <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.parentElement.remove()">×</button>
+                    <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.parentElement.remove()" aria-label="閉じる">×</button>
                 </div>
                 <div th:if="${error}" class="alert alert-danger justify-center text-center" role="alert">
                     <span th:text="${error}"></span>
@@ -134,7 +134,7 @@
                             <button type="submit" class="btn btn-primary px-5 py-3 text-sm cursor-pointer gap-2">
                                 <i class="fas fa-save"></i> 所属クラスを更新
                             </button>
-                            <a href="/dashboard" class="btn btn-flat px-5 py-3 text-sm cursor-pointer ml-2 gap-2">
+                            <a th:href="@{/dashboard}" class="btn btn-flat px-5 py-3 text-sm cursor-pointer ml-2 gap-2">
                                 <i class="fas fa-times"></i> 戻る
                             </a>
                         </form>

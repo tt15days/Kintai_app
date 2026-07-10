@@ -313,8 +313,13 @@ public class AttendanceApprovalController {
             if (leaveApplications != null) {
                 Map<LocalDate, LeaveApplication> leaveMap = new HashMap<>();
                 for (LeaveApplication la : leaveApplications) {
-                    LocalDate d = la.getLeaveStartDate();
-                    while (!d.isAfter(la.getLeaveEndDate())) {
+                    // 月範囲(monthRange)にクリップして展開(月跨ぎ休暇の範囲外日数を計上しない)
+                    LocalDate segStart = la.getLeaveStartDate().isBefore(monthRange.getStartDate())
+                            ? monthRange.getStartDate() : la.getLeaveStartDate();
+                    LocalDate segEnd = la.getLeaveEndDate().isAfter(monthRange.getEndDate())
+                            ? monthRange.getEndDate() : la.getLeaveEndDate();
+                    LocalDate d = segStart;
+                    while (!d.isAfter(segEnd)) {
                         leaveMap.put(d, la);
                         d = d.plusDays(1);
                     }

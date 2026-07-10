@@ -124,6 +124,30 @@ public class OvertimeRecordService {
             LocalTime standardStartTime,
             LocalTime standardEndTime,
             Instant actualEndTime) {
+        syncFromAttendance(userId, attendanceDate, standardStartTime, standardEndTime, actualEndTime, null);
+    }
+
+    /**
+     * 勤怠データから残業記録を同期します。
+     *
+     * 残業の正本は attendance_records.overtime_hours です。呼び出し元が算出済みの
+     * overtimeHours（所定終業後の休憩控除込み）を渡した場合はそれを採用し、
+     * null の場合のみ所定終業〜退勤の単純差分でフォールバック算出します。
+     *
+     * @param userId ユーザーID
+     * @param attendanceDate 勤怠日
+     * @param standardStartTime 基準開始時刻
+     * @param standardEndTime 基準終了時刻
+     * @param actualEndTime 実際の退勤時刻
+     * @param overtimeHours 勤怠側で算出済みの残業時間（正本。null時はフォールバック算出）
+     */
+    public void syncFromAttendance(
+            Long userId,
+            LocalDate attendanceDate,
+            LocalTime standardStartTime,
+            LocalTime standardEndTime,
+            Instant actualEndTime,
+            Double overtimeHours) {
         if (actualEndTime == null || standardEndTime == null) {
             overtimeRecordMapper.deleteByUserAndDate(userId, attendanceDate);
             return;
@@ -138,7 +162,14 @@ public class OvertimeRecordService {
             return;
         }
 
-        double overtimeHours = calculateOvertimeHours(standardEndInstant, actualEndTime);
+        double resolvedOvertimeHours = overtimeHours != null
+                ? overtimeHours
+                : calculateOvertimeHours(standardEndInstant, actualEndTime);
+        if (resolvedOvertimeHours <= 0) {
+            // 残業窓が丸ごと休憩などで残業が0になる場合は履歴を残さない
+            overtimeRecordMapper.deleteByUserAndDate(userId, attendanceDate);
+            return;
+        }
         String reason = ATTENDANCE_SYNC_REASON_PREFIX + formatTime(standardStartTime) + "-" + formatTime(standardEndTime) + ")";
 
         Optional<OvertimeRecord> existing = overtimeRecordMapper.selectByUserAndDateForUpdate(userId, attendanceDate);
@@ -146,7 +177,7 @@ public class OvertimeRecordService {
             OvertimeRecord record = existing.get();
             record.setOvertimeStart(standardEndInstant);
             record.setOvertimeEnd(actualEndTime);
-            record.setOvertimeHours(overtimeHours);
+            record.setOvertimeHours(resolvedOvertimeHours);
             record.setReason(reason);
             record.setRemarks("勤怠管理画面から自動計算");
             record.setUpdatedAt(DateTimeUtil.now());
@@ -157,7 +188,7 @@ public class OvertimeRecordService {
                     .overtimeDate(attendanceDate)
                     .overtimeStart(standardEndInstant)
                     .overtimeEnd(actualEndTime)
-                    .overtimeHours(overtimeHours)
+                    .overtimeHours(resolvedOvertimeHours)
                     .reason(reason)
                     .remarks("勤怠管理画面から自動計算")
                     .createdAt(DateTimeUtil.now())

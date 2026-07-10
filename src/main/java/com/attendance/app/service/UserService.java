@@ -8,7 +8,10 @@ import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.mapper.WorkScheduleClassMapper;
 import com.attendance.app.mapper.AttendanceApproverAssignmentMapper;
 import com.attendance.app.mapper.PaidLeaveBalanceMapper;
+import com.attendance.app.util.DateTimeUtil;
 import com.attendance.app.entity.PaidLeaveBalance;
+import com.attendance.app.entity.LeaveApplication;
+import com.attendance.app.entity.LeaveStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,6 +59,7 @@ public class UserService {
     private final SystemSettingMapper systemSettingMapper;
     private final AttendanceApproverAssignmentMapper approverAssignmentMapper;
     private final PaidLeaveBalanceMapper paidLeaveBalanceMapper;
+    private final LeaveApplicationService leaveApplicationService;
 
     /**
      * 指定されたユーザーIDでユーザー情報を取得します。
@@ -146,13 +150,13 @@ public class UserService {
         userMapper.insert(user);
 
         // 新規作成されたユーザーに初期有給残高レコードを付与する
-        int currentYear = LocalDate.now().getYear();
+        int currentYear = DateTimeUtil.todayJapan().getYear();
         PaidLeaveBalance balance = PaidLeaveBalance.builder()
                 .userId(user.getUserId())
                 .grantYear(currentYear)
                 .grantedDays(DEFAULT_PAID_LEAVE_DAYS)
-                .grantDate(LocalDate.now())
-                .expiryDate(LocalDate.now().plusYears(2).minusDays(1))
+                .grantDate(DateTimeUtil.todayJapan())
+                .expiryDate(DateTimeUtil.todayJapan().plusYears(2).minusDays(1))
                 .carriedOverDays(BigDecimal.ZERO)
                 .usedDays(BigDecimal.ZERO)
                 .build();
@@ -240,6 +244,8 @@ public class UserService {
             approverAssignmentMapper.deleteUserApproverByApprover(userId);
             approverAssignmentMapper.deleteDepartmentApproverByApprover(userId);
             log.info("無効化されたユーザーの承認者割り当てを解除しました: userId={}", userId);
+            
+            deletePendingLeaveApplications(userId);
         }
 
         log.info("ユーザー情報を更新しました: userId={}", userId);
@@ -255,20 +261,20 @@ public class UserService {
     private void adjustPaidLeaveBalance(Long userId, BigDecimal targetPaidLeaveDays) {
         List<PaidLeaveBalance> balances = paidLeaveBalanceMapper.selectByUserId(userId);
         if (balances.isEmpty()) {
-            int currentYear = LocalDate.now().getYear();
+            int currentYear = DateTimeUtil.todayJapan().getYear();
             PaidLeaveBalance balance = PaidLeaveBalance.builder()
                     .userId(userId)
                     .grantYear(currentYear)
                     .grantedDays(targetPaidLeaveDays)
-                    .grantDate(LocalDate.now())
-                    .expiryDate(LocalDate.now().plusYears(2).minusDays(1))
+                    .grantDate(DateTimeUtil.todayJapan())
+                    .expiryDate(DateTimeUtil.todayJapan().plusYears(2).minusDays(1))
                     .carriedOverDays(BigDecimal.ZERO)
                     .usedDays(BigDecimal.ZERO)
                     .build();
             paidLeaveBalanceMapper.insert(balance);
         } else {
             BigDecimal currentTotal = balances.stream()
-                    .filter(b -> b.getExpiryDate().isAfter(LocalDate.now()) || b.getExpiryDate().isEqual(LocalDate.now()))
+                    .filter(b -> b.getExpiryDate().isAfter(DateTimeUtil.todayJapan()) || b.getExpiryDate().isEqual(DateTimeUtil.todayJapan()))
                     .map(b -> b.getRemainingDays())
                     .reduce(BigDecimal.ZERO, (x, y) -> x.add(y));
             BigDecimal diff = targetPaidLeaveDays.subtract(currentTotal);
@@ -338,6 +344,8 @@ public class UserService {
         userMapper.softDeleteById(userId);
         log.info("ユーザーを削除しました: userId={}", userId);
 
+        deletePendingLeaveApplications(userId);
+
         auditLogService.recordUserEvent(
                 AuditEventType.USER_DELETED,
                 actorUserId,
@@ -351,6 +359,7 @@ public class UserService {
      * @param userId 削除対象のユーザーID
      */
     public void hardDeleteUser(Long userId) {
+        deletePendingLeaveApplications(userId);
         userMapper.deleteById(userId);
         log.info("ユーザーをハードデリートしました: userId={}", userId);
     }
@@ -539,15 +548,30 @@ public class UserService {
     @Transactional
     public void grantAnnualPaidLeave(Long userId) {
         User user = findUserForUpdateOrThrow(userId);
-
         int grantDays = user.getAnnualLeaveGrantDays() != null
                 ? user.getAnnualLeaveGrantDays() : DEFAULT_ANNUAL_LEAVE_GRANT_DAYS;
+        grantAnnualPaidLeave(userId, grantDays);
+    }
+
+    /**
+     * ユーザーに年次有給休暇を付与します（付与日数指定版）。
+     * ユーザー別の次回付与日数を現在の残日数へ加算し、上限日数で打ち止めにします。
+     * 付与後は次年度用の付与日数も自動更新します。
+     *
+     * @param userId    付与対象のユーザーID
+     * @param grantDays 今回付与する日数
+     */
+    @Transactional
+    public void grantAnnualPaidLeave(Long userId, int grantDays) {
+        User user = findUserForUpdateOrThrow(userId);
+
         BigDecimal increment = user.getAnnualLeaveIncrement() != null
                 ? user.getAnnualLeaveIncrement() : BigDecimal.ONE;
         int maxDays = user.getMaxPaidLeaveDays() != null
                 ? user.getMaxPaidLeaveDays() : DEFAULT_MAX_PAID_LEAVE_DAYS;
 
-        int currentYear = LocalDate.now().getYear();
+        LocalDate today = DateTimeUtil.todayJapan();
+        int currentYear = today.getYear();
 
         // 二重付与防止: すでに当該年度の付与レコードがあればスキップ
         Optional<PaidLeaveBalance> existingOpt = paidLeaveBalanceMapper.selectByUserAndYear(userId, currentYear);
@@ -556,28 +580,30 @@ public class UserService {
                     .userId(userId)
                     .grantYear(currentYear)
                     .grantedDays(BigDecimal.valueOf(grantDays))
-                    .grantDate(LocalDate.now())
-                    .expiryDate(LocalDate.now().plusYears(2).minusDays(1))
+                    .grantDate(today)
+                    .expiryDate(today.plusYears(2).minusDays(1))
                     .carriedOverDays(BigDecimal.ZERO)
                     .usedDays(BigDecimal.ZERO)
                     .build();
             paidLeaveBalanceMapper.insert(balance);
+
+            // 全有効残高の合計値を取得して、users.paid_leave_days を更新する
+            BigDecimal newDays = getCalculatedTotalRemainingDays(userId, maxDays);
+            userMapper.updatePaidLeaveDays(userId, newDays);
+
+            // 来年度向けに annual_leave_grant_days を自動増加（20日上限）
+            int nextGrantDays = (int) Math.min(grantDays + increment.doubleValue(), 20.0);
+            userMapper.updatePaidLeaveSettings(userId, nextGrantDays, increment, maxDays);
+
+            log.info("有給付与: userId={}, grantDays={}, afterSync={}, nextGrantDays={}",
+                    userId, grantDays, newDays, nextGrantDays);
+        } else {
+            log.info("有給付与: userId={} は{}年分を付与済みのためスキップ", userId, currentYear);
         }
-
-        // 全有効残高の合計値を取得して、users.paid_leave_days を更新する
-        BigDecimal newDays = getCalculatedTotalRemainingDays(userId, maxDays);
-        userMapper.updatePaidLeaveDays(userId, newDays);
-
-        // 来年度向けに annual_leave_grant_days を自動増加（20日上限）
-        int nextGrantDays = (int) Math.min(grantDays + increment.doubleValue(), 20.0);
-        userMapper.updatePaidLeaveSettings(userId, nextGrantDays, increment, maxDays);
-
-        log.info("有給付与: userId={}, grantDays={}, afterSync={}, nextGrantDays={}",
-                userId, grantDays, newDays, nextGrantDays);
     }
 
     private BigDecimal getCalculatedTotalRemainingDays(Long userId, int maxDays) {
-        List<PaidLeaveBalance> activeBalances = paidLeaveBalanceMapper.selectActiveByUserId(userId, LocalDate.now());
+        List<PaidLeaveBalance> activeBalances = paidLeaveBalanceMapper.selectActiveByUserId(userId, DateTimeUtil.todayJapan());
         BigDecimal total = activeBalances.stream()
                 .map(b -> b.getRemainingDays())
                 .reduce(BigDecimal.ZERO, (x, y) -> x.add(y));
@@ -610,5 +636,15 @@ public class UserService {
         userMapper.updatePaidLeaveSettings(userId, annualLeaveGrantDays, annualLeaveIncrement, maxPaidLeaveDays);
         log.info("ユーザー別有給設定を更新: userId={}, grantDays={}, increment={}, maxDays={}",
                 userId, annualLeaveGrantDays, annualLeaveIncrement, maxPaidLeaveDays);
+    }
+
+    private void deletePendingLeaveApplications(Long userId) {
+        List<LeaveApplication> pendingApps = leaveApplicationService.getApplicationsByUserIdAndStatus(userId, LeaveStatus.PENDING);
+        for (LeaveApplication app : pendingApps) {
+            leaveApplicationService.deleteApplication(app.getApplicationId());
+        }
+        if (!pendingApps.isEmpty()) {
+            log.info("無効化・削除されたユーザーの申請中休暇を削除しました: userId={}, count={}", userId, pendingApps.size());
+        }
     }
 }

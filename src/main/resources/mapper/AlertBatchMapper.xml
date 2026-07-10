@@ -12,6 +12,7 @@
         WHERE
             attendance_date >= #{startDate}
             AND attendance_date &lt;= #{endDate}
+            AND is_deleted = false
         GROUP BY
             user_id
         HAVING

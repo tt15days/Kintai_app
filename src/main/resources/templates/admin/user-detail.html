@@ -17,7 +17,7 @@
                         <div class="flex items-center gap-3">
                             <span class="badge bg-black/5 text-txt-secondary border-glass-border font-mono"
                                 th:text="'ID: ' + ${#numbers.formatInteger(user.userId, 3)}">ID: 000</span>
-                            <a href="/admin/users" class="btn btn-flat text-xs px-2.5 py-1.5 h-auto">閉じる</a>
+                            <a th:href="@{/admin/users}" class="btn btn-flat text-xs px-2.5 py-1.5 h-auto">閉じる</a>
                         </div>
                     </div>
                     <div>
@@ -339,26 +339,43 @@
                         row.id = "approver-row-" + userId;
                         row.className = "flex items-center justify-between p-2 bg-white/5 border border-glass-border/20 rounded-lg";
                         
-                        let roleBadge = "";
-                        if (role === "管理者") {
-                            roleBadge = '<span class="badge badge-danger text-xs">管理者</span>';
-                        } else if (role === "一般管理者") {
-                            roleBadge = '<span class="badge badge-warning text-xs">一般管理者</span>';
-                        } else if (role === "一般") {
-                            roleBadge = '<span class="badge badge-primary text-xs">一般</span>';
+                        const infoDiv = document.createElement("div");
+                        infoDiv.className = "flex items-center gap-2";
+
+                        const hiddenInput = document.createElement("input");
+                        hiddenInput.type = "hidden";
+                        hiddenInput.name = "approverUserIds";
+                        hiddenInput.value = userId;
+                        infoDiv.appendChild(hiddenInput);
+
+                        const nameSpan = document.createElement("span");
+                        nameSpan.className = "text-sm text-txt-primary";
+                        nameSpan.textContent = fullName;
+                        infoDiv.appendChild(nameSpan);
+
+                        const emailSpan = document.createElement("span");
+                        emailSpan.className = "text-xs text-txt-secondary opacity-80";
+                        emailSpan.textContent = " (" + email + ")";
+                        infoDiv.appendChild(emailSpan);
+
+                        if (role === "管理者" || role === "一般管理者" || role === "一般") {
+                            const badge = document.createElement("span");
+                            badge.className = "badge text-xs " +
+                                (role === "管理者" ? "badge-danger" : role === "一般管理者" ? "badge-warning" : "badge-primary");
+                            badge.textContent = role;
+                            infoDiv.appendChild(badge);
                         }
 
-                        row.innerHTML = `
-                            <div class="flex items-center gap-2">
-                                <input type="hidden" name="approverUserIds" value="${userId}" />
-                                <span class="text-sm text-txt-primary">${fullName}</span>
-                                <span class="text-xs text-txt-secondary opacity-80"> (${email})</span>
-                                ${roleBadge}
-                            </div>
-                            <button type="button" class="btn btn-flat text-danger text-xs p-1" onclick="removeApprover(${userId})">
-                                削除
-                            </button>
-                        `;
+                        row.appendChild(infoDiv);
+
+                        const removeBtn = document.createElement("button");
+                        removeBtn.type = "button";
+                        removeBtn.className = "btn btn-flat text-danger text-xs p-1";
+                        removeBtn.textContent = "削除";
+                        removeBtn.addEventListener("click", function() {
+                            removeApprover(userId);
+                        });
+                        row.appendChild(removeBtn);
 
                         listContainer.appendChild(row);
                         selectEl.value = "";

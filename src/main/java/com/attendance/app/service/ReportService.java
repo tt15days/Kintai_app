@@ -4,6 +4,8 @@ import com.attendance.app.entity.AttendanceRecord;
 import com.attendance.app.entity.LeaveApplication;
 import com.attendance.app.entity.LeaveStatus;
 import com.attendance.app.entity.User;
+import com.attendance.app.mapper.AttendanceRecordMapper;
+import com.attendance.app.mapper.LeaveApplicationMapper;
 import com.attendance.app.util.DateTimeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,14 +14,17 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.time.format.TextStyle;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -44,6 +49,8 @@ public class ReportService {
     private final LeaveApplicationService leaveApplicationService;
     private final UserService userService;
     private final CsvFilenamePatternService csvFilenamePatternService;
+    private final AttendanceRecordMapper attendanceRecordMapper;
+    private final LeaveApplicationMapper leaveApplicationMapper;
 
     /**
      * 指定ユーザーの月次勤怠CSVをバイト配列で返します。
@@ -58,8 +65,26 @@ public class ReportService {
         List<LeaveApplication> leaves = leaveApplicationService.getApplicationsByUserAndDateRange(
                 user.getUserId(), monthRange.getStartDate(), monthRange.getEndDate());
 
+        byte[] csvBytes = buildAttendanceCsv(user, monthRange, records, leaves);
+
+        log.info("月次勤怠CSV生成: userId={}, yearMonth={}, rows={}", user.getUserId(), yearMonth,
+                monthRange.getDaysInMonth());
+        return csvBytes;
+    }
+
+    /**
+     * 勤怠記録・休暇申請から1ユーザー分の月次勤怠CSVバイト配列を構築します。
+     *
+     * @param user 対象ユーザー
+     * @param monthRange 対象期間
+     * @param records 勤怠記録リスト
+     * @param leaves 休暇申請リスト
+     * @return CSV バイト配列（UTF-8 BOMなし）
+     */
+    private byte[] buildAttendanceCsv(User user, AttendanceRecordService.MonthRange monthRange,
+            List<AttendanceRecord> records, List<LeaveApplication> leaves) {
         Map<LocalDate, AttendanceRecord> recordMap = buildRecordMap(records);
-        Map<LocalDate, String> leaveMap = buildLeaveMap(leaves);
+        Map<LocalDate, String> leaveMap = buildLeaveMap(leaves, monthRange);
 
         StringBuilder sb = new StringBuilder();
         sb.append(CSV_HEADER).append(CRLF);
@@ -72,9 +97,6 @@ public class ReportService {
             sb.append(CRLF);
             current = current.plusDays(1);
         }
-
-        log.info("月次勤怠CSV生成: userId={}, yearMonth={}, rows={}", user.getUserId(), yearMonth,
-                monthRange.getDaysInMonth());
         return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
 
@@ -89,11 +111,24 @@ public class ReportService {
      */
     public byte[] generateAllUsersAttendanceZip(YearMonth yearMonth, OffsetDateTime downloadedAt) throws IOException {
         List<User> users = userService.getActiveUsers();
+        AttendanceRecordService.MonthRange monthRange = attendanceRecordService.getMonthRange(yearMonth);
+
+        // 全ユーザー分の勤怠記録・休暇申請を一括取得し、userId でグルーピング(N+1回避)
+        Instant rangeStart = DateTimeUtil.toInstant(monthRange.getStartDate());
+        Instant rangeEnd = DateTimeUtil.toInstant(monthRange.getEndDate().plusDays(1));
+        Map<Long, List<AttendanceRecord>> recordsByUser = attendanceRecordMapper.selectAllByDateRange(rangeStart, rangeEnd)
+                .stream().collect(Collectors.groupingBy(AttendanceRecord::getUserId));
+        Map<Long, List<LeaveApplication>> leavesByUser = leaveApplicationMapper.selectAllByDateRange(
+                        monthRange.getStartDate(), monthRange.getEndDate())
+                .stream().collect(Collectors.groupingBy(LeaveApplication::getUserId));
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try (ZipOutputStream zos = new ZipOutputStream(baos, StandardCharsets.UTF_8)) {
             for (User user : users) {
-                byte[] csvBytes = generateUserAttendanceCsv(user, yearMonth);
+                byte[] csvBytes = buildAttendanceCsv(user, monthRange,
+                        recordsByUser.getOrDefault(user.getUserId(), Collections.emptyList()),
+                        leavesByUser.getOrDefault(user.getUserId(), Collections.emptyList()));
                 String entryName = csvFilenamePatternService.buildCsvFilename(user, yearMonth, downloadedAt);
                 zos.putNextEntry(new ZipEntry(entryName));
                 zos.write(csvBytes);
@@ -129,9 +164,10 @@ public class ReportService {
      * 休暇申請のリストから、日付をキーとした休暇種別名のマップを構築します。
      *
      * @param leaves 休暇申請リスト
+     * @param monthRange 対象期間（この範囲にクリップして展開する）
      * @return 休暇種別名のマップ
      */
-    private Map<LocalDate, String> buildLeaveMap(List<LeaveApplication> leaves) {
+    private Map<LocalDate, String> buildLeaveMap(List<LeaveApplication> leaves, AttendanceRecordService.MonthRange monthRange) {
         Map<LocalDate, String> map = new HashMap<>();
         if (leaves == null) {
             return map;
@@ -140,8 +176,13 @@ public class ReportService {
             if (la.getStatus() != LeaveStatus.APPROVED) {
                 continue;
             }
-            LocalDate d = la.getLeaveStartDate();
-            while (!d.isAfter(la.getLeaveEndDate())) {
+            // 月範囲(monthRange)にクリップして展開(月跨ぎ休暇の範囲外日数を計上しない)
+            LocalDate segStart = la.getLeaveStartDate().isBefore(monthRange.getStartDate())
+                    ? monthRange.getStartDate() : la.getLeaveStartDate();
+            LocalDate segEnd = la.getLeaveEndDate().isAfter(monthRange.getEndDate())
+                    ? monthRange.getEndDate() : la.getLeaveEndDate();
+            LocalDate d = segStart;
+            while (!d.isAfter(segEnd)) {
                 map.put(d, la.getLeaveType().getDisplayName());
                 d = d.plusDays(1);
             }

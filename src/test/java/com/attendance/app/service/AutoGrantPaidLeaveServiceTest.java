@@ -13,7 +13,9 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,12 +29,15 @@ public class AutoGrantPaidLeaveServiceTest {
     @Mock
     private UserService userService;
 
+    @Mock
+    private PaidLeaveBalanceService paidLeaveBalanceService;
+
     @InjectMocks
     private AutoGrantPaidLeaveService autoGrantPaidLeaveService;
 
     @Test
     void testGrantPaidLeaveBatch_Success() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Tokyo"));
         String todayStr = String.format("%02d-%02d", today.getMonthValue(), today.getDayOfMonth());
 
         when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DATE")).thenReturn(todayStr);
@@ -42,10 +47,11 @@ public class AutoGrantPaidLeaveServiceTest {
         user1.setUserId(101L);
 
         when(userService.getActiveUsers()).thenReturn(List.of(user1));
+        when(paidLeaveBalanceService.getByUserAndYear(eq(101L), anyInt())).thenReturn(Optional.empty());
 
         autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
-        verify(userService).grantAnnualPaidLeave(101L);
+        verify(userService).grantAnnualPaidLeave(101L, 20);
     }
 
     @Test
@@ -60,7 +66,7 @@ public class AutoGrantPaidLeaveServiceTest {
         autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
         verify(userService, never()).getActiveUsers();
-        verify(userService, never()).grantAnnualPaidLeave(anyLong());
+        verify(userService, never()).grantAnnualPaidLeave(anyLong(), anyInt());
     }
 
     @Test
@@ -70,7 +76,7 @@ public class AutoGrantPaidLeaveServiceTest {
         autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
         verify(userService, never()).getActiveUsers();
-        verify(userService, never()).grantAnnualPaidLeave(anyLong());
+        verify(userService, never()).grantAnnualPaidLeave(anyLong(), anyInt());
     }
 
     @Test
@@ -86,7 +92,7 @@ public class AutoGrantPaidLeaveServiceTest {
         // Should not throw exception out of scheduled method
         autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
-        verify(userService, never()).grantAnnualPaidLeave(anyLong());
+        verify(userService, never()).grantAnnualPaidLeave(anyLong(), anyInt());
     }
 
     @Test
@@ -95,7 +101,7 @@ public class AutoGrantPaidLeaveServiceTest {
         String grantDateStr = "02-29";
 
         try (MockedStatic<LocalDate> mockedLocalDate = mockStatic(LocalDate.class, CALLS_REAL_METHODS)) {
-            mockedLocalDate.when(() -> LocalDate.now()).thenReturn(leapDay);
+            mockedLocalDate.when(() -> LocalDate.now(ZoneId.of("Asia/Tokyo"))).thenReturn(leapDay);
 
             when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DATE")).thenReturn(grantDateStr);
             when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DAYS")).thenReturn("20");
@@ -103,10 +109,11 @@ public class AutoGrantPaidLeaveServiceTest {
             User user1 = new User();
             user1.setUserId(101L);
             when(userService.getActiveUsers()).thenReturn(List.of(user1));
+            when(paidLeaveBalanceService.getByUserAndYear(eq(101L), anyInt())).thenReturn(Optional.empty());
 
             autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
-            verify(userService).grantAnnualPaidLeave(101L);
+            verify(userService).grantAnnualPaidLeave(101L, 20);
         }
     }
 }

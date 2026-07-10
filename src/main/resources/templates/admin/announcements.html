@@ -15,11 +15,11 @@
         <!-- フラッシュメッセージ -->
         <div th:if="${successMessage}" class="alert alert-success" role="alert">
             <span><i class="fas fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()">×</button>
+            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
         <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
             <span><i class="fas fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()">×</button>
+            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
 
         <!-- 新規登録フォーム -->
@@ -124,14 +124,14 @@
     <th:block layout:fragment="modals">
         <!-- 編集モーダル（各お知らせ用） -->
         <div th:each="ann : ${announcements}">
-            <div class="announcement-modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300"
+            <div class="modal announcement-modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300"
                  th:id="${'editModal' + ann.announcementId}" tabindex="-1" th:onclick="'closeEditModal(' + ${ann.announcementId} + ')'">
                 <div class="flex min-h-full items-center justify-center p-4">
-                    <div th:id="${'editModalContent' + ann.announcementId}" class="card-heavy w-full max-w-2xl transform scale-95 transition-all duration-300" onclick="event.stopPropagation()">
+                    <div th:id="${'editModalContent' + ann.announcementId}" class="card-heavy w-full max-w-2xl" onclick="event.stopPropagation()">
                         <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
                             <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5"><i class="fas fa-edit text-primary"></i> お知らせ編集</h5>
                             <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity"
-                                    th:onclick="'closeEditModal(' + ${ann.announcementId} + ')'">
+                                    th:onclick="'closeEditModal(' + ${ann.announcementId} + ')'" aria-label="閉じる">
                                 <i class="fa-solid fa-xmark text-xl"></i>
                             </button>
                         </div>
@@ -145,7 +145,7 @@
                                 </div>
                                 <div>
                                     <label class="form-label">本文 <span class="text-danger font-bold">*</span></label>
-                                    <textarea class="form-textarea" name="content"
+                                    <textarea class="form-textarea" name="message"
                                                rows="6" maxlength="2000" required th:text="${ann.message}"></textarea>
                                 </div>
                                 <div>
@@ -177,25 +177,12 @@
 
     <th:block layout:fragment="js">
         <script>
+            // openModal/closeModal は main.js の共通ユーティリティを使用
             function openEditModal(id) {
-                const modal = document.getElementById('editModal' + id);
-                const content = document.getElementById('editModalContent' + id);
-                if (modal && content) {
-                    modal.classList.remove('opacity-0', 'pointer-events-none');
-                    modal.classList.add('opacity-100', 'pointer-events-auto');
-                    content.classList.remove('scale-95');
-                    content.classList.add('scale-100');
-                }
+                openModal('editModal' + id);
             }
             function closeEditModal(id) {
-                const modal = document.getElementById('editModal' + id);
-                const content = document.getElementById('editModalContent' + id);
-                if (modal && content) {
-                    modal.classList.add('opacity-0', 'pointer-events-none');
-                    modal.classList.remove('opacity-100', 'pointer-events-auto');
-                    content.classList.add('scale-95');
-                    content.classList.remove('scale-100');
-                }
+                closeModal('editModal' + id);
             }
         </script>
     </th:block>

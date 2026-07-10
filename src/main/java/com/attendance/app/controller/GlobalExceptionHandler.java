@@ -45,4 +45,17 @@ public class GlobalExceptionHandler {
     public String handleLockTimeout() {
         return "error/lock-error";
     }
+
+    /**
+     * 予期せぬ例外が発生した場合のフォールバック処理を行います。
+     * Whitelabel Error Pageの表示を防ぎます。
+     *
+     * @param e 発生した例外
+     * @return 汎用エラー画面のテンプレート名
+     */
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public String handleException(Exception e) {
+        return "error/500";
+    }
 }

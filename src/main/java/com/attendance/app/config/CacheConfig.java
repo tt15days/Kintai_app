@@ -12,6 +12,6 @@ public class CacheConfig {
 
     @Bean
     public CacheManager cacheManager() {
-        return new ConcurrentMapCacheManager("holidays", "systemSettings", "workScheduleClasses", "eventTypes");
+        return new ConcurrentMapCacheManager("holidays", "systemSettings", "workScheduleClasses", "eventTypes", "pendingSubmissionsCount", "pendingCorrectionsCount");
     }
 }

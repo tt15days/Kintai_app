@@ -1,6 +1,8 @@
 package com.attendance.app.service;
 
 import com.attendance.app.entity.*;
+import com.attendance.app.mapper.AttendanceRecordMapper;
+import com.attendance.app.mapper.LeaveApplicationMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +36,12 @@ public class PayrollExportServiceTest {
     @Mock
     private LeaveApplicationService leaveApplicationService;
 
+    @Mock
+    private AttendanceRecordMapper attendanceRecordMapper;
+
+    @Mock
+    private LeaveApplicationMapper leaveApplicationMapper;
+
     @InjectMocks
     private PayrollExportService payrollExportService;
 
@@ -59,12 +67,13 @@ public class PayrollExportServiceTest {
         when(attendanceRecordService.getMonthRange(testYearMonth)).thenReturn(monthRange);
 
         AttendanceRecord record = new AttendanceRecord();
+        record.setUserId(1L);
         record.setWorkingHours(8.0);
         record.setOvertimeHours(1.5);
-        when(attendanceRecordService.getRecordsByUserAndMonth(eq(1L), eq(testYearMonth)))
+        when(attendanceRecordMapper.selectAllByDateRange(any(), any()))
                 .thenReturn(List.of(record));
 
-        when(leaveApplicationService.getApplicationsByUserAndDateRange(any(), any(), any()))
+        when(leaveApplicationMapper.selectAllByDateRange(any(), any()))
                 .thenReturn(Collections.emptyList());
 
         // Execute (Shift_JIS)
@@ -110,12 +119,13 @@ public class PayrollExportServiceTest {
         when(attendanceRecordService.getMonthRange(testYearMonth)).thenReturn(monthRange);
 
         AttendanceRecord record = new AttendanceRecord();
+        record.setUserId(1L);
         record.setWorkingHours(8.0);
         record.setOvertimeHours(1.5);
-        when(attendanceRecordService.getRecordsByUserAndMonth(eq(1L), eq(testYearMonth)))
+        when(attendanceRecordMapper.selectAllByDateRange(any(), any()))
                 .thenReturn(List.of(record));
 
-        when(leaveApplicationService.getApplicationsByUserAndDateRange(any(), any(), any()))
+        when(leaveApplicationMapper.selectAllByDateRange(any(), any()))
                 .thenReturn(Collections.emptyList());
 
         // Execute (UTF-8)
@@ -156,27 +166,22 @@ public class PayrollExportServiceTest {
 
         // User1 attendance records
         AttendanceRecord r1 = new AttendanceRecord();
+        r1.setUserId(1L);
         r1.setWorkingHours(8.0);
         r1.setOvertimeHours(1.0);
         r1.setNightShiftHours(1.0);
         r1.setHolidayWorkHours(0.0);
 
         AttendanceRecord r2 = new AttendanceRecord();
+        r2.setUserId(1L);
         r2.setWorkingHours(7.5);
         r2.setOvertimeHours(0.0);
         r2.setNightShiftHours(0.0);
         r2.setHolidayWorkHours(0.0);
 
-        when(attendanceRecordService.getRecordsByUserAndMonth(eq(1L), eq(testYearMonth)))
+        // User1 has attendance records, User2 has none (bulk fetch)
+        when(attendanceRecordMapper.selectAllByDateRange(any(), any()))
                 .thenReturn(List.of(r1, r2));
-
-        // User2 has no attendance records
-        when(attendanceRecordService.getRecordsByUserAndMonth(eq(2L), eq(testYearMonth)))
-                .thenReturn(Collections.emptyList());
-
-        // User1 has no leave applications
-        when(leaveApplicationService.getApplicationsByUserAndDateRange(eq(1L), any(), any()))
-                .thenReturn(Collections.emptyList());
 
         // User2 leave applications (Approved and Rejected)
         LeaveApplication paidLeave = new LeaveApplication();
@@ -207,7 +212,7 @@ public class PayrollExportServiceTest {
         rejectedPaidLeave.setLeaveStartDate(LocalDate.of(2023, 10, 5));
         rejectedPaidLeave.setLeaveEndDate(LocalDate.of(2023, 10, 5));
 
-        when(leaveApplicationService.getApplicationsByUserAndDateRange(eq(2L), any(), any()))
+        when(leaveApplicationMapper.selectAllByDateRange(any(), any()))
                 .thenReturn(List.of(paidLeave, unpaidLeave, absence, rejectedPaidLeave));
 
         when(leaveApplicationService.calculateDailyConsumedDays(any()))

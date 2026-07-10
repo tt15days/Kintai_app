@@ -27,7 +27,7 @@
                 <p><i class="fa-solid fa-shield-halved mr-1 text-txt-secondary/60"></i> セッションは安全に終了されました</p>
             </div>
 
-            <a href="/login" class="btn btn-primary w-full py-3 text-sm font-bold no-underline mb-4 gap-2">
+            <a th:href="@{/login}" class="btn btn-primary w-full py-3 text-sm font-bold no-underline mb-4 gap-2">
                 <i class="fa-solid fa-right-to-bracket"></i> 再度ログインする
             </a>
 
@@ -38,7 +38,7 @@
     </div>
 
     <th:block layout:fragment="js">
-        <script>
+        <script th:inline="javascript">
             function setLogoutTime() {
                 const now = new Date();
                 const timeString = now.toLocaleString('ja-JP', {
@@ -62,7 +62,7 @@
                         countdownEl.textContent = remaining + '秒後に自動的にログインページへ移動します...';
                     } else {
                         clearInterval(interval);
-                        window.location.href = '/login';
+                        window.location.href = /*[[@{/login}]]*/ '/login';
                     }
                 }, 1000);
             }

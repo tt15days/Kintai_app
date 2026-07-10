@@ -5,6 +5,8 @@ import com.attendance.app.entity.LeaveApplication;
 import com.attendance.app.entity.LeaveStatus;
 import com.attendance.app.entity.LeaveType;
 import com.attendance.app.entity.User;
+import com.attendance.app.mapper.AttendanceRecordMapper;
+import com.attendance.app.mapper.LeaveApplicationMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +44,12 @@ public class ReportServiceTest {
 
     @Mock
     private CsvFilenamePatternService csvFilenamePatternService;
+
+    @Mock
+    private AttendanceRecordMapper attendanceRecordMapper;
+
+    @Mock
+    private LeaveApplicationMapper leaveApplicationMapper;
 
     @InjectMocks
     private ReportService reportService;
@@ -119,8 +127,8 @@ public class ReportServiceTest {
                 20
         );
         when(attendanceRecordService.getMonthRange(targetMonth)).thenReturn(monthRange);
-        when(attendanceRecordService.getRecordsByUserAndMonth(anyLong(), eq(targetMonth))).thenReturn(Collections.emptyList());
-        when(leaveApplicationService.getApplicationsByUserAndDateRange(anyLong(), any(), any())).thenReturn(Collections.emptyList());
+        when(attendanceRecordMapper.selectAllByDateRange(any(), any())).thenReturn(Collections.emptyList());
+        when(leaveApplicationMapper.selectAllByDateRange(any(), any())).thenReturn(Collections.emptyList());
 
         when(csvFilenamePatternService.buildCsvFilename(eq(user1), eq(targetMonth), any(OffsetDateTime.class)))
                 .thenReturn("user1.csv");

@@ -121,9 +121,8 @@ public class LeaveApplicationController {
             Long userId = securityUtil.getCurrentUserId();
             assertLeaveMonthEditable(userId, date);
             String reason = (remarks != null && !remarks.trim().isEmpty()) ? remarks.trim() : "勤怠からの有給申請";
-            LeaveApplication application = leaveApplicationService.createApplication(userId, date, date, LeaveType.PAID_LEAVE, reason);
-            // 承認フロー不要のため即時承認する
-            leaveApplicationService.approveApplication(application.getApplicationId(), userId);
+            // 承認フロー不要のため作成と即時承認を単一トランザクションで実行する
+            leaveApplicationService.createAndApproveApplication(userId, date, date, LeaveType.PAID_LEAVE, reason, userId);
             redirectAttributes.addFlashAttribute("message", "有給休暇を申請しました");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -152,8 +151,8 @@ public class LeaveApplicationController {
             assertLeaveMonthEditable(userId, date);
             String defaultReason = leaveType.getDisplayName() + "申請";
             String reason = (remarks != null && !remarks.trim().isEmpty()) ? remarks.trim() : defaultReason;
-            LeaveApplication application = leaveApplicationService.createApplication(userId, date, date, leaveType, reason);
-            leaveApplicationService.approveApplication(application.getApplicationId(), userId);
+            // 作成と即時承認を単一トランザクションで実行する
+            leaveApplicationService.createAndApproveApplication(userId, date, date, leaveType, reason, userId);
             redirectAttributes.addFlashAttribute("message", leaveType.getDisplayName() + "を申請しました");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -191,9 +190,8 @@ public class LeaveApplicationController {
         try {
             Long userId = securityUtil.getCurrentUserId();
             assertLeaveMonthEditableForRange(userId, startDate, endDate);
-            LeaveApplication application = leaveApplicationService.createApplication(userId, startDate, endDate, leaveDurationType, leaveType, reason);
-            // 承認フロー不要なので即時承認する
-            leaveApplicationService.approveApplication(application.getApplicationId(), userId);
+            // 承認フロー不要なので作成と即時承認を単一トランザクションで実行する
+            LeaveApplication application = leaveApplicationService.createAndApproveApplication(userId, startDate, endDate, leaveDurationType, leaveType, reason, userId);
             long days = leaveApplicationService.calculateLeaveDays(startDate, endDate);
             log.info("休暇申請を作成して承認: applicationId={}, userId={}, days={}", application.getApplicationId(), userId, days);
             redirectAttributes.addFlashAttribute("message", "休暇申請を送信しました。");

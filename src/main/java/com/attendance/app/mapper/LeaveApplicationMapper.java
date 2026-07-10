@@ -68,7 +68,19 @@ public interface LeaveApplicationMapper {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
-    
+
+    /**
+     * 全ユーザーの指定期間内の休暇申請を取得（管理者用・一括集計向け）
+     *
+     * @param startDate 開始日
+     * @param endDate 終了日
+     * @return 休暇申請のリスト
+     */
+    List<LeaveApplication> selectAllByDateRange(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
     /**
      * 休暇申請を新規作成
      *

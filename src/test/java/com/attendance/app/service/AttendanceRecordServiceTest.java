@@ -681,5 +681,50 @@ class AttendanceRecordServiceTest {
                         .hasMessageContaining("本日の勤務開始時刻が記録されていません");
             }
         }
+
+        @Test
+        @DisplayName("正常系: 退勤済みの場合、休憩追加後に勤務時間・残業時間が再計算される")
+        void addBreak_afterEnd_recalculatesWorkingAndOvertimeHours() {
+            Long userId = 10L;
+            LocalDate mockToday = LocalDate.of(2026, 6, 1);
+
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務")
+                    .startTime(LocalTime.of(9, 0))
+                    .endTime(LocalTime.of(18, 0))
+                    .breaks(List.of(
+                            com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                    .breakStartTime(LocalTime.of(19, 0))
+                                    .breakEndTime(LocalTime.of(19, 30))
+                                    .build()
+                    ))
+                    .build();
+
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.now()).thenReturn(Instant.parse("2026-06-01T21:00:00Z"));
+
+                // 出勤09:00(JST)〜退勤20:00(JST) (所定終業18:00、残業2時間のうち19:00-19:30の休憩30分を控除)
+                AttendanceRecord existing = AttendanceRecord.builder()
+                        .attendanceDate(Instant.parse("2026-05-31T15:00:00Z")) // 2026-06-01 00:00 JST
+                        .startTime(Instant.parse("2026-06-01T00:00:00Z")) // 09:00 JST
+                        .endTime(Instant.parse("2026-06-01T11:00:00Z")) // 20:00 JST
+                        .breakTimeMinutes(60)
+                        .workingHours(9.0)
+                        .overtimeHours(2.0)
+                        .build();
+
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, mockToday)).thenReturn(Optional.of(existing));
+                when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+                when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+                service.addBreakTime(userId, 30);
+
+                assertThat(existing.getBreakTimeMinutes()).isEqualTo(90);
+                assertThat(existing.getOvertimeHours()).isEqualTo(1.5);
+                verify(attendanceRecordMapper).update(existing);
+            }
+        }
     }
 }

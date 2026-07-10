@@ -78,14 +78,14 @@ class LeaveApplicationControllerTest {
         when(securityUtil.getCurrentUserId()).thenReturn(userId);
         when(attendanceSubmissionService.resolvePayrollMonth(date)).thenReturn(YearMonth.of(2026, 6));
         when(attendanceSubmissionService.isEditableMonth(userId, YearMonth.of(2026, 6))).thenReturn(true);
-        when(leaveApplicationService.createApplication(userId, date, date, LeaveType.PAID_LEAVE, "勤怠からの有給申請"))
+        when(leaveApplicationService.createAndApproveApplication(userId, date, date, LeaveType.PAID_LEAVE, "勤怠からの有給申請", userId))
                 .thenReturn(created);
 
         RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
         String view = controller.applyPaidLeave(date, "2026-06", null, redirect);
 
         assertThat(view).isEqualTo("redirect:/attendance?yearMonth=2026-06");
-        verify(leaveApplicationService).approveApplication(201L, userId);
+        verify(leaveApplicationService).createAndApproveApplication(userId, date, date, LeaveType.PAID_LEAVE, "勤怠からの有給申請", userId);
         assertThat(redirect.getFlashAttributes().get("message")).isEqualTo("有給休暇を申請しました");
     }
 
@@ -103,7 +103,7 @@ class LeaveApplicationControllerTest {
         String view = controller.applyLeave(date, LeaveType.SPECIAL_LEAVE, "2026-05", null, redirect);
 
         assertThat(view).isEqualTo("redirect:/attendance?yearMonth=2026-05");
-        verify(leaveApplicationService, never()).createApplication(any(), any(), any(), any(), any());
+        verify(leaveApplicationService, never()).createAndApproveApplication(any(), any(), any(), any(), any(), any());
         assertThat((String) redirect.getFlashAttributes().get("error"))
                 .contains("2026-05")
                 .contains("申請中または承認済み");
@@ -130,7 +130,7 @@ class LeaveApplicationControllerTest {
         String view = controller.createLeaveApplication(startDate, endDate, LeaveType.SPECIAL_LEAVE, "FULL_DAY", "理由", redirect);
 
         assertThat(view).isEqualTo("redirect:/leave");
-        verify(leaveApplicationService, never()).createApplication(any(), any(), any(), any(), any(), any());
+        verify(leaveApplicationService, never()).createAndApproveApplication(any(), any(), any(), any(), any(), any(), any());
         assertThat((String) redirect.getFlashAttributes().get("error"))
                 .contains("2026-06")
                 .contains("申請中または承認済み");

@@ -93,6 +93,10 @@
 
 #### `AttendanceRecordControllerTest` (勤怠記録コントローラー)
 - 一般・管理者向けの出退勤フォーム表示、打刻処理（出勤・退勤・休憩開始・休憩終了）、各処理での日付跨ぎの処理・パラメータバリデーション、打刻状態に応じたボタン制御、モデル設定等を検証。
+- 勤怠修正申請（`/attendance/corrections/*`）の一覧表示、申請フォーム表示（既存勤怠記録の反映有無）、申請提出（正常系・`IllegalArgumentException`時のエラーメッセージ）、申請取り下げ（正常系・エラー時）の各処理を検証。
+
+#### `AdminAnnouncementControllerTest` (管理者お知らせコントローラー)
+- お知らせ一覧表示時のモデル設定、登録・更新・削除の各処理の正常系（成功メッセージ・リダイレクト）、および例外発生時のエラーメッセージ設定を検証。
 
 #### `AttendanceApprovalControllerTest` (勤怠承認コントローラー)
 - 承認者による申請一覧表示、一括/個別承認・差し戻し処理、認可権限なしの際のエラーハンドリング、メッセージ設定等を検証。
@@ -103,8 +107,17 @@
 #### `LoginControllerTest` (ログインコントローラー)
 - ログインフォーム表示時のエラー（認証失敗）、ログアウト後のメッセージ設定等を検証。
 
-#### `AdminControllerArticle36Test` (管理者向け36協定テスト)
-- 36協定対象ユーザーの超過時間一覧表示、アラート閾値超過の判定ロジック等を検証。
+#### `AdminControllerTest` (管理者コントローラー)
+- 管理者ダッシュボード・ユーザー管理系の処理に加え、`@Nested Article36` クラスにて36協定対象ユーザーの超過時間一覧表示、アラート閾値超過の判定ロジック等を検証。
+
+#### `AdminLeaveUsageControllerTest` (有給取得状況コントローラー)
+- 管理者向け有給取得状況（消化管理）画面の表示・集計を検証。
+
+#### `GlobalControllerAdviceTest` / `GlobalExceptionHandlerTest` (共通アドバイス・例外ハンドラ)
+- 全コントローラー共通のモデル属性設定、および共通例外ハンドリングを検証。
+
+#### `LogoutControllerTest` (ログアウトコントローラー)
+- ログアウト処理とリダイレクトを検証。
 
 #### `AdminAttendanceExportControllerTest` (管理者向け勤怠エクスポートコントローラー)
 - 管理者による全従業員のCSV/ZIPエクスポート機能の動作を検証。
@@ -178,8 +191,21 @@
 #### `HolidayServiceTest` (祝日設定サービス)
 - 祝日の自動判定（祝日の有無による稼働日判定）、祝日一覧取得、祝日マスタへの一括登録、およびCSVのアップロード解析（日付と名称の抽出）ロジックを検証。
 
+#### `SystemSettingServiceTest` (システム設定サービス)
+- 設定キーに対応する値の取得（存在時/未登録時）、設定値の更新（`upsertValue` への委譲・戻り値件数）を検証。
+
 #### `BatchSchedulerServiceTest` / `BatchSettingServiceTest` / `AlertBatchServiceTest`
 - 自動有給付与バッチ、勤怠未提出リマインダー通知バッチ、超過残業アラート判定バッチなどのスケジュール駆動ロジック、および閾値設定のバリデーションを検証。
+
+---
+
+### 3.2.1 セキュリティ単体テスト
+
+#### `CustomUserDetailsServiceTest` (Spring Security ユーザー詳細サービス)
+- 未登録メールアドレス・無効化ユーザーに対する `UsernameNotFoundException` の送出を検証。
+- 一般ユーザーの永久ロック中／一時ロック期限内／期限切れの各状態における `accountLocked` 判定を検証。
+- 管理者ユーザーは `accountLocked`・`lockedUntil` が設定されていてもロック対象外（`isAccountNonLocked()=true`）となることを検証。
+- 正常な一般ユーザーのロール（`ROLE_USER`）付与を検証。
 
 ---
 
@@ -197,6 +223,10 @@
 
 #### `AttendanceApprovalControllerIntegrationTest` (勤怠承認結合テスト)
 - 提出された勤怠が承認者によって承認され、提出テーブルのステータスが実際に更新される一連の処理の流れを検証。
+
+#### （未実装・統合環境でのみ実施）勤怠修正申請の承認→勤怠上書き結合テスト
+- 修正申請（`/attendance/corrections/*`）が承認された際に、対象日の勤怠レコードが申請内容で実際に上書きされることを検証するテスト。
+- ローカル開発DBを直接書き換えるリスクがあるため、本リポジトリには追加していない。統合検証用の専用環境（CI/ステージング等のDB）でのみ実施すること。
 
 #### `WorkSchedulesIntegrationTest` / `WorkSchedulesTransitionIntegrationTest`
 - 勤務スケジュール設定の適用から、カレンダー表示や日の勤務シフト登録までの結合動作を検証。
@@ -219,6 +249,14 @@
 
 #### `WorkScheduleClassTest` (勤務スケジュールエンティティ)
 - 勤務スケジュールのドメインロジック（休憩時間の計算、実労働時間の算出など）を検証。
+
+### 3.6 ユーティリティ・キャッシュテスト
+
+#### `DateTimeUtilTest` / `TimeZoneUtilTest` (日時ユーティリティ)
+- 日本時間（Asia/Tokyo）基準の日付取得・変換ロジックを検証。
+
+#### `CacheIntegrationTest` / `CachePerformanceTest` (キャッシュ)
+- キャッシュ設定の有効性（結合）およびキャッシュ利用時の性能特性を検証。
 
 ---
 本ドキュメントは、新たなテストケースの追加および仕様変更に伴い順次更新されます。

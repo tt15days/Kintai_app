@@ -91,6 +91,31 @@
          LIMIT 1
     </select>
 
+    <!-- 複数ユーザーIDと付与年度で有給残高を一括取得 -->
+    <select id="selectByUsersAndYear" resultMap="paidLeaveBalanceResultMap">
+        SELECT balance_id,
+               user_id,
+               grant_year,
+               granted_days,
+               grant_date,
+               expiry_date,
+               carried_over_days,
+               used_days,
+               created_at,
+               updated_at
+          FROM paid_leave_balance
+         WHERE grant_year = #{grantYear}
+           <if test="userIds != null and userIds.size() > 0">
+           AND user_id IN
+           <foreach item="id" collection="userIds" open="(" separator="," close=")">
+               #{id}
+           </foreach>
+           </if>
+           <if test="userIds == null or userIds.size() == 0">
+           AND 1 = 0
+           </if>
+    </select>
+
     <!-- 有給残高を挿入 -->
     <insert id="insert" useGeneratedKeys="true" keyProperty="balanceId">
         INSERT INTO paid_leave_balance (

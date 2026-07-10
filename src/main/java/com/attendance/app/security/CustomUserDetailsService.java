@@ -65,14 +65,12 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         log.debug("ユーザー認証情報を読み込みました: role={}", dbUser.getUserRole());
 
-        // 管理者以外のロック状態を確認する
+        // ロック状態を確認する（管理者も一時ロックの対象。永久ロックは LoginAttemptService 側で管理者に設定されない）
         boolean isLocked = false;
-        if (dbUser.getUserRole() != UserRole.ADMIN) {
-            if (Boolean.TRUE.equals(dbUser.getAccountLocked())) {
-                isLocked = true;
-            } else if (dbUser.getLockedUntil() != null && Instant.now().isBefore(dbUser.getLockedUntil())) {
-                isLocked = true;
-            }
+        if (Boolean.TRUE.equals(dbUser.getAccountLocked())) {
+            isLocked = true;
+        } else if (dbUser.getLockedUntil() != null && Instant.now().isBefore(dbUser.getLockedUntil())) {
+            isLocked = true;
         }
 
         // Spring Security の UserDetails オブジェクトを返す
