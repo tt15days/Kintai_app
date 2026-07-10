@@ -76,7 +76,7 @@ class PaidLeaveBalanceServiceTest {
         PaidLeaveBalance a = balance(3L, 2025, LocalDate.of(2026, 3, 31), "5.0", "1.0");
         PaidLeaveBalance b = balance(3L, 2026, LocalDate.of(2027, 3, 31), "10.0", "2.5");
 
-        when(paidLeaveBalanceMapper.selectActiveByUserId(3L, LocalDate.now()))
+        when(paidLeaveBalanceMapper.selectActiveByUserId(3L, com.attendance.app.util.DateTimeUtil.todayJapan()))
                 .thenReturn(List.of(a, b));
 
         BigDecimal total = service.getTotalRemainingDays(3L);
