@@ -3,51 +3,6 @@
 
 <head>
     <title>勤怠管理</title>
-    <style>
-        /* モバイル表示時の時刻入力アイコン非表示 */
-        @media (max-width: 767px) {
-            input[type="time"]::-webkit-calendar-picker-indicator {
-                display: none;
-                -webkit-appearance: none;
-            }
-        }
-
-        /* テーブル余白の調整 */
-        .table-custom-compact th,
-        .table-custom-compact td {
-            padding: 6px 8px !important;
-        }
-
-        @media (max-width: 767px) {
-
-            .table-custom-compact th,
-            .table-custom-compact td {
-                padding: 4px 4px !important;
-            }
-        }
-
-        /* 見出し（thead）以外のデータ行の境界線（罫線）を不要にする */
-        .table-custom-compact tbody tr {
-            border-top: none !important;
-        }
-
-        /* 時刻入力ボックスの入力値を中央揃えにする */
-        input[type="time"] {
-            text-align: center;
-        }
-        input[type="time"]::-webkit-datetime-edit {
-            text-align: center;
-            width: 100%;
-        }
-        input[type="time"]::-webkit-datetime-edit-fields-wrapper {
-            justify-content: center;
-        }
-        /* iOS Chrome/Safari 等モバイルブラウザ用の入力値中央揃え */
-        input[type="time"]::-webkit-date-and-time-value {
-            text-align: center;
-            margin: 0 auto;
-        }
-    </style>
 </head>
 
 <body>

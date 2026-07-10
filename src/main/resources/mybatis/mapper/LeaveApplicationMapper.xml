@@ -59,6 +59,17 @@
         ORDER BY leave_start_date ASC
     </select>
 
+    <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
+    <!-- 期間が重なる申請を全ユーザー分取得する（管理者用・一括集計向け） -->
+    <select id="selectAllByDateRange" resultMap="leaveApplicationResultMap">
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        FROM leave_applications
+        WHERE leave_start_date &lt;= #{endDate}
+        AND leave_end_date &gt;= #{startDate}
+        AND is_deleted = false
+        ORDER BY user_id ASC, leave_start_date ASC
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="applicationId">
         INSERT INTO leave_applications (user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, is_deleted)
         VALUES (#{userId}, #{leaveStartDate}, #{leaveEndDate}, #{leaveDurationType}, #{leaveType,typeHandler=com.attendance.app.config.typehandler.LeaveTypeTypeHandler}, #{reason}, #{status,typeHandler=com.attendance.app.config.typehandler.LeaveStatusTypeHandler}, NOW(), NOW(), COALESCE(#{isDeleted}, false))

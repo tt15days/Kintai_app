@@ -3,6 +3,7 @@ package com.attendance.app.service;
 import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.mapper.PaidLeaveBalanceMapper;
 import com.attendance.app.mapper.UserMapper;
+import com.attendance.app.util.DateTimeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -52,7 +53,7 @@ public class PaidLeaveBalanceService {
      */
     @Transactional(readOnly = true)
     public List<PaidLeaveBalance> getActiveBalances(Long userId) {
-        return paidLeaveBalanceMapper.selectActiveByUserId(userId, LocalDate.now());
+        return paidLeaveBalanceMapper.selectActiveByUserId(userId, DateTimeUtil.todayJapan());
     }
 
     /**

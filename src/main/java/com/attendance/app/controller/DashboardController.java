@@ -311,52 +311,52 @@ public class DashboardController {
             double remainingPaidLeave = paidLeaveBalanceService.getTotalRemainingDays(userId).doubleValue();
 
             StringBuilder advice = new StringBuilder();
-            advice.append("<div style='line-height: 1.6; color: var(--text-primary);'>");
+            advice.append("<div class='leading-relaxed text-txt-primary'>");
             advice.append(
-                    "<p style='font-size: 1.1rem; margin-bottom: 1rem;'><strong>📊 今月の勤務傾向とAIヘルスアドバイス</strong></p>");
+                    "<p class='text-lg mb-4'><strong>📊 今月の勤務傾向とAIヘルスアドバイス</strong></p>");
 
             // 残業時間に関する診断
             if (totalOvertime >= 30) {
-                advice.append("<p style='margin-bottom: 0.75rem;'>⚠️ <strong>残業過多のリスクがあります:</strong> 時間外労働が現在 <strong>")
+                advice.append("<p class='mb-3'>⚠️ <strong>残業過多のリスクがあります:</strong> 時間外労働が現在 <strong>")
                         .append(String.format("%.1f", totalOvertime))
                         .append("時間</strong> に達しています。36協定の上限（45時間）を意識し、業務量の調整や他メンバーへのタスク共有を強く推奨します。</p>");
             } else if (totalOvertime > 10) {
-                advice.append("<p style='margin-bottom: 0.75rem;'>ℹ️ <strong>時間外勤務について:</strong> 現在の時間外労働は <strong>")
+                advice.append("<p class='mb-3'>ℹ️ <strong>時間外勤務について:</strong> 現在の時間外労働は <strong>")
                         .append(String.format("%.1f", totalOvertime))
                         .append("時間</strong> です。比較的安定していますが、週後半にかけての疲労蓄積にご注意ください。</p>");
             } else {
-                advice.append("<p style='margin-bottom: 0.75rem;'>✅ <strong>時間外勤務について:</strong> 残業時間は非常に少なく抑えられています（")
+                advice.append("<p class='mb-3'>✅ <strong>時間外勤務について:</strong> 残業時間は非常に少なく抑えられています（")
                         .append(String.format("%.1f", totalOvertime)).append("時間）。適切なワークライフバランスが保たれています。</p>");
             }
 
             // 深夜労働に関する診断
             if (totalNightShift > 0) {
-                advice.append("<p style='margin-bottom: 0.75rem;'>🌙 <strong>深夜勤務に関して:</strong> 深夜労働が <strong>")
+                advice.append("<p class='mb-3'>🌙 <strong>深夜勤務に関して:</strong> 深夜労働が <strong>")
                         .append(String.format("%.1f", totalNightShift))
                         .append("時間</strong> 発生しています。体内時計の乱れや睡眠不足になりやすいため、翌日の朝は緩やかに始動するなどセルフケアを十分に行いましょう。</p>");
             }
 
             // 有給取得に関する診断
             if (remainingPaidLeave >= 15) {
-                advice.append("<p style='margin-bottom: 0.75rem;'>📅 <strong>有給休暇の取得推奨:</strong> 有給休暇が <strong>")
+                advice.append("<p class='mb-3'>📅 <strong>有給休暇の取得推奨:</strong> 有給休暇が <strong>")
                         .append(String.format("%.1f", remainingPaidLeave))
                         .append("日</strong> 残っています。今月〜来月にかけて1日か半日のリフレッシュ休暇を取得し、心身の健康を維持することをお勧めします。</p>");
             } else if (remainingPaidLeave > 0) {
-                advice.append("<p style='margin-bottom: 0.75rem;'>📅 <strong>有給休暇について:</strong> 残日数は <strong>")
+                advice.append("<p class='mb-3'>📅 <strong>有給休暇について:</strong> 残日数は <strong>")
                         .append(String.format("%.1f", remainingPaidLeave))
                         .append("日</strong> です。適度に計画的な取得を続けましょう。</p>");
             }
 
             // 総労働時間
             if (totalHours > 150) {
-                advice.append("<p style='margin-bottom: 0.75rem;'>🏃 <strong>総稼働時間について:</strong> 当月の実労働時間は <strong>")
+                advice.append("<p class='mb-3'>🏃 <strong>総稼働時間について:</strong> 当月の実労働時間は <strong>")
                         .append(String.format("%.1f", totalHours))
                         .append("時間</strong> です。高水準での勤務が続いていますので、週末の休息を大切にし、無理のないセルフペースを保ってください。</p>");
             }
 
             if (totalOvertime == 0 && totalNightShift == 0 && totalHours <= 150) {
                 advice.append(
-                        "<p style='margin-bottom: 0.75rem;'>✨ <strong>素晴らしい勤務傾向です:</strong> 非常に健康的かつ自律的なタイムマネジメントが行われています。引き続きこのペースを維持し、心身ともに快適な状態を保ちながら安全第一で進めていきましょう！</p>");
+                        "<p class='mb-3'>✨ <strong>素晴らしい勤務傾向です:</strong> 非常に健康的かつ自律的なタイムマネジメントが行われています。引き続きこのペースを維持し、心身ともに快適な状態を保ちながら安全第一で進めていきましょう！</p>");
             }
 
             advice.append("</div>");

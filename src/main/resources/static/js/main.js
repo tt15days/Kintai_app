@@ -1,4 +1,23 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+﻿// 共通モーダルユーティリティ（thymeleaf_ui.md 記載の hidden/flex パターン）
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('hidden');
+    el.classList.add('flex');
+}
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('hidden');
+    el.classList.remove('flex');
+}
+document.addEventListener('click', function (e) {
+    document.querySelectorAll('.modal').forEach(function (modal) {
+        if (e.target === modal) closeModal(modal.id);
+    });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
     console.log('Nexus Time initialized.');
 
     let contextPath = document.querySelector('meta[name="context-path"]')?.getAttribute('content') || '';

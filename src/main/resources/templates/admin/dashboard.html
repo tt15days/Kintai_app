@@ -12,11 +12,11 @@
         <!-- フラッシュメッセージ -->
         <div th:if="${successMessage}" class="alert alert-success mb-6">
             <span><i class="fa-solid fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()">×</button>
+            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
         <div th:if="${errorMessage}" class="alert alert-danger mb-6">
             <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()">×</button>
+            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
 
         <!-- アクションボタン -->

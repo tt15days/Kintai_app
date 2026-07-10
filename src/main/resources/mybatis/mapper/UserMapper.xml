@@ -65,13 +65,13 @@
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectAll" resultMap="userResultMap">
         SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
-        FROM users ORDER BY user_id ASC
+        FROM users WHERE deleted_at IS NULL ORDER BY user_id ASC
     </select>
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectByRole" resultMap="userResultMap">
         SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
-        FROM users WHERE user_role = #{role} ORDER BY created_at DESC
+        FROM users WHERE user_role = #{role} AND deleted_at IS NULL ORDER BY created_at DESC
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="userId">

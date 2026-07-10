@@ -301,12 +301,6 @@
             </div>
         </div>
 
-    <style th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
-        .row-modified {
-            background-color: rgba(245, 158, 11, 0.15) !important; /* amber/yellow highlight */
-        }
-    </style>
-
     <!-- Client-side bulk validation and highlights for admin editing -->
     <script th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
         function parseTimeToMinutes(timeStr) {

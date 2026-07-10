@@ -6,7 +6,7 @@
 </head>
 
 <body>
-    <h2 layout:fragment="page-title" style="display: none;">ダッシュボード</h2>
+    <h2 layout:fragment="page-title" class="hidden">ダッシュボード</h2>
 
     <div layout:fragment="content">
         <!-- 1. ウェルカムヘッダーパネル -->
@@ -241,15 +241,14 @@
                         headers: headers
                     });
                     if (response.ok) {
-                        element.style.transition = 'opacity 0.2s';
-                        element.style.opacity = '0';
+                        element.classList.add('transition-opacity', 'duration-200', 'opacity-0');
                         setTimeout(() => {
                             element.remove();
                             const list = document.getElementById('dashboard-notification-list');
                             if (list && list.querySelectorAll('.notification-item').length === 0) {
-                                list.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 1.5rem 0; font-size: 0.85rem;">新しい通知はありません。</div>';
+                                list.innerHTML = '<div class="text-center text-txt-secondary py-6 text-[0.85rem]">新しい通知はありません。</div>';
                                 const badge = document.getElementById('dashboard-notification-badge');
-                                if (badge) badge.style.display = 'none';
+                                if (badge) badge.classList.add('hidden');
                             } else {
                                 const badge = document.getElementById('dashboard-notification-badge');
                                 if (badge) {
@@ -257,7 +256,7 @@
                                     if (count > 0) {
                                         badge.textContent = count;
                                     } else {
-                                        badge.style.display = 'none';
+                                        badge.classList.add('hidden');
                                     }
                                 }
                             }
@@ -279,9 +278,9 @@
                         btn.disabled = true;
                         btn.innerText = '分析中...';
                         contentArea.innerHTML = `
-                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; gap: 1rem; flex: 1; width: 100%;">
-                                <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2rem; color: var(--primary-color);"></i>
-                                <span style="color: var(--text-secondary); font-size: 0.9rem;">勤務データをセキュアに分析しています...</span>
+                            <div class="flex flex-col items-center justify-center p-8 gap-4 flex-1 w-full">
+                                <i class="fa-solid fa-circle-notch fa-spin text-[2rem] text-primary"></i>
+                                <span class="text-txt-secondary text-[0.9rem]">勤務データをセキュアに分析しています...</span>
                             </div>
                         `;
 
@@ -303,9 +302,8 @@
                             .then(data => {
                                 // 結果をフェードインで表示
                                 contentArea.style.opacity = 0;
-                                contentArea.style.textAlign = 'left';
-                                contentArea.style.alignItems = 'flex-start';
-                                contentArea.style.justifyContent = 'flex-start';
+                                contentArea.classList.remove('items-center', 'justify-center', 'text-center');
+                                contentArea.classList.add('items-start', 'justify-start', 'text-left');
                                 contentArea.innerHTML = data.advice;
 
                                 let op = 0;
@@ -326,7 +324,7 @@
                             .catch(error => {
                                 console.error('Analysis failed:', error);
                                 contentArea.innerHTML = `
-                                <div style="color: var(--danger-color); text-align: center; padding: 1rem; font-weight: 600;">
+                                <div class="text-danger text-center p-4 font-semibold">
                                     診断の実行に失敗しました。再度お試しください。
                                 </div>
                             `;

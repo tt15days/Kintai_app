@@ -214,7 +214,11 @@ public class AttendanceRecordService {
 
         Double workingHours = calculateWorkingHoursExcludingBreakOverlaps(startInstant, endInstant, attendanceDate, schedule);
         Double overtimeHours = calculateExcessOvertime(attendanceDate, schedule, endInstant);
+        // 休日出勤時は実働を holidayWorkHours に計上し、workingHours は0.0にする（quickEndAttendance と統一）
         Double holidayWorkHours = isHolidayWork ? workingHours : 0.0;
+        if (isHolidayWork) {
+            workingHours = 0.0;
+        }
         Double nightShiftHours = calculateNightShiftHours(startInstant, endInstant, attendanceDate, schedule);
         int breakTimeMinutes = (int) calculateBreakOverlapMinutes(startInstant, endInstant, attendanceDate, schedule);
 
@@ -262,7 +266,8 @@ public class AttendanceRecordService {
             attendanceDate,
             schedule.standardStartTime(),
             schedule.standardEndTime(),
-            endInstant);
+            endInstant,
+            overtimeHours);
 
         return record;
     }
@@ -404,7 +409,8 @@ public class AttendanceRecordService {
             attendanceDate,
             schedule.standardStartTime(),
             schedule.standardEndTime(),
-            record.getEndTime());
+            record.getEndTime(),
+            overtimeHours);
         log.info("勤務終了を記録しました: userId={}, time={}, workingHours={}", userId, currentTime, workingHours);
         return record;
     }

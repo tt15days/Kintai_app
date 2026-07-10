@@ -8,6 +8,7 @@ import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.mapper.WorkScheduleClassMapper;
 import com.attendance.app.mapper.AttendanceApproverAssignmentMapper;
 import com.attendance.app.mapper.PaidLeaveBalanceMapper;
+import com.attendance.app.util.DateTimeUtil;
 import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.entity.LeaveApplication;
 import com.attendance.app.entity.LeaveStatus;
@@ -21,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -150,13 +150,13 @@ public class UserService {
         userMapper.insert(user);
 
         // 新規作成されたユーザーに初期有給残高レコードを付与する
-        int currentYear = LocalDate.now().getYear();
+        int currentYear = DateTimeUtil.todayJapan().getYear();
         PaidLeaveBalance balance = PaidLeaveBalance.builder()
                 .userId(user.getUserId())
                 .grantYear(currentYear)
                 .grantedDays(DEFAULT_PAID_LEAVE_DAYS)
-                .grantDate(LocalDate.now())
-                .expiryDate(LocalDate.now().plusYears(2).minusDays(1))
+                .grantDate(DateTimeUtil.todayJapan())
+                .expiryDate(DateTimeUtil.todayJapan().plusYears(2).minusDays(1))
                 .carriedOverDays(BigDecimal.ZERO)
                 .usedDays(BigDecimal.ZERO)
                 .build();
@@ -261,20 +261,20 @@ public class UserService {
     private void adjustPaidLeaveBalance(Long userId, BigDecimal targetPaidLeaveDays) {
         List<PaidLeaveBalance> balances = paidLeaveBalanceMapper.selectByUserId(userId);
         if (balances.isEmpty()) {
-            int currentYear = LocalDate.now().getYear();
+            int currentYear = DateTimeUtil.todayJapan().getYear();
             PaidLeaveBalance balance = PaidLeaveBalance.builder()
                     .userId(userId)
                     .grantYear(currentYear)
                     .grantedDays(targetPaidLeaveDays)
-                    .grantDate(LocalDate.now())
-                    .expiryDate(LocalDate.now().plusYears(2).minusDays(1))
+                    .grantDate(DateTimeUtil.todayJapan())
+                    .expiryDate(DateTimeUtil.todayJapan().plusYears(2).minusDays(1))
                     .carriedOverDays(BigDecimal.ZERO)
                     .usedDays(BigDecimal.ZERO)
                     .build();
             paidLeaveBalanceMapper.insert(balance);
         } else {
             BigDecimal currentTotal = balances.stream()
-                    .filter(b -> b.getExpiryDate().isAfter(LocalDate.now()) || b.getExpiryDate().isEqual(LocalDate.now()))
+                    .filter(b -> b.getExpiryDate().isAfter(DateTimeUtil.todayJapan()) || b.getExpiryDate().isEqual(DateTimeUtil.todayJapan()))
                     .map(b -> b.getRemainingDays())
                     .reduce(BigDecimal.ZERO, (x, y) -> x.add(y));
             BigDecimal diff = targetPaidLeaveDays.subtract(currentTotal);
@@ -570,7 +570,7 @@ public class UserService {
         int maxDays = user.getMaxPaidLeaveDays() != null
                 ? user.getMaxPaidLeaveDays() : DEFAULT_MAX_PAID_LEAVE_DAYS;
 
-        LocalDate today = LocalDate.now(ZoneId.of("Asia/Tokyo"));
+        LocalDate today = DateTimeUtil.todayJapan();
         int currentYear = today.getYear();
 
         // 二重付与防止: すでに当該年度の付与レコードがあればスキップ
@@ -603,7 +603,7 @@ public class UserService {
     }
 
     private BigDecimal getCalculatedTotalRemainingDays(Long userId, int maxDays) {
-        List<PaidLeaveBalance> activeBalances = paidLeaveBalanceMapper.selectActiveByUserId(userId, LocalDate.now());
+        List<PaidLeaveBalance> activeBalances = paidLeaveBalanceMapper.selectActiveByUserId(userId, DateTimeUtil.todayJapan());
         BigDecimal total = activeBalances.stream()
                 .map(b -> b.getRemainingDays())
                 .reduce(BigDecimal.ZERO, (x, y) -> x.add(y));

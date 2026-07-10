@@ -26,13 +26,13 @@
     <div class="mb-4" th:if="${message != null}">
         <div class="bg-success/15 border border-success/30 text-success p-4 rounded-xl flex justify-between items-center mb-6 text-sm font-semibold transition-all duration-200" role="alert">
             <span><span th:text="${message}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()">×</button>
+            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()" aria-label="閉じる">×</button>
         </div>
     </div>
     <div class="mb-4" th:if="${error != null}">
         <div class="bg-danger/12 border border-danger/30 text-danger p-4 rounded-xl flex justify-between items-center mb-6 text-sm font-semibold transition-all duration-200" role="alert">
             <span><span th:text="${error}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()">×</button>
+            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()" aria-label="閉じる">×</button>
         </div>
     </div>
 
@@ -112,14 +112,14 @@
 
 <th:block layout:fragment="modals">
     <!-- 承認確認モーダル -->
-    <div class="absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300" id="approveModal" onclick="closeApproveModal()">
+    <div class="modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" id="approveModal" onclick="closeApproveModal()">
         <div class="flex min-h-full items-center justify-center p-4">
-            <div id="approveModalContent" class="card-heavy w-full max-w-[500px] transform scale-95 transition-all duration-300" onclick="event.stopPropagation()">
+            <div id="approveModalContent" class="card-heavy w-full max-w-[500px]" onclick="event.stopPropagation()">
                 <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
                     <h5 class="m-0 text-base font-bold text-txt-primary" id="approveModalLabel">
                         承認確認
                     </h5>
-                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold" onclick="closeApproveModal()">
+                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold" onclick="closeApproveModal()" aria-label="閉じる">
                         ×
                     </button>
                 </div>
@@ -150,14 +150,14 @@
     </div>
 
     <!-- 差し戻し確認モーダル -->
-    <div class="absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-all duration-300" id="returnModal" onclick="closeReturnModal()">
+    <div class="modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" id="returnModal" onclick="closeReturnModal()">
         <div class="flex min-h-full items-center justify-center p-4">
-            <div id="returnModalContent" class="card-heavy w-full max-w-[500px] transform scale-95 transition-all duration-300" onclick="event.stopPropagation()">
+            <div id="returnModalContent" class="card-heavy w-full max-w-[500px]" onclick="event.stopPropagation()">
                 <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
                     <h5 class="m-0 text-base font-bold text-txt-primary" id="returnModalLabel">
                         差し戻し確認
                     </h5>
-                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold" onclick="closeReturnModal()">
+                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold" onclick="closeReturnModal()" aria-label="閉じる">
                         ×
                     </button>
                 </div>
@@ -202,22 +202,12 @@
             document.getElementById('approveYearMonth').textContent = yearMonth;
             document.getElementById('approveForm').action = contextPath + '/attendance/approval/' + submissionId + '/approve';
             document.getElementById('approveComment').value = '';
-            
-            var modal = document.getElementById('approveModal');
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            modal.classList.add('opacity-100', 'pointer-events-auto');
-            var content = document.getElementById('approveModalContent');
-            content.classList.remove('scale-95');
-            content.classList.add('scale-100');
+
+            openModal('approveModal');
         }
 
         function closeApproveModal() {
-            var modal = document.getElementById('approveModal');
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            modal.classList.remove('opacity-100', 'pointer-events-auto');
-            var content = document.getElementById('approveModalContent');
-            content.classList.add('scale-95');
-            content.classList.remove('scale-100');
+            closeModal('approveModal');
         }
 
         function openReturnModal(btn) {
@@ -228,22 +218,12 @@
             document.getElementById('returnYearMonth').textContent = yearMonth;
             document.getElementById('returnForm').action = contextPath + '/attendance/approval/' + submissionId + '/return';
             document.getElementById('returnComment').value = '';
-            
-            var modal = document.getElementById('returnModal');
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            modal.classList.add('opacity-100', 'pointer-events-auto');
-            var content = document.getElementById('returnModalContent');
-            content.classList.remove('scale-95');
-            content.classList.add('scale-100');
+
+            openModal('returnModal');
         }
 
         function closeReturnModal() {
-            var modal = document.getElementById('returnModal');
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            modal.classList.remove('opacity-100', 'pointer-events-auto');
-            var content = document.getElementById('returnModalContent');
-            content.classList.add('scale-95');
-            content.classList.remove('scale-100');
+            closeModal('returnModal');
         }
 
         function submitApproveForm() {

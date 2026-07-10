@@ -11,9 +11,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 休暇申請に関する業務ロジックを提供するサービスです。
@@ -31,6 +34,7 @@ public class LeaveApplicationService {
 
     private final LeaveApplicationMapper leaveApplicationMapper;
     private final PaidLeaveBalanceService paidLeaveBalanceService;
+    private final HolidayService holidayService;
 
     /**
      * 指定された申請IDに該当する休暇申請を取得します。
@@ -142,6 +146,29 @@ public class LeaveApplicationService {
 
         leaveApplicationMapper.insert(application);
         log.info("休暇申請を作成しました: userId={}, type={}, durationType={}, period={}-{}", userId, leaveType, leaveDurationType, startDate, endDate);
+        return application;
+    }
+
+    /**
+     * 休暇申請の作成と即時承認を単一トランザクションで実行します（自動承認仕様）。
+     * 承認時の例外（有給残高不足等）が発生した場合は作成も含めてロールバックされ、
+     * PENDING 申請が残留しません。
+     *
+     * @param userId 申請ユーザーID
+     * @param startDate 休暇の開始日
+     * @param endDate 休暇の終了日
+     * @param leaveType 休暇の種類
+     * @param reason 休暇の理由
+     * @param approvedBy 承認者のユーザーID
+     * @return 作成・承認された休暇申請情報
+     */
+    public LeaveApplication createAndApproveApplication(Long userId, LocalDate startDate, LocalDate endDate, LeaveType leaveType, String reason, Long approvedBy) {
+        return createAndApproveApplication(userId, startDate, endDate, "FULL_DAY", leaveType, reason, approvedBy);
+    }
+
+    public LeaveApplication createAndApproveApplication(Long userId, LocalDate startDate, LocalDate endDate, String leaveDurationType, LeaveType leaveType, String reason, Long approvedBy) {
+        LeaveApplication application = createApplication(userId, startDate, endDate, leaveDurationType, leaveType, reason);
+        approveApplication(application.getApplicationId(), approvedBy);
         return application;
     }
 
@@ -278,7 +305,7 @@ public class LeaveApplicationService {
     /**
      * 休暇申請の実消化日数を計算します。
      * 半休（AM_HALF/PM_HALF）は開始日＝終了日の単日申請であることを前提とし、0.5日として扱います。
-     * それ以外（FULL_DAY）は暦日数をそのまま日数として扱います。
+     * それ以外（FULL_DAY）は所定労働日（土日および holidays マスタの祝日を除外）のみを日数として計上します。
      *
      * @param startDate          開始日
      * @param endDate            終了日
@@ -289,8 +316,31 @@ public class LeaveApplicationService {
         if (isHalfDay(leaveDurationType)) {
             return new BigDecimal("0.5");
         }
-        long days = calculateLeaveDays(startDate, endDate);
+        long days = countWorkingDays(startDate, endDate);
         return BigDecimal.valueOf(days);
+    }
+
+    /**
+     * 指定期間内の所定労働日数を計算します（両端を含む）。
+     * 土曜・日曜および holidays マスタに登録された祝日を除外します。
+     *
+     * @param startDate 開始日
+     * @param endDate   終了日
+     * @return 所定労働日数
+     */
+    private long countWorkingDays(LocalDate startDate, LocalDate endDate) {
+        Set<LocalDate> holidays = new HashSet<>();
+        for (int year = startDate.getYear(); year <= endDate.getYear(); year++) {
+            holidays.addAll(holidayService.getHolidaysByYear(year));
+        }
+        return startDate.datesUntil(endDate.plusDays(1))
+                .filter(date -> {
+                    DayOfWeek dow = date.getDayOfWeek();
+                    return dow != DayOfWeek.SATURDAY
+                            && dow != DayOfWeek.SUNDAY
+                            && !holidays.contains(date);
+                })
+                .count();
     }
 
     /**
