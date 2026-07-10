@@ -3,6 +3,7 @@ package com.attendance.app.service;
 import com.attendance.app.entity.*;
 import com.attendance.app.mapper.AttendanceRecordMapper;
 import com.attendance.app.mapper.LeaveApplicationMapper;
+import com.attendance.app.util.CsvSanitizeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -175,7 +176,7 @@ public class PayrollExportService {
                 // 各行をCSVに書き込み
                 csvPrinter.printRecord(
                         user.getEmpNo() != null ? user.getEmpNo() : user.getUserId().toString(),
-                        user.getFullName(),
+                        CsvSanitizeUtil.sanitizeFormulaInjection(user.getFullName()),
                         workingDays,
                         formatDays(absenceDays.add(unpaidLeaveDays)),
                         formatDays(paidLeaveDays),

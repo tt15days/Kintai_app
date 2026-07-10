@@ -145,6 +145,8 @@ public class MdcFilter extends OncePerRequestFilter {
                 lower.contains("address") ||
                 lower.contains("reason") ||
                 lower.contains("comment") ||
-                lower.contains("notes");
+                lower.contains("notes") ||
+                lower.contains("remarks") ||
+                lower.contains("message");
     }
 }

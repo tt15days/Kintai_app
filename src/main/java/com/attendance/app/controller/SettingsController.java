@@ -39,6 +39,16 @@ public class SettingsController {
 
     @GetMapping
     public String showSettings(Model model) {
+        try {
+            populateSettingsModel(model);
+        } catch (Exception e) {
+            log.error("システム設定画面の表示に失敗しました", e);
+            model.addAttribute("error", "システム設定画面の表示に失敗しました");
+        }
+        return "admin/settings";
+    }
+
+    private void populateSettingsModel(Model model) {
         String grantDate = systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DATE");
         String grantDays = systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DAYS");
         String copyrightText = systemSettingService.getSettingValue("COPYRIGHT_TEXT");
@@ -78,8 +88,6 @@ public class SettingsController {
         List<Holiday> existingHolidays = holidayService.getAllHolidays();
         model.addAttribute("holidayCount", existingHolidays.size());
         model.addAttribute("existingHolidays", existingHolidays);
-
-        return "admin/settings";
     }
 
     @PostMapping

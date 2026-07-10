@@ -115,6 +115,10 @@ public class LeaveApplicationService {
             throw new IllegalArgumentException("半休は開始日と終了日が同じ単日でのみ申請できます");
         }
 
+        // ユーザー単位のadvisory lockを取得し、重複チェック〜申請作成までを直列化する（TOCTOUレース対策）
+        // トランザクション終了時に自動解放される
+        leaveApplicationMapper.acquireUserLock(userId);
+
         // 同一期間に既存の有効な休暇申請（却下以外）が重複していないか確認する
         List<LeaveApplication> overlapping = getApplicationsByUserAndDateRange(userId, startDate, endDate);
         boolean hasOverlap = overlapping.stream()
@@ -242,9 +246,12 @@ public class LeaveApplicationService {
             throw new IllegalArgumentException("申請中のステータスのみ承認できます");
         }
 
+        // 消化日数を計算し申請に保存する（返還時にholidaysマスタの変更による乖離を防ぐため再利用する）
+        BigDecimal days = calculateConsumedDays(application.getLeaveStartDate(), application.getLeaveEndDate(), application.getLeaveDurationType());
+        application.setConsumedDays(days);
+
         // 有給休暇承認時は年次残高から使用日数を減算する（残高不足の場合は例外により本メソッド全体がロールバックされる）
         if (LeaveType.PAID_LEAVE == application.getLeaveType()) {
-            BigDecimal days = calculateConsumedDays(application.getLeaveStartDate(), application.getLeaveEndDate(), application.getLeaveDurationType());
             paidLeaveBalanceService.deductBalance(application.getUserId(), days, application.getLeaveStartDate());
         }
 
@@ -284,7 +291,10 @@ public class LeaveApplicationService {
     public void deleteApplication(Long applicationId) {
         LeaveApplication application = findApplicationForUpdateOrThrow(applicationId);
         if (LeaveStatus.APPROVED == application.getStatus() && LeaveType.PAID_LEAVE == application.getLeaveType()) {
-            BigDecimal days = calculateConsumedDays(application.getLeaveStartDate(), application.getLeaveEndDate(), application.getLeaveDurationType());
+            // 承認時に保存した消化日数を優先して使用する（NULLの旧データのみ再計算にフォールバック）
+            BigDecimal days = application.getConsumedDays() != null
+                    ? application.getConsumedDays()
+                    : calculateConsumedDays(application.getLeaveStartDate(), application.getLeaveEndDate(), application.getLeaveDurationType());
             paidLeaveBalanceService.refundBalance(application.getUserId(), days, application.getLeaveStartDate());
         }
         leaveApplicationMapper.deleteById(applicationId);

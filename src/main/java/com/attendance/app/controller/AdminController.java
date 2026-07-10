@@ -148,6 +148,10 @@ public class AdminController {
             log.warn("ユーザー追加に失敗: {}", e.getMessage());
             model.addAttribute("error", e.getMessage());
             model.addAttribute("roles", UserRole.values());
+            model.addAttribute("email", email);
+            model.addAttribute("fullName", fullName);
+            model.addAttribute("userRole", userRole);
+            model.addAttribute("hireDate", hireDate);
             return USER_CREATE_VIEW;
         }
     }
@@ -279,7 +283,8 @@ public class AdminController {
             @RequestParam(required = false) String notes,
             @RequestParam(defaultValue = "false") boolean canApproveAttendance,
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM-dd") java.time.LocalDate hireDate,
-            @RequestParam(defaultValue = "false") boolean isActive) {
+            @RequestParam(defaultValue = "false") boolean isActive,
+            RedirectAttributes redirectAttributes) {
         try {
             userService.updateUser(
                     userId,
@@ -299,7 +304,8 @@ public class AdminController {
             return ADMIN_USERS_REDIRECT;
         } catch (IllegalArgumentException e) {
             log.warn("ユーザー情報更新に失敗: {}", e.getMessage());
-            return "redirect:/admin/users/" + userId + "?error=true";
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return ADMIN_USER_DETAIL_REDIRECT_PREFIX + userId;
         }
     }
 
@@ -312,12 +318,14 @@ public class AdminController {
      * @return ユーザー一覧へリダイレクト
      */
     @PostMapping("/users/{userId}/delete")
-    public String deleteUser(@PathVariable Long userId) {
+    public String deleteUser(@PathVariable Long userId, RedirectAttributes redirectAttributes) {
         try {
             userService.deleteUser(userId, securityUtil.getCurrentUserId());
+            redirectAttributes.addFlashAttribute("successMessage", "ユーザーを削除しました");
             log.info("ユーザーを削除: userId={}", userId);
         } catch (Exception e) {
             logActionError(e, "ユーザー削除に失敗");
+            redirectAttributes.addFlashAttribute("errorMessage", "ユーザーの削除に失敗しました");
         }
         return ADMIN_USERS_REDIRECT;
     }

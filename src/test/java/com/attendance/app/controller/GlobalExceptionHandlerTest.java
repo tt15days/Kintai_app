@@ -21,4 +21,11 @@ class GlobalExceptionHandlerTest {
         String view = exceptionHandler.handleAccessDenied();
         assertEquals("access-denied", view);
     }
+
+    @Test
+    @DisplayName("handleException - 予期しない例外時に 'error/500' を返すこと")
+    void testHandleException() {
+        String view = exceptionHandler.handleException(new RuntimeException("予期しないエラー"));
+        assertEquals("error/500", view);
+    }
 }

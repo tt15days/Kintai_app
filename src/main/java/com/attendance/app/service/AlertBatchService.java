@@ -5,6 +5,7 @@ import com.attendance.app.dto.PaidLeaveAlertDto;
 import com.attendance.app.entity.UserNotification;
 import com.attendance.app.mapper.AlertBatchMapper;
 import com.attendance.app.mapper.UserNotificationMapper;
+import com.attendance.app.util.DateTimeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,12 +32,12 @@ public class AlertBatchService {
      * 毎月1日の深夜3時に実行されるアラートバッチ（前月の36協定・有給消化をチェック）
      * （実際の運用に合わせてcron式は変更可能）
      */
-    @Scheduled(cron = "0 0 3 1 * ?")
+    @Scheduled(cron = "0 0 3 1 * ?", zone = "Asia/Tokyo")
     @Transactional
     public void runAlertBatch() {
         log.info("アラートバッチ処理を開始します。");
 
-        LocalDate currentDate = LocalDate.now();
+        LocalDate currentDate = DateTimeUtil.todayJapan();
         // 36協定は直近で締まった勤怠期間（設定された締め日基準）を対象とする
         YearMonth lastMonth = YearMonth.from(currentDate).minusMonths(1);
         int startDay = attendancePeriodSettingService.getStartDay();
@@ -61,7 +62,7 @@ public class AlertBatchService {
         int endDay = attendancePeriodSettingService.getEndDay();
         LocalDate startDate = targetMonth.minusMonths(1).atDay(startDay);
         LocalDate endDate = targetMonth.atDay(endDay);
-        LocalDate currentDate = LocalDate.now();
+        LocalDate currentDate = DateTimeUtil.todayJapan();
 
         checkArticle36Alerts(startDate, endDate);
         checkPaidLeaveAlerts(currentDate);

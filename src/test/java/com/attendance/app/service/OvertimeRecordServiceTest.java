@@ -11,6 +11,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -18,6 +19,8 @@ import java.time.LocalTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -85,6 +88,35 @@ class OvertimeRecordServiceTest {
             OvertimeRecord inserted = captor.getValue();
             assertThat(inserted.getOvertimeStart()).isEqualTo(DateTimeUtil.toInstant(date.plusDays(1), LocalTime.of(6, 0)));
             assertThat(inserted.getOvertimeHours()).isEqualTo(1.0);
+        }
+
+        @Test
+        @DisplayName("INSERT時に一意制約違反(同時実行競合)が発生した場合は既存行を取り直してUPDATEする")
+        void fallsBackToUpdate_whenInsertHitsDuplicateKey() {
+            Long userId = 4L;
+            LocalDate date = LocalDate.of(2026, 5, 13);
+            Instant actualEnd = DateTimeUtil.toInstant(date, LocalTime.of(19, 30));
+
+            OvertimeRecord concurrentlyInsertedRecord = OvertimeRecord.builder()
+                    .overtimeId(100L)
+                    .userId(userId)
+                    .overtimeDate(date)
+                    .build();
+
+            when(overtimeRecordMapper.selectByUserAndDateForUpdate(userId, date))
+                    .thenReturn(Optional.empty(), Optional.of(concurrentlyInsertedRecord));
+            doThrow(new DuplicateKeyException("uq_overtime_user_date_active"))
+                    .when(overtimeRecordMapper).insert(any(OvertimeRecord.class));
+
+            service.syncFromAttendance(userId, date, LocalTime.of(9, 0), LocalTime.of(18, 0), actualEnd);
+
+            verify(overtimeRecordMapper).insert(any(OvertimeRecord.class));
+            ArgumentCaptor<OvertimeRecord> captor = ArgumentCaptor.forClass(OvertimeRecord.class);
+            verify(overtimeRecordMapper).update(captor.capture());
+
+            OvertimeRecord updated = captor.getValue();
+            assertThat(updated.getOvertimeId()).isEqualTo(100L);
+            assertThat(updated.getOvertimeHours()).isEqualTo(1.5);
         }
     }
 

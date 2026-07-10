@@ -178,6 +178,19 @@ class LeaveApplicationServiceTest {
 
             verify(leaveApplicationMapper).insert(any());
         }
+
+        @Test
+        @DisplayName("重複チェック前にユーザー単位のadvisory lockを取得する（TOCTOU対策）")
+        void acquiresUserLock_beforeOverlapCheck() {
+            LocalDate start = LocalDate.of(2026, 6, 1);
+            LocalDate end   = LocalDate.of(2026, 6, 3);
+
+            service.createApplication(2L, start, end, LeaveType.SPECIAL_LEAVE, "OK");
+
+            org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(leaveApplicationMapper);
+            inOrder.verify(leaveApplicationMapper).acquireUserLock(2L);
+            inOrder.verify(leaveApplicationMapper).selectByUserAndDateRange(2L, start, end);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -332,6 +345,24 @@ class LeaveApplicationServiceTest {
         }
 
         @Test
+        @DisplayName("承認時に計算した消化日数が申請に保存される")
+        void approval_savesConsumedDaysOnApplication() {
+            LeaveApplication app = LeaveApplication.builder()
+                    .applicationId(2L)
+                    .userId(3L)
+                    .leaveType(LeaveType.PAID_LEAVE)
+                    .leaveStartDate(LocalDate.of(2026, 6, 1))
+                    .leaveEndDate(LocalDate.of(2026, 6, 3))
+                    .status(LeaveStatus.PENDING)
+                    .build();
+            when(leaveApplicationMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(app));
+
+            service.approveApplication(2L, 10L);
+
+            assertThat(app.getConsumedDays()).isEqualByComparingTo(BigDecimal.valueOf(3L));
+        }
+
+        @Test
         @DisplayName("PENDING 以外の申請は承認できない")
         void alreadyApproved_throwsException() {
             LeaveApplication app = LeaveApplication.builder()
@@ -442,6 +473,27 @@ class LeaveApplicationServiceTest {
 
             verify(paidLeaveBalanceService).refundBalance(3L, new BigDecimal("0.5"), LocalDate.of(2026, 6, 1));
             verify(leaveApplicationMapper).deleteById(9L);
+        }
+
+        @Test
+        @DisplayName("承認時に保存された消化日数がある場合はそれを優先し、再計算しない（holidaysマスタ変更による乖離防止）")
+        void approvedPaidLeaveDelete_prefersStoredConsumedDaysOverRecalculation() {
+            LeaveApplication app = LeaveApplication.builder()
+                    .applicationId(10L)
+                    .userId(3L)
+                    .leaveType(LeaveType.PAID_LEAVE)
+                    .leaveStartDate(LocalDate.of(2026, 6, 1))
+                    .leaveEndDate(LocalDate.of(2026, 6, 3))
+                    .status(LeaveStatus.APPROVED)
+                    .consumedDays(new BigDecimal("2.0"))
+                    .build();
+            when(leaveApplicationMapper.selectByIdForUpdate(10L)).thenReturn(Optional.of(app));
+
+            service.deleteApplication(10L);
+
+            // 期間だけなら3日分だが、保存された2.0日を優先して返還する
+            verify(paidLeaveBalanceService).refundBalance(3L, new BigDecimal("2.0"), LocalDate.of(2026, 6, 1));
+            verify(leaveApplicationMapper).deleteById(10L);
         }
     }
 

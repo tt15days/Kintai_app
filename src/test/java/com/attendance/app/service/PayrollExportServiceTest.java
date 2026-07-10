@@ -120,6 +120,37 @@ public class PayrollExportServiceTest {
     }
 
     @Test
+    void testGeneratePayrollCsvGzip_fullNameWithFormulaPrefix_isSanitized() throws IOException {
+        testUser.setFullName("=cmd|'/c calc'!A1");
+
+        when(userService.getActiveUsers()).thenReturn(List.of(testUser));
+        when(attendanceRecordService.getMonthRange(testYearMonth)).thenReturn(monthRange);
+        when(attendanceRecordMapper.selectAllByDateRange(any(), any())).thenReturn(Collections.emptyList());
+        when(leaveApplicationMapper.selectAllByDateRange(any(), any())).thenReturn(Collections.emptyList());
+
+        byte[] gzipBytes = payrollExportService.generatePayrollCsvGzip(
+                testYearMonth, PayrollExportFormat.MONEYFORWARD, java.nio.charset.StandardCharsets.UTF_8);
+
+        StringBuilder decodedContent = new StringBuilder();
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(gzipBytes);
+             GZIPInputStream gzipIn = new GZIPInputStream(bais);
+             InputStreamReader isr = new InputStreamReader(gzipIn, java.nio.charset.StandardCharsets.UTF_8)) {
+            char[] buffer = new char[1024];
+            int read;
+            while ((read = isr.read(buffer)) != -1) {
+                decodedContent.append(buffer, 0, read);
+            }
+        }
+        String csvString = decodedContent.toString();
+        if (!csvString.isEmpty() && csvString.charAt(0) == '﻿') {
+            csvString = csvString.substring(1);
+        }
+
+        // 先頭にシングルクォートが付与され、数式として解釈されないこと
+        assertThat(csvString).contains("'=cmd|'/c calc'!A1");
+    }
+
+    @Test
     void testGeneratePayrollCsvGzip_UTF8() throws IOException {
         // Mock setup
         when(userService.getActiveUsers()).thenReturn(List.of(testUser));

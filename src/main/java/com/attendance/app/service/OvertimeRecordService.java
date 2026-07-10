@@ -6,6 +6,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -194,7 +195,21 @@ public class OvertimeRecordService {
                     .createdAt(DateTimeUtil.now())
                     .updatedAt(DateTimeUtil.now())
                     .build();
-            overtimeRecordMapper.insert(record);
+            try {
+                overtimeRecordMapper.insert(record);
+            } catch (DuplicateKeyException e) {
+                // uq_overtime_user_date_active に対する同時実行競合。
+                // 他トランザクションが先にINSERTしたとみなし、既存行を取り直してUPDATEにフォールバックする。
+                OvertimeRecord concurrent = overtimeRecordMapper.selectByUserAndDateForUpdate(userId, attendanceDate)
+                        .orElseThrow(() -> e);
+                concurrent.setOvertimeStart(standardEndInstant);
+                concurrent.setOvertimeEnd(actualEndTime);
+                concurrent.setOvertimeHours(resolvedOvertimeHours);
+                concurrent.setReason(reason);
+                concurrent.setRemarks("勤怠管理画面から自動計算");
+                concurrent.setUpdatedAt(DateTimeUtil.now());
+                overtimeRecordMapper.update(concurrent);
+            }
         }
     }
 

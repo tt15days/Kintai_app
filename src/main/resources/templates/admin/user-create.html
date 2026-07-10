@@ -35,7 +35,7 @@
                                     メールアドレス <span class="text-danger font-bold">*</span>
                                 </label>
                                 <input type="email" class="form-input font-mono" id="email" name="email" required
-                                    placeholder="user@example.com" autocomplete="email">
+                                    th:value="${email}" placeholder="user@example.com" autocomplete="email">
                                 <small class="text-xs text-txt-secondary opacity-70 block mt-1.5">
                                     ログインに使用するメールアドレスを入力してください。
                                 </small>
@@ -46,7 +46,7 @@
                                     氏名 <span class="text-danger font-bold">*</span>
                                 </label>
                                 <input type="text" class="form-input" id="fullName" name="fullName" required
-                                    placeholder="山田太郎">
+                                    th:value="${fullName}" placeholder="山田太郎">
                                 <small class="text-xs text-txt-secondary opacity-70 block mt-1.5">
                                     ユーザーの表示名を入力してください。
                                 </small>
@@ -70,7 +70,7 @@
                                 <select class="form-select" id="userRole" name="userRole" required>
                                     <option value="">-- ロールを選択してください --</option>
                                     <option th:each="role : ${roles}" th:value="${role}"
-                                        th:text="${role.displayName}">
+                                        th:selected="${role == userRole}" th:text="${role.displayName}">
                                     </option>
                                 </select>
                                 <small class="text-xs text-txt-secondary opacity-70 block mt-1.5">
@@ -82,7 +82,8 @@
                                 <label for="hireDate" class="form-label">
                                     入社日
                                 </label>
-                                <input type="date" class="form-input" id="hireDate" name="hireDate">
+                                <input type="date" class="form-input" id="hireDate" name="hireDate"
+                                    th:value="${hireDate}">
                                 <small class="text-xs text-txt-secondary opacity-70 block mt-1.5">
                                     ユーザーの入社日を設定してください。
                                 </small>

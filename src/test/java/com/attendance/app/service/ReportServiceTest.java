@@ -116,6 +116,32 @@ public class ReportServiceTest {
     }
 
     @Test
+    void testGenerateUserAttendanceCsv_remarksWithFormulaPrefix_isSanitized() {
+        AttendanceRecordService.MonthRange monthRange = new AttendanceRecordService.MonthRange(
+                targetMonth,
+                21,
+                20
+        );
+        when(attendanceRecordService.getMonthRange(targetMonth)).thenReturn(monthRange);
+
+        AttendanceRecord record = new AttendanceRecord();
+        record.setAttendanceDate(Instant.parse("2026-06-01T00:00:00Z"));
+        record.setRemarks("=HYPERLINK(\"http://evil/\")");
+
+        when(attendanceRecordService.getRecordsByUserAndMonth(1L, targetMonth))
+                .thenReturn(List.of(record));
+        when(leaveApplicationService.getApplicationsByUserAndDateRange(eq(1L), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(Collections.emptyList());
+
+        byte[] csvBytes = reportService.generateUserAttendanceCsv(testUser, targetMonth);
+        String csvContent = new String(csvBytes, StandardCharsets.UTF_8);
+
+        // 先頭にシングルクォートが付与され、そのまま数式として解釈されないこと
+        assertTrue(csvContent.contains("\"'=HYPERLINK(\"\"http://evil/\"\")\""));
+        assertFalse(csvContent.contains("\"=HYPERLINK"));
+    }
+
+    @Test
     void testGenerateAllUsersAttendanceZip() throws IOException {
         User user1 = new User();
         user1.setUserId(1L);

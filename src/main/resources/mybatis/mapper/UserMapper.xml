@@ -229,8 +229,11 @@
         WHERE user_id = #{userId}
     </update>
 
+    <!-- メソッド名は次期 user_id 予測のまま維持しているが、実体は emp_no 採番用シーケンス（V6）。
+         MAX(user_id)+1 の非アトミックな採番による emp_no 重複（同時作成時のUNIQUE違反）を防ぐため、
+         DBシーケンスのアトミックな nextval() に置換。 -->
     <select id="selectNextUserId" resultType="long">
-        SELECT COALESCE(MAX(user_id), 0) + 1 FROM users
+        SELECT nextval('emp_no_seq')
     </select>
 
 </mapper>

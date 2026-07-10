@@ -118,6 +118,91 @@ class AdminControllerTest {
             assertThat(viewName).isEqualTo("admin/user-create");
             assertThat(model.getAttribute("error")).isEqualTo("重複エラー");
         }
+
+        @Test
+        @DisplayName("ユーザー作成: バリデーションエラー時は送信済みの値（パスワード除く）をモデルへ再設定する")
+        void createUser_validationError_preservesSubmittedValues() {
+            when(securityUtil.getCurrentUserId()).thenReturn(1L);
+            doThrow(new IllegalArgumentException("重複エラー"))
+                    .when(userService)
+                    .createUser(anyString(), anyString(), anyString(), any(UserRole.class), any(), anyLong());
+
+            ExtendedModelMap model = new ExtendedModelMap();
+            java.time.LocalDate hireDate = java.time.LocalDate.of(2026, 4, 1);
+            String viewName = controller.createUser("dup@example.com", "pass9999", "重複", UserRole.ADMIN, hireDate, model);
+
+            assertThat(viewName).isEqualTo("admin/user-create");
+            assertThat(model.getAttribute("email")).isEqualTo("dup@example.com");
+            assertThat(model.getAttribute("fullName")).isEqualTo("重複");
+            assertThat(model.getAttribute("userRole")).isEqualTo(UserRole.ADMIN);
+            assertThat(model.getAttribute("hireDate")).isEqualTo(hireDate);
+            assertThat(model.asMap()).doesNotContainKey("password");
+        }
+    }
+
+    @Nested
+    @DisplayName("updateUser")
+    class UpdateUser {
+
+        @Test
+        @DisplayName("ユーザー更新: 正常系（成功時にユーザー一覧へリダイレクト）")
+        void updateUser_success() {
+            when(securityUtil.getCurrentUserId()).thenReturn(1L);
+            RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
+
+            String viewName = controller.updateUser(2L, "user@example.com", "氏名", UserRole.USER,
+                    null, null, null, null, null, false, null, true, redirectAttributes);
+
+            assertThat(viewName).isEqualTo("redirect:/admin/users");
+        }
+
+        @Test
+        @DisplayName("ユーザー更新: バリデーションエラー時はユーザー詳細画面へerrorMessageフラッシュ属性付きでリダイレクト")
+        void updateUser_validationError_redirectsWithErrorMessage() {
+            when(securityUtil.getCurrentUserId()).thenReturn(1L);
+            doThrow(new IllegalArgumentException("メールアドレスが重複しています"))
+                    .when(userService)
+                    .updateUser(eq(2L), anyString(), anyString(), any(UserRole.class), any(), any(), any(), any(), any(),
+                            anyBoolean(), any(), anyBoolean(), anyLong());
+            RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
+
+            String viewName = controller.updateUser(2L, "dup@example.com", "氏名", UserRole.USER,
+                    null, null, null, null, null, false, null, true, redirectAttributes);
+
+            assertThat(viewName).isEqualTo("redirect:/admin/users/2");
+            assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
+                    .isEqualTo("メールアドレスが重複しています");
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteUser")
+    class DeleteUser {
+
+        @Test
+        @DisplayName("ユーザー削除: 正常系はsuccessMessageフラッシュ属性を設定する")
+        void deleteUser_success() {
+            when(securityUtil.getCurrentUserId()).thenReturn(1L);
+            RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
+
+            String viewName = controller.deleteUser(2L, redirectAttributes);
+
+            assertThat(viewName).isEqualTo("redirect:/admin/users");
+            assertThat(redirectAttributes.getFlashAttributes().get("successMessage")).isEqualTo("ユーザーを削除しました");
+        }
+
+        @Test
+        @DisplayName("ユーザー削除: 例外発生時はerrorMessageフラッシュ属性を設定する")
+        void deleteUser_exception_setsErrorMessage() {
+            when(securityUtil.getCurrentUserId()).thenReturn(1L);
+            doThrow(new RuntimeException("DB Error")).when(userService).deleteUser(eq(2L), eq(1L));
+            RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
+
+            String viewName = controller.deleteUser(2L, redirectAttributes);
+
+            assertThat(viewName).isEqualTo("redirect:/admin/users");
+            assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("ユーザーの削除に失敗しました");
+        }
     }
 
     @Nested

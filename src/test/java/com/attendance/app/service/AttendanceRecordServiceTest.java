@@ -251,6 +251,38 @@ class AttendanceRecordServiceTest {
             assertThat(existing.getRemarks()).isEqualTo("更新備考");
             assertThat(existing.getEventTypeId()).isEqualTo(3);
         }
+
+        @Test
+        @DisplayName("休日出勤かつ所定終業時刻超過時は、overtimeHoursを0にしholidayWorkHoursのみへ計上する（二重計上防止）")
+        void holidayWork_pastStandardEndTime_zeroesOvertimeHours() {
+            Long userId = 10L;
+            LocalDate attendanceDate = LocalDate.of(2026, 6, 6);
+
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務")
+                    .startTime(LocalTime.of(9, 0))
+                    .endTime(LocalTime.of(18, 0))
+                    .breaks(List.of(
+                            com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                    .breakStartTime(LocalTime.of(12, 0))
+                                    .breakEndTime(LocalTime.of(13, 0))
+                                    .build()
+                    ))
+                    .build();
+
+            when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, attendanceDate)).thenReturn(Optional.empty());
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+            // 09:00〜19:00勤務（所定終業18:00を1時間超過）を休日出勤として登録
+            AttendanceRecord result = service.saveRecord(
+                    userId, attendanceDate, LocalTime.of(9, 0), LocalTime.of(19, 0), "", true, null);
+
+            assertThat(result.getWorkingHours()).isEqualTo(0.0);
+            assertThat(result.getHolidayWorkHours()).isEqualTo(9.0);
+            assertThat(result.getOvertimeHours()).isEqualTo(0.0);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -635,6 +667,48 @@ class AttendanceRecordServiceTest {
                 verify(attendanceRecordMapper).update(existing);
             }
         }
+
+        @Test
+        @DisplayName("休日出勤かつ所定終業時刻超過時は、overtimeHoursを0にする（二重計上防止）")
+        void quickEnd_holidayWorkPastStandardEnd_zeroesOvertimeHours() {
+            Long userId = 10L;
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務").startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(18, 0)).build();
+
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+            when(eventTypeMapper.selectByCode("休出")).thenReturn(Optional.of(EventType.builder().eventTypeId(2).build()));
+
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+
+                LocalDate mockToday = LocalDate.of(2026, 6, 1);
+                Instant mockStart = Instant.parse("2026-06-01T00:00:00Z"); // 09:00 JST
+                Instant mockEnd = Instant.parse("2026-06-01T10:00:00Z");   // 19:00 JST（所定18:00を1時間超過）
+
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.currentTimeJapan()).thenReturn(LocalTime.of(19, 0));
+                mockedDateTimeUtil.when(() -> DateTimeUtil.now()).thenReturn(mockEnd);
+
+                AttendanceRecord existing = AttendanceRecord.builder()
+                        .userId(userId).attendanceDate(mockStart).startTime(mockStart).build();
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(eq(userId), any(LocalDate.class)))
+                        .thenAnswer(invocation -> {
+                            LocalDate date = invocation.getArgument(1);
+                            if (date.equals(mockToday)) {
+                                return Optional.of(existing);
+                            }
+                            return Optional.empty();
+                        });
+
+                AttendanceRecord result = service.quickEndAttendance(userId, true);
+
+                assertThat(result.getWorkingHours()).isEqualTo(0.0);
+                assertThat(result.getHolidayWorkHours()).isGreaterThan(0.0);
+                assertThat(result.getOvertimeHours()).isEqualTo(0.0);
+                verify(attendanceRecordMapper).update(existing);
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -723,6 +797,47 @@ class AttendanceRecordServiceTest {
 
                 assertThat(existing.getBreakTimeMinutes()).isEqualTo(90);
                 assertThat(existing.getOvertimeHours()).isEqualTo(1.5);
+                verify(attendanceRecordMapper).update(existing);
+            }
+        }
+
+        @Test
+        @DisplayName("正常系: 休日出勤レコードへの休憩追加後は overtimeHours を 0 に保つ（二重計上防止）")
+        void addBreak_holidayWork_keepsOvertimeHoursZero() {
+            Long userId = 10L;
+            LocalDate mockToday = LocalDate.of(2026, 6, 1);
+
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務")
+                    .startTime(LocalTime.of(9, 0))
+                    .endTime(LocalTime.of(18, 0))
+                    .build();
+
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockToday);
+                mockedDateTimeUtil.when(() -> DateTimeUtil.now()).thenReturn(Instant.parse("2026-06-01T21:00:00Z"));
+
+                // 休日出勤: 09:00(JST)〜20:00(JST)、holidayWorkHours>0で休日出勤済みと判定される
+                AttendanceRecord existing = AttendanceRecord.builder()
+                        .attendanceDate(Instant.parse("2026-05-31T15:00:00Z")) // 2026-06-01 00:00 JST
+                        .startTime(Instant.parse("2026-06-01T00:00:00Z")) // 09:00 JST
+                        .endTime(Instant.parse("2026-06-01T11:00:00Z")) // 20:00 JST
+                        .breakTimeMinutes(60)
+                        .workingHours(0.0)
+                        .holidayWorkHours(10.0)
+                        .overtimeHours(2.0)
+                        .build();
+
+                when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, mockToday)).thenReturn(Optional.of(existing));
+                when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+                when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+                service.addBreakTime(userId, 30);
+
+                assertThat(existing.getWorkingHours()).isEqualTo(0.0);
+                assertThat(existing.getHolidayWorkHours()).isGreaterThan(0.0);
+                assertThat(existing.getOvertimeHours()).isEqualTo(0.0);
                 verify(attendanceRecordMapper).update(existing);
             }
         }
