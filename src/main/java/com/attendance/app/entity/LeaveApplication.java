@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -32,6 +33,8 @@ public class LeaveApplication {
     private LocalDate leaveEndDate;
     /** 休暇期間種別（FULL_DAY, AM_HALF, PM_HALF等） */
     private String leaveDurationType;
+    /** 実消化日数（承認時に計算・保存。NULLは旧データ） */
+    private BigDecimal consumedDays;
     /** 休暇種別（PAID_LEAVE, SICK_LEAVEなど） */
     private LeaveType leaveType;
     /** 休暇理由 */

@@ -8,6 +8,7 @@
         <result column="leave_start_date" property="leaveStartDate" typeHandler="com.attendance.app.config.typehandler.LocalDateTypeHandler"/>
         <result column="leave_end_date" property="leaveEndDate" typeHandler="com.attendance.app.config.typehandler.LocalDateTypeHandler"/>
         <result column="leave_duration_type" property="leaveDurationType"/>
+        <result column="consumed_days" property="consumedDays"/>
         <result column="leave_type" property="leaveType" typeHandler="com.attendance.app.config.typehandler.LeaveTypeTypeHandler"/>
         <result column="reason" property="reason"/>
         <result column="status" property="status" typeHandler="com.attendance.app.config.typehandler.LeaveStatusTypeHandler"/>
@@ -20,37 +21,37 @@
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectById" resultMap="leaveApplicationResultMap">
-        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, consumed_days, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
         FROM leave_applications WHERE application_id = #{applicationId} AND is_deleted = false
     </select>
 
     <select id="selectByIdForUpdate" resultMap="leaveApplicationResultMap">
-        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, consumed_days, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
         FROM leave_applications WHERE application_id = #{applicationId} AND is_deleted = false FOR UPDATE
     </select>
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectByUserId" resultMap="leaveApplicationResultMap">
-        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, consumed_days, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
         FROM leave_applications WHERE user_id = #{userId} AND is_deleted = false ORDER BY created_at DESC
     </select>
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectByUserIdAndStatus" resultMap="leaveApplicationResultMap">
-        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, consumed_days, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
         FROM leave_applications WHERE user_id = #{userId} AND status = #{status} AND is_deleted = false ORDER BY created_at DESC
     </select>
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectPendingApplications" resultMap="leaveApplicationResultMap">
-        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, consumed_days, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
         FROM leave_applications WHERE status = 'PENDING' AND is_deleted = false ORDER BY created_at ASC
     </select>
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <!-- 期間が重なる申請を取得する（申請期間 [leave_start_date, leave_end_date] と [#{startDate}, #{endDate}] が重複するもの） -->
     <select id="selectByUserAndDateRange" resultMap="leaveApplicationResultMap">
-        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, consumed_days, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
         FROM leave_applications
         WHERE user_id = #{userId}
         AND leave_start_date &lt;= #{endDate}
@@ -62,7 +63,7 @@
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <!-- 期間が重なる申請を全ユーザー分取得する（管理者用・一括集計向け） -->
     <select id="selectAllByDateRange" resultMap="leaveApplicationResultMap">
-        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, consumed_days, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
         FROM leave_applications
         WHERE leave_start_date &lt;= #{endDate}
         AND leave_end_date &gt;= #{startDate}
@@ -71,18 +72,19 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="applicationId">
-        INSERT INTO leave_applications (user_id, leave_start_date, leave_end_date, leave_duration_type, leave_type, reason, status, created_at, updated_at, is_deleted)
-        VALUES (#{userId}, #{leaveStartDate}, #{leaveEndDate}, #{leaveDurationType}, #{leaveType,typeHandler=com.attendance.app.config.typehandler.LeaveTypeTypeHandler}, #{reason}, #{status,typeHandler=com.attendance.app.config.typehandler.LeaveStatusTypeHandler}, NOW(), NOW(), COALESCE(#{isDeleted}, false))
+        INSERT INTO leave_applications (user_id, leave_start_date, leave_end_date, leave_duration_type, consumed_days, leave_type, reason, status, created_at, updated_at, is_deleted)
+        VALUES (#{userId}, #{leaveStartDate}, #{leaveEndDate}, #{leaveDurationType}, #{consumedDays}, #{leaveType,typeHandler=com.attendance.app.config.typehandler.LeaveTypeTypeHandler}, #{reason}, #{status,typeHandler=com.attendance.app.config.typehandler.LeaveStatusTypeHandler}, NOW(), NOW(), COALESCE(#{isDeleted}, false))
     </insert>
 
     <update id="update">
-        UPDATE leave_applications 
-        SET user_id = #{userId}, 
-            leave_start_date = #{leaveStartDate}, 
-            leave_end_date = #{leaveEndDate}, 
+        UPDATE leave_applications
+        SET user_id = #{userId},
+            leave_start_date = #{leaveStartDate},
+            leave_end_date = #{leaveEndDate},
             leave_duration_type = #{leaveDurationType},
-            leave_type = #{leaveType,typeHandler=com.attendance.app.config.typehandler.LeaveTypeTypeHandler}, 
-            reason = #{reason}, 
+            consumed_days = #{consumedDays},
+            leave_type = #{leaveType,typeHandler=com.attendance.app.config.typehandler.LeaveTypeTypeHandler},
+            reason = #{reason},
             status = #{status,typeHandler=com.attendance.app.config.typehandler.LeaveStatusTypeHandler},
             is_deleted = #{isDeleted},
             updated_at = NOW()
@@ -119,6 +121,12 @@
           AND leave_start_date >= MAKE_DATE(#{year}, 1, 1)
           AND leave_start_date &lt; MAKE_DATE(#{year} + 1, 1, 1)
           AND is_deleted = false
+    </select>
+
+    <!-- ユーザー単位のトランザクションスコープ advisory lock を取得し、休暇申請の重複チェックをレース無く直列化する -->
+    <!-- キー空間 (1, user_id): トランザクション終了時に自動解放される -->
+    <select id="acquireUserLock" resultType="java.lang.Object">
+        SELECT pg_advisory_xact_lock(1, CAST(#{userId} AS INT))
     </select>
 
 </mapper>

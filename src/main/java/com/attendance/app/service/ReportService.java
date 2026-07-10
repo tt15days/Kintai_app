@@ -7,6 +7,7 @@ import com.attendance.app.entity.LeaveStatus;
 import com.attendance.app.entity.User;
 import com.attendance.app.mapper.AttendanceRecordMapper;
 import com.attendance.app.mapper.LeaveApplicationMapper;
+import com.attendance.app.util.CsvSanitizeUtil;
 import com.attendance.app.util.DateTimeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -305,6 +306,8 @@ public class ReportService {
 
     /**
      * 文字列をCSV用ダブルクォートで囲み、値中のダブルクォートをエスケープします。
+     * フォーミュラインジェクション対策として、値が数式として解釈されうる文字で始まる場合は
+     * 先頭にシングルクォートを付与して無害化します。
      *
      * @param value 対象文字列
      * @return エスケープおよびクォートされた文字列
@@ -313,6 +316,7 @@ public class ReportService {
         if (value == null) {
             return "\"\"";
         }
-        return "\"" + value.replace("\"", "\"\"") + "\"";
+        String sanitized = CsvSanitizeUtil.sanitizeFormulaInjection(value);
+        return "\"" + sanitized.replace("\"", "\"\"") + "\"";
     }
 }

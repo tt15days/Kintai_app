@@ -213,6 +213,8 @@ public class AttendanceRecordService {
         Double holidayWorkHours = isHolidayWork ? workingHours : 0.0;
         if (isHolidayWork) {
             workingHours = 0.0;
+            // 休日労働はholidayWorkHoursに一本化し、overtimeHoursとの二重計上を避ける
+            overtimeHours = 0.0;
         }
         Double nightShiftHours = calculateNightShiftHours(startInstant, endInstant, attendanceDate, schedule);
         int breakTimeMinutes = (int) calculateBreakOverlapMinutes(startInstant, endInstant, attendanceDate, schedule);
@@ -376,6 +378,8 @@ public class AttendanceRecordService {
         if (isHolidayWork) {
             record.setWorkingHours(0.0);
             record.setHolidayWorkHours(workingHours);
+            // 休日労働はholidayWorkHoursに一本化し、overtimeHoursとの二重計上を避ける
+            overtimeHours = 0.0;
             Integer holidayWorkTypeId = eventTypeMapper.selectByCode("休出")
                     .map(e -> e.getEventTypeId())
                     .orElse(null);
@@ -439,6 +443,8 @@ public class AttendanceRecordService {
             if (isHolidayWork) {
                 record.setWorkingHours(0.0);
                 record.setHolidayWorkHours(workingHours);
+                // 休日労働はholidayWorkHoursに一本化し、overtimeHoursとの二重計上を避ける
+                overtimeHours = 0.0;
             } else {
                 record.setWorkingHours(workingHours);
             }
@@ -594,7 +600,7 @@ public class AttendanceRecordService {
     /**
      * 36協定チェック: 月次残業時間に対する警告レベルを返します。
      * システム設定（アラート閾値設定）に警告・上限値が設定されている場合はその値を、
-     * 未設定の場合は既定値（警告36時間・上限45時間）を使用します。
+     * 未設定の場合は既定値（警告30時間・上限45時間）を使用します。
      * NORMAL  : 警告閾値未満（問題なし）
      * WARNING : 警告閾値以上、上限閾値未満（注意）
      * ALERT   : 上限閾値以上（法定上限超過）

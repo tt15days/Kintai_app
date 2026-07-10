@@ -115,4 +115,16 @@ class AdminLeaveUsageControllerTest {
         assertEquals(new BigDecimal("4.0"), remainingTotalMap.get(1L));
         assertEquals(new BigDecimal("6.5"), remainingTotalMap.get(2L));
     }
+
+    @Test
+    @DisplayName("showLeaveUsage - 例外発生時はerror属性を設定して同一画面を返す")
+    void testShowLeaveUsage_exception_setsErrorAttribute() {
+        when(userService.getActiveUsers()).thenThrow(new RuntimeException("DB Error"));
+
+        ExtendedModelMap model = new ExtendedModelMap();
+        String view = controller.showLeaveUsage(model);
+
+        assertEquals("admin/leave-usage", view);
+        assertEquals("有給休暇取得状況画面の表示に失敗しました", model.getAttribute("error"));
+    }
 }

@@ -119,6 +119,20 @@ class SettingsControllerTest {
     }
 
     @Test
+    @DisplayName("showSettings: 例外発生時はerror属性を設定して同一画面を返す")
+    void showSettings_exception_setsErrorAttribute() {
+        when(systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DATE"))
+                .thenThrow(new RuntimeException("DB Error"));
+
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        String viewName = controller.showSettings(model);
+
+        assertThat(viewName).isEqualTo("admin/settings");
+        assertThat(model.get("error")).isEqualTo("システム設定画面の表示に失敗しました");
+    }
+
+    @Test
     @DisplayName("saveSettings: 正常値の更新")
     void saveSettings_validParameters_success() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();

@@ -131,4 +131,13 @@ public interface LeaveApplicationMapper {
      * @return 使用日数
      */
     BigDecimal countApprovedPaidLeaveDays(@Param("userId") Long userId, @Param("year") int year);
+
+    /**
+     * ユーザー単位のトランザクションスコープ advisory lock を取得します。
+     * 休暇申請の重複チェック（TOCTOUレース）を直列化するために、重複チェック前に呼び出します。
+     * トランザクション終了時に自動的に解放されます。
+     *
+     * @param userId 対象ユーザーID
+     */
+    void acquireUserLock(@Param("userId") Long userId);
 }

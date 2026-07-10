@@ -56,7 +56,7 @@ public class AutoGrantPaidLeaveServiceTest {
 
     @Test
     void testGrantPaidLeaveBatch_NotGrantDate() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Tokyo"));
         LocalDate notToday = today.plusDays(1);
         String notTodayStr = String.format("%02d-%02d", notToday.getMonthValue(), notToday.getDayOfMonth());
 
@@ -81,7 +81,7 @@ public class AutoGrantPaidLeaveServiceTest {
 
     @Test
     void testGrantPaidLeaveBatch_ExceptionHandledSafely() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Tokyo"));
         String todayStr = String.format("%02d-%02d", today.getMonthValue(), today.getDayOfMonth());
 
         when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DATE")).thenReturn(todayStr);

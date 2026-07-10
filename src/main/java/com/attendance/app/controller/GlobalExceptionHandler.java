@@ -9,14 +9,16 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Global Exception Handler
  * アプリケーション全体の例外ハンドリングを行うコントローラーアドバイスクラス。
- * 
+ *
  * 主な責務:
  * - 画面遷移時等の例外（認可エラーなど）をキャッチし、適切なエラー画面へ遷移させる
  */
+@Slf4j
 @ControllerAdvice
 @Controller
 public class GlobalExceptionHandler {
@@ -56,6 +58,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public String handleException(Exception e) {
+        log.error("予期しない例外が発生しました", e);
         return "error/500";
     }
 }

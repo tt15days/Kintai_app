@@ -9,6 +9,7 @@
     <div layout:fragment="content" class="w-full py-4 space-y-6 animate-fade-in">
         <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
         <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
         <!-- 勤怠期間設定 -->
         <div class="card">

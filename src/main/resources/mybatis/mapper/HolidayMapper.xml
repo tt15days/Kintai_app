@@ -17,9 +17,11 @@
         SELECT holiday_date, name, created_at FROM holidays ORDER BY holiday_date ASC
     </select>
 
+    <!-- クエリ最適化: EXTRACT関数によるフルスキャンを回避し、範囲検索(>=, <)でインデックスを利用 -->
     <select id="selectByYear" resultMap="holidayResultMap">
-        SELECT holiday_date, name, created_at FROM holidays 
-        WHERE EXTRACT(YEAR FROM holiday_date) = #{year}
+        SELECT holiday_date, name, created_at FROM holidays
+        WHERE holiday_date >= MAKE_DATE(#{year}, 1, 1)
+        AND holiday_date &lt; MAKE_DATE(#{year} + 1, 1, 1)
         ORDER BY holiday_date ASC
     </select>
 

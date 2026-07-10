@@ -5,6 +5,7 @@ import com.attendance.app.dto.PaidLeaveAlertDto;
 import com.attendance.app.entity.UserNotification;
 import com.attendance.app.mapper.AlertBatchMapper;
 import com.attendance.app.mapper.UserNotificationMapper;
+import com.attendance.app.util.DateTimeUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -64,12 +65,12 @@ public class AlertBatchServiceTest {
     class RunAlertBatch {
 
         @Test
-        @DisplayName("定期実行バッチが現在日付（前月分）を基準に正しく動作する")
+        @DisplayName("定期実行バッチが現在日付（前月分、日本時間基準）を基準に正しく動作する")
         void testRunAlertBatch() {
-            // Mock System Date to 2023-11-15
+            // Mock System Date to 2023-11-15 (JST基準)
             LocalDate mockNow = LocalDate.of(2023, 11, 15);
-            try (MockedStatic<LocalDate> mockedLocalDate = mockStatic(LocalDate.class, CALLS_REAL_METHODS)) {
-                mockedLocalDate.when(() -> LocalDate.now()).thenReturn(mockNow);
+            try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+                mockedDateTimeUtil.when(() -> DateTimeUtil.todayJapan()).thenReturn(mockNow);
 
                 // 前月は 2023-10。勤怠期間は設定された締め日（開始日21日・終了日20日）基準
                 LocalDate expectedStart = LocalDate.of(2023, 9, 21);
