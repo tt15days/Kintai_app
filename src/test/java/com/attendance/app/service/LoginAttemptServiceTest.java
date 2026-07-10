@@ -146,9 +146,9 @@ class LoginAttemptServiceTest {
     }
 
     @Test
-    @DisplayName("管理者の場合は警告閾値や永久ロック閾値に達してもロックされない")
-    void handleFailure_adminUser_doesNotLockEvenAfterThresholds() {
-        // 警告閾値（3回目）の失敗時
+    @DisplayName("管理者も一時ロック対象だが永久ロック閾値では一時ロックを継続する")
+    void handleFailure_adminUser_tempLockedButNeverPermanentlyLocked() {
+        // 警告閾値（3回目）の失敗時: 一時ロック
         User admin1 = User.builder()
                 .userId(100L)
                 .userRole(UserRole.ADMIN)
@@ -159,10 +159,10 @@ class LoginAttemptServiceTest {
 
         LoginAttemptResult result1 = service.handleFailure("admin1@example.com");
 
-        assertThat(result1).isEqualTo(LoginAttemptResult.ADMIN_EXEMPT);
-        verify(userMapper).updateLoginAttempt(eq(100L), eq(3), isNull(), eq(false));
+        assertThat(result1).isEqualTo(LoginAttemptResult.TEMP_LOCKED);
+        verify(userMapper).updateLoginAttempt(eq(100L), eq(3), any(Instant.class), eq(false));
 
-        // 永久ロック閾値（5回目）の失敗時
+        // 永久ロック閾値（5回目）の失敗時: 永久ロックせず一時ロックを継続
         User admin2 = User.builder()
                 .userId(101L)
                 .userRole(UserRole.ADMIN)
@@ -173,8 +173,8 @@ class LoginAttemptServiceTest {
 
         LoginAttemptResult result2 = service.handleFailure("admin2@example.com");
 
-        assertThat(result2).isEqualTo(LoginAttemptResult.ADMIN_EXEMPT);
-        verify(userMapper).updateLoginAttempt(eq(101L), eq(5), isNull(), eq(false));
+        assertThat(result2).isEqualTo(LoginAttemptResult.TEMP_LOCKED);
+        verify(userMapper).updateLoginAttempt(eq(101L), eq(5), any(Instant.class), eq(false));
     }
 
     @Test
