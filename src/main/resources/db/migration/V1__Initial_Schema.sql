@@ -1,7 +1,9 @@
 -- ============================================================
 -- Attendance Management System - Initial Schema (Consolidated)
 -- マイグレーション V1: DDLのみ（テーブル・インデックス・パーミッション）
--- 統合対象: 旧 V1〜V7 + V3(有給残高) + V4(管理者お知らせ・監査ログ) + V5(休憩時間拡張) のスキーマ変更をすべて反映済み
+-- 統合対象: 旧 V1〜V7 + V3(有給残高) + V4(管理者お知らせ・監査ログ) + V5(休憩時間拡張)
+--           + 旧V2(attendance_records/leave_applications/overtime_records調整・emp_no_seq) の
+--           スキーマ変更をすべて反映済み
 --   - leave_type に ABSENCE を追加 (旧 V2)
 --   - attendance_submissions.status に WITHDRAWN を追加 (旧 V3)
 --   - system_settings テーブルを追加 (旧 V3)
@@ -14,6 +16,11 @@
 --   - audit_logs テーブルを追加 (旧 V4マイグレーション)
 --   - work_schedule_classes に休憩時間スロット2〜4を追加 (旧 V5マイグレーション)
 --   - users にログイン試行制限カラムを追加 (failed_login_count, locked_until, account_locked)
+--   - attendance_records の一意制約を論理削除対応の部分一意インデックスに変更 (旧 V2)
+--   - leave_applications.consumed_days（実消化日数の永続化）を追加 (旧 V2)
+--   - overtime_records.overtime_start/overtime_end を TIMESTAMP WITH TIME ZONE 化し
+--     有効行のみを対象とする部分一意インデックスを追加 (旧 V2)
+--   - emp_no_seq シーケンスを追加（emp_no のアトミック採番用） (旧 V2)
 -- サンプルデータは db/sample/V2__Sample_Data.sql に分離
 -- ============================================================
 
@@ -53,6 +60,10 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_users_user_role ON users(user_role);
 CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
+
+-- emp_no のアトミック採番用シーケンス。
+-- UserMapper.selectNextUserId の非アトミックな MAX(user_id)+1 採番を置き換えるため使用する。
+CREATE SEQUENCE IF NOT EXISTS emp_no_seq;
 
 -- ============================================================
 -- work_schedule_classes テーブル（所定時間マスタ）
@@ -149,8 +160,7 @@ CREATE TABLE IF NOT EXISTS attendance_records (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     is_deleted BOOLEAN NOT NULL DEFAULT false,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (class_id) REFERENCES work_schedule_classes(class_id) ON DELETE SET NULL,
-    CONSTRAINT unique_user_attendance UNIQUE(user_id, attendance_date)
+    FOREIGN KEY (class_id) REFERENCES work_schedule_classes(class_id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_attendance_records_user_id ON attendance_records(user_id);
@@ -160,6 +170,12 @@ CREATE INDEX IF NOT EXISTS idx_attendance_records_working_hours ON attendance_re
 CREATE INDEX IF NOT EXISTS idx_attendance_records_overtime ON attendance_records(user_id, overtime_hours);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_event_type ON attendance_records(event_type_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_is_deleted ON attendance_records(is_deleted);
+
+-- 有効行(is_deleted = false)のみを対象とする部分一意インデックス。
+-- 論理削除済み行との共存・同一日への再登録を許可しつつ、有効な勤怠は1日1件を担保する。
+CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_user_date_active
+    ON attendance_records(user_id, attendance_date)
+    WHERE is_deleted = false;
 
 -- ============================================================
 -- Leave Applications テーブル
@@ -178,6 +194,7 @@ CREATE TABLE IF NOT EXISTS leave_applications (
     is_deleted BOOLEAN NOT NULL DEFAULT false,
     approved_at TIMESTAMP WITH TIME ZONE,
     approved_by BIGINT,
+    consumed_days NUMERIC(4, 1),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL,
     CONSTRAINT check_leave_type CHECK (leave_type IN ('PAID_LEAVE', 'UNPAID_LEAVE', 'SICK_LEAVE', 'SPECIAL_LEAVE', 'ABSENCE')),
@@ -196,8 +213,8 @@ CREATE TABLE IF NOT EXISTS overtime_records (
     overtime_id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     overtime_date DATE NOT NULL,
-    overtime_start TIME,
-    overtime_end TIME,
+    overtime_start TIMESTAMP WITH TIME ZONE,
+    overtime_end TIMESTAMP WITH TIME ZONE,
     overtime_hours NUMERIC(5, 2) NOT NULL DEFAULT 0.0,
     reason VARCHAR(255),
     remarks TEXT,
@@ -211,6 +228,12 @@ CREATE INDEX IF NOT EXISTS idx_overtime_records_user_id ON overtime_records(user
 CREATE INDEX IF NOT EXISTS idx_overtime_records_date ON overtime_records(overtime_date);
 CREATE INDEX IF NOT EXISTS idx_overtime_records_user_date ON overtime_records(user_id, overtime_date);
 CREATE INDEX IF NOT EXISTS idx_overtime_records_is_deleted ON overtime_records(is_deleted);
+
+-- 有効行(is_deleted = false)の (user_id, overtime_date) 重複を防ぐ部分一意インデックス。
+-- syncFromAttendance の select-then-insert が同時実行された場合の重複挿入を防止する。
+CREATE UNIQUE INDEX IF NOT EXISTS uq_overtime_user_date_active
+    ON overtime_records(user_id, overtime_date)
+    WHERE is_deleted = false;
 
 -- ============================================================
 -- Holidays テーブル
