@@ -369,6 +369,12 @@ CREATE INDEX IF NOT EXISTS idx_acr_user_date
 CREATE INDEX IF NOT EXISTS idx_acr_target_year_month
     ON attendance_correction_requests(target_year_month);
 
+-- 承認待ち(status = 'PENDING')のみを対象とする部分一意インデックス。
+-- 却下・取下げ・承認済みの履歴行との共存を許可しつつ、同一日への重複PENDING申請を防止する。
+CREATE UNIQUE INDEX IF NOT EXISTS uq_acr_user_date_pending
+    ON attendance_correction_requests(user_id, attendance_date)
+    WHERE status = 'PENDING';
+
 -- ============================================================
 -- user_notifications テーブル（ダッシュボード通知）
 -- ============================================================

@@ -1,10 +1,12 @@
 package com.attendance.app.mapper;
 
+import com.attendance.app.dto.UserNotificationKeyDto;
 import com.attendance.app.entity.UserNotification;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -58,4 +60,17 @@ public interface UserNotificationMapper {
     int countByUserAndTypeSince(@Param("userId") Long userId,
                                  @Param("notificationType") String notificationType,
                                  @Param("since") Instant since);
+
+    /**
+     * 複数ユーザー・複数通知種別について、指定日時以降に作成された通知の (userId, notificationType) の
+     * 組み合わせを一括取得します。バッチ処理での重複通知チェックのN+1解消に使用します。
+     *
+     * @param userIds ユーザーIDのコレクション
+     * @param notificationTypes 通知種別のコレクション
+     * @param since この日時以降に作成された通知を対象とする
+     * @return 既に通知が存在する (userId, notificationType) の組み合わせのリスト
+     */
+    List<UserNotificationKeyDto> selectExistingNotificationKeys(@Param("userIds") Collection<Long> userIds,
+                                                                 @Param("notificationTypes") Collection<String> notificationTypes,
+                                                                 @Param("since") Instant since);
 }

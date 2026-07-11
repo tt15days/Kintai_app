@@ -7,6 +7,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -14,6 +15,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -57,6 +59,10 @@ public class AttendanceRecordService {
     private static final LocalTime DEFAULT_BREAK_START_TIME = LocalTime.of(12, 0);
     private static final LocalTime DEFAULT_BREAK_END_TIME = LocalTime.of(13, 0);
     private static final int DEFAULT_BREAK_MINUTES = 60;
+    /** 労働基準法上の深夜労働時間帯の開始時刻（22:00） */
+    private static final LocalTime NIGHT_WORK_START = LocalTime.of(22, 0);
+    /** 労働基準法上の深夜労働時間帯の終了時刻（翌5:00） */
+    private static final LocalTime NIGHT_WORK_END = LocalTime.of(5, 0);
 
     /**
      * ユーザーの勤務クラスに基づく所定開始・終了時刻などのスケジュール定義を取得します。
@@ -254,7 +260,13 @@ public class AttendanceRecordService {
                     .createdAt(DateTimeUtil.now())
                     .updatedAt(DateTimeUtil.now())
                     .build();
-            attendanceRecordMapper.insert(record);
+            try {
+                attendanceRecordMapper.insert(record);
+            } catch (DuplicateKeyException e) {
+                // uq_attendance_user_date_active に対する同時実行競合（多重送信等）。
+                // FOR UPDATEはロック対象行が無い初回INSERTでは効かないため、一意制約違反を業務例外に変換する。
+                throw new IllegalArgumentException("この日の勤怠記録は既に登録されています", e);
+            }
             log.info("勤怠記録を作成しました: userId={}, date={}", userId, attendanceDate);
         }
 
@@ -326,7 +338,13 @@ public class AttendanceRecordService {
                     .createdAt(DateTimeUtil.now())
                     .updatedAt(DateTimeUtil.now())
                     .build();
-            attendanceRecordMapper.insert(record);
+            try {
+                attendanceRecordMapper.insert(record);
+            } catch (DuplicateKeyException e) {
+                // uq_attendance_user_date_active に対する同時実行競合（出勤ボタンの二重クリック等）。
+                // FOR UPDATEはロック対象行が無い初回INSERTでは効かないため、一意制約違反を業務例外に変換する。
+                throw new IllegalArgumentException("本日は既に勤務開始時刻が記録されています", e);
+            }
         }
 
         overtimeRecordService.syncFromAttendance(
@@ -506,6 +524,53 @@ public class AttendanceRecordService {
     }
 
     /**
+     * 指定した複数年月の全ユーザー残業時間合計を、年月ごとのユーザーIDをキーとするMapで返します。
+     * 36協定ダッシュボードの複数月表示など、月ごとの個別フェッチをまとめて1回で取得するために使用します。
+     * 対象月群の最小〜最大範囲を1回取得し、各レコードの勤怠期間に対応する年月へ振り分けて集計します。
+     *
+     * @param months 集計対象の年月リスト
+     * @return 年月をキー、ユーザーIDをキーとする残業時間合計Mapを値とするMap
+     */
+    public Map<YearMonth, Map<Long, Double>> getOvertimeSumByUserForMonthRange(List<YearMonth> months) {
+        if (months == null || months.isEmpty()) {
+            return Map.of();
+        }
+        List<YearMonth> sortedMonths = months.stream().sorted().toList();
+        YearMonth rangeStart = sortedMonths.get(0);
+        YearMonth rangeEnd = sortedMonths.get(sortedMonths.size() - 1);
+
+        LocalDate rangeStartDate = rangeStart.minusMonths(1).atDay(attendancePeriodSettingService.getStartDay());
+        LocalDate rangeEndDate = rangeEnd.atDay(attendancePeriodSettingService.getEndDay());
+        Instant rangeStartInstant = DateTimeUtil.toInstant(rangeStartDate);
+        Instant rangeEndInstant = DateTimeUtil.toInstant(rangeEndDate.plusDays(1));
+        List<AttendanceRecord> records = attendanceRecordMapper.selectAllByDateRange(rangeStartInstant, rangeEndInstant);
+        Map<Long, WorkScheduleDefinition> scheduleByClassId = bulkResolveScheduleDefinitions(records);
+
+        // 各対象月の勤怠期間（前月startDay〜当月endDay）をあらかじめ算出しておく
+        Map<YearMonth, LocalDate[]> periodByMonth = new java.util.LinkedHashMap<>();
+        Map<YearMonth, Map<Long, Double>> result = new java.util.LinkedHashMap<>();
+        for (YearMonth ym : sortedMonths) {
+            LocalDate periodStart = ym.minusMonths(1).atDay(attendancePeriodSettingService.getStartDay());
+            LocalDate periodEnd = ym.atDay(attendancePeriodSettingService.getEndDay());
+            periodByMonth.put(ym, new LocalDate[]{periodStart, periodEnd});
+            result.put(ym, new java.util.HashMap<>());
+        }
+
+        for (AttendanceRecord r : records) {
+            LocalDate attendanceDate = DateTimeUtil.toLocalDate(r.getAttendanceDate());
+            for (YearMonth ym : sortedMonths) {
+                LocalDate[] period = periodByMonth.get(ym);
+                if (!attendanceDate.isBefore(period[0]) && !attendanceDate.isAfter(period[1])) {
+                    double overtime = resolveOvertimeHoursForRecord(r, scheduleByClassId);
+                    result.get(ym).merge(r.getUserId(), overtime, Double::sum);
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * 勤怠記録から残業時間を返します。
      * overtime_hours が未設定の場合、記録に紐づく勤務クラス（未設定時はデフォルトスケジュール）の
      * 所定終業時刻を基準に超過分をフォールバック算出します。
@@ -655,10 +720,11 @@ public class AttendanceRecordService {
         Instant startInstant = DateTimeUtil.toInstant(startDate);
         Instant endInstant = DateTimeUtil.toInstant(endDate.plusDays(1));
         List<AttendanceRecord> records = attendanceRecordMapper.selectAllByDateRange(startInstant, endInstant);
+        Map<Long, WorkScheduleDefinition> scheduleByClassId = bulkResolveScheduleDefinitions(records);
         return records.stream()
                 .collect(Collectors.groupingBy(
                         r -> r.getUserId(),
-                        Collectors.summingDouble(r -> this.resolveOvertimeHoursForRecord(r))));
+                        Collectors.summingDouble(r -> this.resolveOvertimeHoursForRecord(r, scheduleByClassId))));
     }
 
     /**
@@ -679,12 +745,43 @@ public class AttendanceRecordService {
     }
 
     /**
+     * 対象レコード群が参照する勤務クラスIDを事前に一括取得し、classId をキーとする
+     * スケジュール定義のMapを構築します。集計処理でのN+1対策として、
+     * overtime_hours が null（フォールバック算出が必要）なレコードのclassIdのみを対象とします。
+     */
+    private Map<Long, WorkScheduleDefinition> bulkResolveScheduleDefinitions(List<AttendanceRecord> records) {
+        Set<Long> classIds = records.stream()
+                .filter(r -> r.getOvertimeHours() == null && r.getClassId() != null)
+                .map(AttendanceRecord::getClassId)
+                .collect(Collectors.toSet());
+        if (classIds.isEmpty()) {
+            return Map.of();
+        }
+        return workScheduleClassMapper.selectByIds(classIds).stream()
+                .collect(Collectors.toMap(WorkScheduleClass::getClassId, this::toWorkScheduleDefinition));
+    }
+
+    /**
      * 勤怠記録から残業時間を返します。
      * overtime_hours が null（未設定）の場合のみ勤務クラスの所定終業時刻との差分でフォールバック算出します。
      * overtime_hours=0.0 は「残業なし確定」として扱い、フォールバック算出は行いません。
+     * スケジュール定義は事前に一括取得したMap（{@link #bulkResolveScheduleDefinitions}）から参照し、
+     * レコードごとのMapper個別呼び出し（N+1）を避けます。
      */
-    private double resolveOvertimeHoursForRecord(AttendanceRecord record) {
-        return resolveOvertimeHours(record);
+    private double resolveOvertimeHoursForRecord(AttendanceRecord record, Map<Long, WorkScheduleDefinition> scheduleByClassId) {
+        if (record.getOvertimeHours() != null) {
+            return record.getOvertimeHours();
+        }
+        if (record.getAttendanceDate() == null || record.getEndTime() == null) {
+            return 0.0;
+        }
+
+        LocalDate attendanceDate = DateTimeUtil.toLocalDate(record.getAttendanceDate());
+        WorkScheduleDefinition schedule = record.getClassId() != null
+                ? scheduleByClassId.getOrDefault(record.getClassId(), WorkScheduleDefinition.defaultSchedule())
+                : WorkScheduleDefinition.defaultSchedule();
+        Double overtime = calculateExcessOvertime(attendanceDate, schedule, record.getEndTime());
+        return overtime != null ? overtime : 0.0;
     }
 
     /**
@@ -730,8 +827,14 @@ public class AttendanceRecordService {
 
         int savedCount = 0;
 
+        // 同一ユーザーの並行な一括保存リクエスト間でロック取得順序が入れ替わりデッドロックするのを防ぐため、日付昇順で処理する
+        List<Integer> processingOrder = java.util.stream.IntStream.range(0, dates.size())
+                .boxed()
+                .sorted(Comparator.comparing(dates::get, Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(Collectors.toList());
+
         // 全件問題なければ実際の保存処理を行う
-        for (int i = 0; i < dates.size(); i++) {
+        for (int i : processingOrder) {
             LocalDate date = dates.get(i);
             LocalTime s = (startTimes != null && startTimes.size() > i) ? startTimes.get(i) : null;
             LocalTime e = (endTimes != null && endTimes.size() > i) ? endTimes.get(i) : null;
@@ -888,8 +991,8 @@ public class AttendanceRecordService {
         List<TimeRange> nightWindows = new ArrayList<>();
         LocalDate[] dates = {attendanceDate.minusDays(1), attendanceDate, attendanceDate.plusDays(1)};
         for (LocalDate d : dates) {
-            Instant nStart = DateTimeUtil.toInstant(d, LocalTime.of(22, 0));
-            Instant nEnd = DateTimeUtil.toInstant(d.plusDays(1), LocalTime.of(5, 0));
+            Instant nStart = DateTimeUtil.toInstant(d, NIGHT_WORK_START);
+            Instant nEnd = DateTimeUtil.toInstant(d.plusDays(1), NIGHT_WORK_END);
             if (nStart != null && nEnd != null) {
                 nightWindows.add(new TimeRange(nStart, nEnd));
             }
@@ -1076,6 +1179,7 @@ public class AttendanceRecordService {
         Instant startInstant = DateTimeUtil.toInstant(startDate);
         Instant endInstant = DateTimeUtil.toInstant(endDate.plusDays(1));
         List<AttendanceRecord> records = attendanceRecordMapper.selectAllByDateRange(startInstant, endInstant);
+        Map<Long, WorkScheduleDefinition> scheduleByClassId = bulkResolveScheduleDefinitions(records);
 
         Map<Long, List<AttendanceRecord>> byUser = records.stream()
                 .collect(Collectors.groupingBy(r -> r.getUserId()));
@@ -1088,9 +1192,13 @@ public class AttendanceRecordService {
                             .mapToDouble(r -> r.getWorkingHours())
                             .sum();
                     double overtime = userRecords.stream()
-                            .mapToDouble(r -> this.resolveOvertimeHoursForRecord(r))
+                            .mapToDouble(r -> this.resolveOvertimeHoursForRecord(r, scheduleByClassId))
                             .sum();
-                    return new MonthlyUserSummary(entry.getKey(), working, overtime, userRecords.size());
+                    double nightShift = userRecords.stream()
+                            .filter(r -> r.getNightShiftHours() != null)
+                            .mapToDouble(r -> r.getNightShiftHours())
+                            .sum();
+                    return new MonthlyUserSummary(entry.getKey(), working, overtime, nightShift, userRecords.size());
                 })
                 .toList();
     }
@@ -1101,9 +1209,10 @@ public class AttendanceRecordService {
      * @param userId      ユーザーID
      * @param workingHours  合計勤務時間
      * @param overtimeHours 合計残業時間
+     * @param nightShiftHours 合計深夜労働時間
      * @param recordCount   出勤レコード数
      */
-    public record MonthlyUserSummary(Long userId, double workingHours, double overtimeHours, int recordCount) {}
+    public record MonthlyUserSummary(Long userId, double workingHours, double overtimeHours, double nightShiftHours, int recordCount) {}
 
     private void checkIntervalAndNotify(Long userId, LocalDate attendanceDate, Instant startTime) {
         if (startTime == null) {

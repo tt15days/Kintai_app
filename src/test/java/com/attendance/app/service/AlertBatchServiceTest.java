@@ -2,6 +2,7 @@ package com.attendance.app.service;
 
 import com.attendance.app.dto.Article36AlertDto;
 import com.attendance.app.dto.PaidLeaveAlertDto;
+import com.attendance.app.dto.UserNotificationKeyDto;
 import com.attendance.app.entity.UserNotification;
 import com.attendance.app.mapper.AlertBatchMapper;
 import com.attendance.app.mapper.UserNotificationMapper;
@@ -172,8 +173,11 @@ public class AlertBatchServiceTest {
 
             when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), eq(30)))
                     .thenReturn(List.of(dto));
-            when(userNotificationMapper.countByUserAndTypeSince(eq(1L), eq("ALERT_ARTICLE_36_LIMIT1"), any()))
-                    .thenReturn(1);
+            UserNotificationKeyDto existingKey = new UserNotificationKeyDto();
+            existingKey.setUserId(1L);
+            existingKey.setNotificationType("ALERT_ARTICLE_36_LIMIT1");
+            when(userNotificationMapper.selectExistingNotificationKeys(any(), any(), any()))
+                    .thenReturn(List.of(existingKey));
 
             alertBatchService.runAlertBatchManually(targetMonth);
 
@@ -193,8 +197,11 @@ public class AlertBatchServiceTest {
                     .thenReturn(List.of());
             when(alertBatchMapper.findUsersWithInsufficientPaidLeave(eq(9), eq(3), any()))
                     .thenReturn(List.of(dto));
-            when(userNotificationMapper.countByUserAndTypeSince(eq(3L), eq("ALERT_PAID_LEAVE"), any()))
-                    .thenReturn(1);
+            UserNotificationKeyDto existingKey = new UserNotificationKeyDto();
+            existingKey.setUserId(3L);
+            existingKey.setNotificationType("ALERT_PAID_LEAVE");
+            when(userNotificationMapper.selectExistingNotificationKeys(any(), any(), any()))
+                    .thenReturn(List.of(existingKey));
 
             alertBatchService.runAlertBatchManually(targetMonth);
 

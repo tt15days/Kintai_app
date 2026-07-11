@@ -15,6 +15,9 @@ spring:
     encoding: UTF-8
     prefix: classpath:/templates/
     suffix: .html
+  lifecycle:
+    # graceful shutdown時に進行中の処理を待つ最大時間
+    timeout-per-shutdown-phase: 30s
 
 mybatis:
   mapper-locations: classpath:mybatis/mapper/*.xml
@@ -27,6 +30,8 @@ mybatis:
 
 server:
   port: 8080
+  # 進行中のリクエスト（承認処理・CSVダウンロード等）を完了させてから停止するgraceful shutdownを有効化
+  shutdown: graceful
 
 logging:
   level:

@@ -197,7 +197,7 @@ public class SettingsController {
             log.info("勤怠期間設定を更新: startDay={}, endDay={}", startDay, endDay);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            log.warn("勤怠期間設定の更新に失敗: {}", e.getMessage());
+            log.warn("勤怠期間設定の更新に失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "勤怠期間設定の更新に失敗しました");
             log.error("勤怠期間設定の更新に失敗", e);
@@ -218,7 +218,7 @@ public class SettingsController {
                     daysAfterEnd, reminderDay, reminderHour);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            log.warn("バッチ処理設定の更新に失敗: {}", e.getMessage());
+            log.warn("バッチ処理設定の更新に失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "バッチ処理設定の更新に失敗しました");
             log.error("バッチ処理設定の更新に失敗", e);
@@ -241,7 +241,7 @@ public class SettingsController {
                     article36Limit1, article36Limit2, paidLeaveMonths, paidLeaveDays, minIntervalHours);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            log.warn("アラート閾値設定の更新に失敗: {}", e.getMessage());
+            log.warn("アラート閾値設定の更新に失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "アラート閾値設定の更新に失敗しました");
             log.error("アラート閾値設定の更新に失敗", e);
@@ -259,7 +259,7 @@ public class SettingsController {
             log.info("CSVファイル名パターン設定を更新: {}", pattern);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            log.warn("CSVファイル名パターン設定の更新に失敗: {}", e.getMessage());
+            log.warn("CSVファイル名パターン設定の更新に失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "CSVファイル名パターン設定の更新に失敗しました");
             log.error("CSVファイル名パターン設定 of 更新に失敗", e);
@@ -277,7 +277,7 @@ public class SettingsController {
             model.addAttribute("previewHolidays", holidays);
             redirectAttributes.addFlashAttribute("message", "CSVファイルをアップロードしました。プレビューを確認して保存してください。");
         } catch (IOException e) {
-            log.error("祝日CSVの解析に失敗しました: {}", e.getMessage());
+            log.error("祝日CSVの解析に失敗しました", e);
             redirectAttributes.addFlashAttribute("errorMessage", "ファイルの解析に失敗しました: " + e.getMessage());
         }
         return "redirect:/admin/settings";
@@ -315,10 +315,10 @@ public class SettingsController {
             
             sessionStatus.setComplete(); // セッション属性をクリア（previewHolidaysをクリア）
         } catch (IOException e) {
-            log.error("祝日データのパースに失敗しました: {}", e.getMessage());
+            log.error("祝日データのパースに失敗しました", e);
             redirectAttributes.addFlashAttribute("errorMessage", "データの処理に失敗しました: " + e.getMessage());
         } catch (Exception e) {
-            log.error("祝日設定の保存に失敗しました: {}", e.getMessage());
+            log.error("祝日設定の保存に失敗しました", e);
             redirectAttributes.addFlashAttribute("errorMessage", "祝日設定の保存に失敗しました: " + e.getMessage());
         }
         

@@ -120,4 +120,10 @@
         WHERE request_id = #{requestId}
     </update>
 
+    <!-- ユーザー単位のトランザクションスコープ advisory lock を取得し、勤怠修正申請の重複チェックをレース無く直列化する -->
+    <!-- キー空間 (2, user_id): LeaveApplicationMapper の (1, user_id) とは別名前空間のため衝突しない。トランザクション終了時に自動解放される -->
+    <select id="acquireUserLock" resultType="java.lang.Object">
+        SELECT pg_advisory_xact_lock(2, CAST(#{userId} AS INT))
+    </select>
+
 </mapper>

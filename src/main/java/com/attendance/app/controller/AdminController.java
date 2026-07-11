@@ -145,7 +145,7 @@ public class AdminController {
             log.info("ユーザーを追加: role={}, hireDate={}", userRole, hireDate);
             return ADMIN_DASHBOARD_SUCCESS_REDIRECT;
         } catch (IllegalArgumentException e) {
-            log.warn("ユーザー追加に失敗: {}", e.getMessage());
+            log.warn("ユーザー追加に失敗", e);
             model.addAttribute("error", e.getMessage());
             model.addAttribute("roles", UserRole.values());
             model.addAttribute("email", email);
@@ -225,7 +225,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("successMessage", "申請者ごとの承認者割当を更新しました");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            log.warn("申請者ごとの承認者割当更新に失敗: {}", e.getMessage());
+            log.warn("申請者ごとの承認者割当更新に失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "申請者ごとの承認者割当更新に失敗しました");
             logActionError(e, "申請者ごとの承認者割当更新に失敗");
@@ -253,7 +253,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("successMessage", "部署ごとの承認者割当を更新しました");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            log.warn("部署ごとの承認者割当更新に失敗: {}", e.getMessage());
+            log.warn("部署ごとの承認者割当更新に失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "部署ごとの承認者割当更新に失敗しました");
             logActionError(e, "部署ごとの承認者割当更新に失敗");
@@ -303,7 +303,7 @@ public class AdminController {
             log.info("ユーザー情報を更新: userId={}", userId);
             return ADMIN_USERS_REDIRECT;
         } catch (IllegalArgumentException e) {
-            log.warn("ユーザー情報更新に失敗: {}", e.getMessage());
+            log.warn("ユーザー情報更新に失敗", e);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             return ADMIN_USER_DETAIL_REDIRECT_PREFIX + userId;
         }
@@ -407,12 +407,19 @@ public class AdminController {
                     .collect(Collectors.toList());
             model.addAttribute("departments", departments);
 
-            // 36協定チェックおよび各時間のサマリー取得
-            Map<Long, Double> overtimeSumByUserMap = attendanceRecordService.getOvertimeSumByUserForMonth(currentMonth);
-            Map<Long, Double> workingSumByUserMap = attendanceRecordService.getWorkingSumByUserForMonth(currentMonth);
+            // 36協定チェックおよび各時間のサマリー取得（working/overtime/nightShiftを1回のフェッチで集計）
+            List<AttendanceRecordService.MonthlyUserSummary> monthlySummaries =
+                    attendanceRecordService.getMonthlyAggregateForAllUsers(currentMonth);
+            Map<Long, Double> overtimeSumByUserMap = monthlySummaries.stream()
+                    .collect(Collectors.toMap(AttendanceRecordService.MonthlyUserSummary::userId,
+                            AttendanceRecordService.MonthlyUserSummary::overtimeHours));
+            Map<Long, Double> workingSumByUserMap = monthlySummaries.stream()
+                    .collect(Collectors.toMap(AttendanceRecordService.MonthlyUserSummary::userId,
+                            AttendanceRecordService.MonthlyUserSummary::workingHours));
+            Map<Long, Double> nightShiftSumByUserMap = monthlySummaries.stream()
+                    .collect(Collectors.toMap(AttendanceRecordService.MonthlyUserSummary::userId,
+                            AttendanceRecordService.MonthlyUserSummary::nightShiftHours));
             Map<Long, String> article36ByUserMap = new HashMap<>();
-            Map<Long, Double> nightShiftSumByUserMap = attendanceRecordService
-                    .getNightShiftSumByUserForMonth(currentMonth);
 
             for (User u : users) {
                 double overtime = overtimeSumByUserMap.getOrDefault(u.getUserId(), 0.0);
@@ -510,7 +517,7 @@ public class AdminController {
                     userId, annualLeaveGrantDays, annualLeaveIncrement, maxPaidLeaveDays);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            log.warn("有給設定の更新に失敗: userId={}, reason={}", userId, e.getMessage());
+            log.warn("有給設定の更新に失敗: userId={}, reason={}", userId, e.getMessage(), e);
         } catch (Exception e) {
             logActionError(e, "有給設定の更新に失敗");
             redirectAttributes.addFlashAttribute("errorMessage", "有給設定の更新に失敗しました");
@@ -557,7 +564,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("successMessage", "承認を取り消しました");
             log.info("管理者が承認を取り消し: submissionId={}, adminUserId={}", submissionId, adminUserId);
         } catch (IllegalArgumentException e) {
-            log.warn("承認取り消しに失敗: {}", e.getMessage());
+            log.warn("承認取り消しに失敗", e);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (Exception e) {
             logActionError(e, "承認取り消しに失敗");
@@ -590,7 +597,7 @@ public class AdminController {
      * @param logMessage ログ用メッセージ
      */
     private void logActionError(Exception e, String logMessage) {
-        log.error("{}: {}", logMessage, e.getMessage());
+        log.error("{}", logMessage, e);
     }
 
     /**
@@ -706,7 +713,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("successMessage", "勤務クラスを作成しました: " + name);
             log.info("勤務クラスを作成: name={}", name);
         } catch (IllegalArgumentException e) {
-            log.warn("勤務クラス作成に失敗: {}", e.getMessage());
+            log.warn("勤務クラス作成に失敗", e);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (Exception e) {
             logActionError(e, "勤務クラス作成に失敗");
@@ -776,7 +783,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("successMessage", "勤務クラスを更新しました: " + name);
             log.info("勤務クラスを更新: classId={}, name={}", classId, name);
         } catch (IllegalArgumentException e) {
-            log.warn("勤務クラス更新に失敗: {}", e.getMessage());
+            log.warn("勤務クラス更新に失敗", e);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (Exception e) {
             logActionError(e, "勤務クラス更新に失敗");
@@ -799,7 +806,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("successMessage", "勤務クラスを無効化（論理削除）しました");
             log.info("勤務クラスを論理削除: classId={}", classId);
         } catch (IllegalArgumentException e) {
-            log.warn("勤務クラス削除に失敗: {}", e.getMessage());
+            log.warn("勤務クラス削除に失敗", e);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (Exception e) {
             logActionError(e, "勤務クラス削除に失敗");
@@ -866,7 +873,7 @@ public class AdminController {
                 log.info("管理者一括通知を送信: count={}, senderUserId={}", count, senderUserId);
             }
         } catch (IllegalArgumentException e) {
-            log.warn("通知送信に失敗: {}", e.getMessage());
+            log.warn("通知送信に失敗", e);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (Exception e) {
             logActionError(e, "通知送信に失敗");
@@ -912,10 +919,12 @@ public class AdminController {
                             "label", ym.getYear() + "年" + ym.getMonthValue() + "月"))
                     .toList();
 
+            // 3ヶ月分の月次集計を1回のフェッチ（範囲取得＋YearMonthグルーピング）にまとめて取得
+            Map<YearMonth, Map<Long, Double>> overtimeByMonth = attendanceRecordService.getOvertimeSumByUserForMonthRange(months);
             overtimeCellMap = new HashMap<>();
             article36StatusCellMap = new HashMap<>();
             for (YearMonth ym : months) {
-                Map<Long, Double> overtimeMap = attendanceRecordService.getOvertimeSumByUserForMonth(ym);
+                Map<Long, Double> overtimeMap = overtimeByMonth.getOrDefault(ym, Map.of());
                 for (User u : users) {
                     double ot = overtimeMap.getOrDefault(u.getUserId(), 0.0);
                     String cellKey = ym + "_" + u.getUserId();
@@ -1009,7 +1018,7 @@ public class AdminController {
                     target.getFullName() + " さんに36協定アラートを送信しました");
             log.info("36協定アラートを送信: userId={}, yearMonth={}, overtime={}", userId, ym, ot);
         } catch (IllegalArgumentException e) {
-            log.warn("36協定アラート送信に失敗: {}", e.getMessage());
+            log.warn("36協定アラート送信に失敗", e);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (Exception e) {
             logActionError(e, "36協定アラート送信に失敗");
@@ -1050,7 +1059,7 @@ public class AdminController {
                     .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                     .body(csvBytes);
         } catch (IllegalArgumentException e) {
-            log.warn("月次勤怠CSVダウンロードに失敗: {}", e.getMessage());
+            log.warn("月次勤怠CSVダウンロードに失敗", e);
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             logActionError(e, "月次勤怠CSVダウンロードに失敗");

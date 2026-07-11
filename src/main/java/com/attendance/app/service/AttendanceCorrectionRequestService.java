@@ -2,6 +2,7 @@ package com.attendance.app.service;
 
 import com.attendance.app.entity.AttendanceCorrectionRequest;
 import com.attendance.app.entity.AttendanceRecord;
+import com.attendance.app.entity.AuditEventType;
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserRole;
 import com.attendance.app.mapper.AttendanceCorrectionRequestMapper;
@@ -48,6 +49,7 @@ public class AttendanceCorrectionRequestService {
     private final AttendanceRecordService attendanceRecordService;
     private final AttendanceSubmissionService attendanceSubmissionService;
     private final UserService userService;
+    private final AuditLogService auditLogService;
 
     /**
      * ユーザーが勤怠修正申請を提出します。
@@ -83,6 +85,10 @@ public class AttendanceCorrectionRequestService {
         // 対象月を決定
         YearMonth targetYearMonth = attendanceSubmissionService.resolvePayrollMonth(attendanceDate);
         String targetYearMonthKey = targetYearMonth.format(YEAR_MONTH_FORMATTER);
+
+        // ユーザー単位のadvisory lockを取得し、重複チェック〜申請作成までを直列化する（TOCTOUレース対策）
+        // トランザクション終了時に自動解放される
+        correctionRequestMapper.acquireUserLock(userId);
 
         // 既に申請中の修正申請がないか確認
         List<AttendanceCorrectionRequest> existing = correctionRequestMapper.selectByUserAndMonth(userId, targetYearMonthKey);
@@ -192,6 +198,13 @@ public class AttendanceCorrectionRequestService {
         correctionRequestMapper.update(request);
         log.info("勤怠修正申請を承認: requestId={}, approverUserId={}, attendanceDate={}",
                 requestId, approverUserId, request.getAttendanceDate());
+
+        auditLogService.recordCorrectionRequestEvent(
+                AuditEventType.CORRECTION_APPROVED,
+                approverUserId,
+                request.getUserId(),
+                requestId,
+                "対象日: " + request.getAttendanceDate());
     }
 
     /**
@@ -223,6 +236,13 @@ public class AttendanceCorrectionRequestService {
         request.setActionAt(Instant.now());
         correctionRequestMapper.update(request);
         log.info("勤怠修正申請を却下: requestId={}, approverUserId={}", requestId, approverUserId);
+
+        auditLogService.recordCorrectionRequestEvent(
+                AuditEventType.CORRECTION_REJECTED,
+                approverUserId,
+                request.getUserId(),
+                requestId,
+                "対象日: " + request.getAttendanceDate());
     }
 
     /**

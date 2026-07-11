@@ -1,5 +1,6 @@
 package com.attendance.app.service;
 
+import com.attendance.app.entity.AuditEventType;
 import com.attendance.app.entity.LeaveApplication;
 import com.attendance.app.entity.LeaveStatus;
 import com.attendance.app.entity.LeaveType;
@@ -35,6 +36,7 @@ public class LeaveApplicationService {
     private final LeaveApplicationMapper leaveApplicationMapper;
     private final PaidLeaveBalanceService paidLeaveBalanceService;
     private final HolidayService holidayService;
+    private final AuditLogService auditLogService;
 
     /**
      * 指定された申請IDに該当する休暇申請を取得します。
@@ -262,15 +264,23 @@ public class LeaveApplicationService {
         leaveApplicationMapper.update(application);
 
         log.info("休暇申請を承認しました: applicationId={}, approvedBy={}", applicationId, approvedBy);
+
+        auditLogService.recordLeaveApplicationEvent(
+                AuditEventType.LEAVE_APPROVED,
+                approvedBy,
+                application.getUserId(),
+                applicationId,
+                "期間: " + application.getLeaveStartDate() + "〜" + application.getLeaveEndDate());
     }
 
     /**
      * 申請中の休暇申請を却下します。
      *
      * @param applicationId 却下対象の申請ID
+     * @param actionBy      却下操作を実行したユーザーID
      * @throws IllegalArgumentException 申請が存在しない、またはステータスが申請中（PENDING）でない場合
      */
-    public void rejectApplication(Long applicationId) {
+    public void rejectApplication(Long applicationId, Long actionBy) {
         LeaveApplication application = findApplicationForUpdateOrThrow(applicationId);
 
         if (application.getStatus() != LeaveStatus.PENDING) {
@@ -281,6 +291,13 @@ public class LeaveApplicationService {
         application.setUpdatedAt(DateTimeUtil.now());
         leaveApplicationMapper.update(application);
         log.info("休暇申請を却下しました: applicationId={}", applicationId);
+
+        auditLogService.recordLeaveApplicationEvent(
+                AuditEventType.LEAVE_REJECTED,
+                actionBy,
+                application.getUserId(),
+                applicationId,
+                "期間: " + application.getLeaveStartDate() + "〜" + application.getLeaveEndDate());
     }
 
     /**

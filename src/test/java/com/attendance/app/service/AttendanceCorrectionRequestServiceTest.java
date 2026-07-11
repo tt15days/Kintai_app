@@ -2,6 +2,7 @@ package com.attendance.app.service;
 
 import com.attendance.app.entity.AttendanceCorrectionRequest;
 import com.attendance.app.entity.AttendanceRecord;
+import com.attendance.app.entity.AuditEventType;
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserRole;
 import com.attendance.app.mapper.AttendanceCorrectionRequestMapper;
@@ -24,6 +25,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +40,8 @@ class AttendanceCorrectionRequestServiceTest {
     private AttendanceSubmissionService attendanceSubmissionService;
     @Mock
     private UserService userService;
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private AttendanceCorrectionRequestService service;
@@ -226,6 +230,8 @@ class AttendanceCorrectionRequestServiceTest {
             verify(correctionRequestMapper).update(pending);
             assertThat(pending.getStatus()).isEqualTo(AttendanceCorrectionRequestService.STATUS_APPROVED);
             assertThat(pending.getActionComment()).isEqualTo("承認します");
+            verify(auditLogService).recordCorrectionRequestEvent(
+                    eq(AuditEventType.CORRECTION_APPROVED), eq(3L), eq(21L), eq(300L), any());
         }
 
         @Test
@@ -321,6 +327,8 @@ class AttendanceCorrectionRequestServiceTest {
             assertThat(pending.getActionComment()).isEqualTo("却下します");
             assertThat(pending.getActionBy()).isEqualTo(1L);
             verify(correctionRequestMapper).update(pending);
+            verify(auditLogService).recordCorrectionRequestEvent(
+                    eq(AuditEventType.CORRECTION_REJECTED), eq(1L), eq(21L), eq(400L), any());
         }
 
         @Test

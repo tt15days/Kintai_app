@@ -71,7 +71,7 @@ public class ProfileController {
             model.addAttribute("totalRemainingPaidLeaveDays", remainingPaidLeaveDays);
             log.info("プロフィール画面を表示: userId={}", currentUser.getUserId());
         } catch (Exception e) {
-            log.error("プロフィール画面表示に失敗: {}", e.getMessage());
+            log.error("プロフィール画面表示に失敗", e);
             model.addAttribute("error", "プロフィール画面の表示に失敗しました");
         }
         return PROFILE_VIEW;
@@ -94,10 +94,10 @@ public class ProfileController {
             redirectAttributes.addFlashAttribute("successMessage", "所属クラスを更新しました");
             log.info("所属クラスを更新: userId={}, className={}", userId, className);
         } catch (IllegalArgumentException e) {
-            log.warn("所属クラス更新に失敗: {}", e.getMessage());
+            log.warn("所属クラス更新に失敗", e);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (Exception e) {
-            log.error("所属クラス更新に失敗: {}", e.getMessage());
+            log.error("所属クラス更新に失敗", e);
             redirectAttributes.addFlashAttribute("errorMessage", "所属クラスの更新に失敗しました");
         }
         return PROFILE_REDIRECT;

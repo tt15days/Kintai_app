@@ -29,6 +29,12 @@ public class AuditLogService {
     /** audit_logs.target_type: 月次勤怠申請 */
     public static final String TARGET_TYPE_SUBMISSION = "ATTENDANCE_SUBMISSION";
 
+    /** audit_logs.target_type: 勤怠修正申請 */
+    public static final String TARGET_TYPE_CORRECTION_REQUEST = "ATTENDANCE_CORRECTION_REQUEST";
+
+    /** audit_logs.target_type: 休暇申請 */
+    public static final String TARGET_TYPE_LEAVE_APPLICATION = "LEAVE_APPLICATION";
+
     /** audit_logs.target_type: ユーザー */
     public static final String TARGET_TYPE_USER = "USER";
 
@@ -50,6 +56,42 @@ public class AuditLogService {
             Long submissionId,
             String description) {
         record(eventType, actorUserId, targetUserId, TARGET_TYPE_SUBMISSION, submissionId, description);
+    }
+
+    /**
+     * 勤怠修正申請に関する監査イベントを記録する。
+     *
+     * @param eventType    イベント種別（CORRECTION_APPROVED / CORRECTION_REJECTED）
+     * @param actorUserId  操作を実行したユーザー ID（承認者）
+     * @param targetUserId 影響を受けたユーザー ID（申請者）
+     * @param requestId    操作対象の修正申請 ID
+     * @param description  補足情報（対象日、コメント等）。個人情報は含めない
+     */
+    public void recordCorrectionRequestEvent(
+            AuditEventType eventType,
+            Long actorUserId,
+            Long targetUserId,
+            Long requestId,
+            String description) {
+        record(eventType, actorUserId, targetUserId, TARGET_TYPE_CORRECTION_REQUEST, requestId, description);
+    }
+
+    /**
+     * 休暇申請に関する監査イベントを記録する。
+     *
+     * @param eventType     イベント種別（LEAVE_APPROVED / LEAVE_REJECTED）
+     * @param actorUserId   操作を実行したユーザー ID（承認者）
+     * @param targetUserId  影響を受けたユーザー ID（申請者）
+     * @param applicationId 操作対象の休暇申請 ID
+     * @param description   補足情報（休暇期間等）。個人情報は含めない
+     */
+    public void recordLeaveApplicationEvent(
+            AuditEventType eventType,
+            Long actorUserId,
+            Long targetUserId,
+            Long applicationId,
+            String description) {
+        record(eventType, actorUserId, targetUserId, TARGET_TYPE_LEAVE_APPLICATION, applicationId, description);
     }
 
     /**

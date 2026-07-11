@@ -216,12 +216,12 @@ class AdminControllerTest {
             User tester = User.builder().userId(3L).fullName("テストユーザー").userRole(UserRole.USER).build();
             when(userService.getActiveUsers()).thenReturn(List.of(user, tester));
 
-            when(attendanceRecordService.getOvertimeSumByUserForMonth(YearMonth.of(2026, 4)))
-                    .thenReturn(Map.of(2L, 0.0, 3L, 1.5));
-            when(attendanceRecordService.getOvertimeSumByUserForMonth(YearMonth.of(2026, 5)))
-                    .thenReturn(Map.of(2L, 2.0, 3L, 0.0));
-            when(attendanceRecordService.getOvertimeSumByUserForMonth(YearMonth.of(2026, 6)))
-                    .thenReturn(Map.of(2L, 40.5, 3L, 0.0));
+            when(attendanceRecordService.getOvertimeSumByUserForMonthRange(
+                    List.of(YearMonth.of(2026, 4), YearMonth.of(2026, 5), YearMonth.of(2026, 6))))
+                    .thenReturn(Map.of(
+                            YearMonth.of(2026, 4), Map.of(2L, 0.0, 3L, 1.5),
+                            YearMonth.of(2026, 5), Map.of(2L, 2.0, 3L, 0.0),
+                            YearMonth.of(2026, 6), Map.of(2L, 40.5, 3L, 0.0)));
             when(attendanceRecordService.checkArticle36(0.0)).thenReturn("NORMAL");
             when(attendanceRecordService.checkArticle36(1.5)).thenReturn("NORMAL");
             when(attendanceRecordService.checkArticle36(2.0)).thenReturn("NORMAL");

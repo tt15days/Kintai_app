@@ -8,11 +8,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.YearMonth;
-import java.time.ZoneId;
 import java.util.List;
+
+import com.attendance.app.util.DateTimeUtil;
 
 /**
  * BatchSchedulerService - 定期バッチ処理
@@ -33,7 +32,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BatchSchedulerService {
 
-    private static final ZoneId JAPAN_ZONE = ZoneId.of("Asia/Tokyo");
     private static final String BATCH_LOG_START = "バッチ開始: {}";
     private static final String BATCH_LOG_DONE  = "バッチ完了: {}";
     private static final String BATCH_LOG_ERROR = "バッチ異常終了: job={}, error={}";
@@ -57,7 +55,7 @@ public class BatchSchedulerService {
      */
     @Scheduled(cron = "0 0 1 * * ?", zone = "Asia/Tokyo")
     public void runMonthlySummaryCheck() {
-        LocalDate today = LocalDate.now(JAPAN_ZONE);
+        LocalDate today = DateTimeUtil.todayJapan();
         int endDay    = attendancePeriodSettingService.getEndDay();
         int daysAfter = batchSettingService.getMonthlySummaryDaysAfterEnd();
         LocalDate targetDay = today.minusDays(daysAfter);
@@ -95,7 +93,7 @@ public class BatchSchedulerService {
                 }
             }
             log.info(BATCH_LOG_DONE, "月次集計: " + summaries.size() + "名処理");
-            batchSettingService.recordMonthlySummaryExecutedAt(LocalDateTime.now(JAPAN_ZONE));
+            batchSettingService.recordMonthlySummaryExecutedAt(DateTimeUtil.nowJapan());
         } catch (Exception e) {
             log.error(BATCH_LOG_ERROR, "月次集計", e.getMessage(), e);
         }
@@ -113,10 +111,10 @@ public class BatchSchedulerService {
      */
     @Scheduled(cron = "0 0 * * * ?", zone = "Asia/Tokyo")
     public void runSubmissionReminderCheck() {
-        LocalDate today = LocalDate.now(JAPAN_ZONE);
+        LocalDate today = DateTimeUtil.todayJapan();
         int reminderDay  = batchSettingService.getReminderDay();
         int reminderHour = batchSettingService.getReminderHour();
-        int nowHour = LocalTime.now(JAPAN_ZONE).getHour();
+        int nowHour = DateTimeUtil.currentTimeJapan().getHour();
         if (today.getDayOfMonth() == reminderDay && nowHour == reminderHour) {
             executeSubmissionReminder();
         }
@@ -133,7 +131,7 @@ public class BatchSchedulerService {
         try {
             int count = userNotificationService.createRemindersForUnsubmittedUsers(currentMonth);
             log.info(BATCH_LOG_DONE, "勤怠提出リマインド: " + count + "名に通知作成");
-            batchSettingService.recordReminderExecutedAt(LocalDateTime.now(JAPAN_ZONE));
+            batchSettingService.recordReminderExecutedAt(DateTimeUtil.nowJapan());
         } catch (Exception e) {
             log.error(BATCH_LOG_ERROR, "勤怠提出リマインド", e.getMessage(), e);
         }
@@ -165,14 +163,21 @@ public class BatchSchedulerService {
      * @return 付与人数・スキップ人数
      */
     public AnnualLeaveGrantResult executeAnnualLeaveGrant() {
-        LocalDate today = LocalDate.now(JAPAN_ZONE);
+        LocalDate today = DateTimeUtil.todayJapan();
         log.info(BATCH_LOG_START, "年次有給付与: executedDate=" + today);
 
         List<User> users = userService.getActiveUsers();
+
+        // N+1対策として当年付与済みユーザーIDを一括取得してからループでフィルタする
+        List<Long> userIds = users.stream().map(User::getUserId).toList();
+        java.util.Set<Long> alreadyGrantedUserIds = paidLeaveBalanceService.getByUsersAndYear(userIds, today.getYear()).stream()
+                .map(com.attendance.app.entity.PaidLeaveBalance::getUserId)
+                .collect(java.util.stream.Collectors.toSet());
+
         int grantedCount = 0;
         int skippedCount = 0;
         for (User user : users) {
-            if (paidLeaveBalanceService.getByUserAndYear(user.getUserId(), today.getYear()).isPresent()) {
+            if (alreadyGrantedUserIds.contains(user.getUserId())) {
                 log.info("年次有給付与: userId={} は{}年分を付与済みのためスキップ", user.getUserId(), today.getYear());
                 skippedCount++;
                 continue;
@@ -192,7 +197,7 @@ public class BatchSchedulerService {
             }
         }
         log.info(BATCH_LOG_DONE, "年次有給付与: 付与" + grantedCount + "名, スキップ" + skippedCount + "名");
-        batchSettingService.recordAnnualLeaveGrantExecutedAt(LocalDateTime.now(JAPAN_ZONE));
+        batchSettingService.recordAnnualLeaveGrantExecutedAt(DateTimeUtil.nowJapan());
         return new AnnualLeaveGrantResult(grantedCount, skippedCount);
     }
 }

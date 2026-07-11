@@ -14,7 +14,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.LocalTime;
 
 /**
  * AdminAnnouncementController - 管理者お知らせ管理
@@ -69,10 +69,9 @@ public class AdminAnnouncementController {
             RedirectAttributes redirectAttributes) {
         try {
             Long createdBy = securityUtil.getCurrentUser().getUserId();
-            ZoneId jst = ZoneId.of("Asia/Tokyo");
-            Instant startInstant = displayStartDate.atStartOfDay(jst).toInstant();
+            Instant startInstant = DateTimeUtil.toInstant(displayStartDate);
             Instant endInstant = displayEndDate != null
-                    ? displayEndDate.atTime(23, 59, 59).atZone(jst).toInstant()
+                    ? DateTimeUtil.toInstant(displayEndDate, LocalTime.of(23, 59, 59))
                     : null;
             AdminAnnouncement announcement = AdminAnnouncement.builder()
                     .title(title.strip())
@@ -113,10 +112,9 @@ public class AdminAnnouncementController {
             @RequestParam(required = false) LocalDate displayEndDate,
             RedirectAttributes redirectAttributes) {
         try {
-            ZoneId jst = ZoneId.of("Asia/Tokyo");
-            Instant startInstant = displayStartDate.atStartOfDay(jst).toInstant();
+            Instant startInstant = DateTimeUtil.toInstant(displayStartDate);
             Instant endInstant = displayEndDate != null
-                    ? displayEndDate.atTime(23, 59, 59).atZone(jst).toInstant()
+                    ? DateTimeUtil.toInstant(displayEndDate, LocalTime.of(23, 59, 59))
                     : null;
             AdminAnnouncement announcement = AdminAnnouncement.builder()
                     .announcementId(announcementId)

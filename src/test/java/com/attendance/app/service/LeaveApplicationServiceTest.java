@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -46,6 +47,9 @@ class LeaveApplicationServiceTest {
 
     @Mock
     private HolidayService holidayService;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private LeaveApplicationService service;
@@ -263,6 +267,8 @@ class LeaveApplicationServiceTest {
             assertThat(app.getApprovedBy()).isEqualTo(10L);
             assertThat(app.getApprovedAt()).isNotNull();
             verify(leaveApplicationMapper).update(app);
+            verify(auditLogService).recordLeaveApplicationEvent(
+                    eq(com.attendance.app.entity.AuditEventType.LEAVE_APPROVED), eq(10L), eq(2L), eq(1L), any());
         }
 
         @Test
@@ -389,10 +395,12 @@ class LeaveApplicationServiceTest {
             LeaveApplication app = pendingApp(1L);
             when(leaveApplicationMapper.selectByIdForUpdate(1L)).thenReturn(Optional.of(app));
 
-            service.rejectApplication(1L);
+            service.rejectApplication(1L, 10L);
 
             assertThat(app.getStatus()).isEqualTo(LeaveStatus.REJECTED);
             verify(leaveApplicationMapper).update(app);
+            verify(auditLogService).recordLeaveApplicationEvent(
+                    eq(com.attendance.app.entity.AuditEventType.LEAVE_REJECTED), eq(10L), eq(2L), eq(1L), any());
         }
 
         @Test
@@ -402,7 +410,7 @@ class LeaveApplicationServiceTest {
                     .applicationId(1L).status(LeaveStatus.APPROVED).build();
             when(leaveApplicationMapper.selectByIdForUpdate(1L)).thenReturn(Optional.of(app));
 
-            assertThatThrownBy(() -> service.rejectApplication(1L))
+            assertThatThrownBy(() -> service.rejectApplication(1L, 10L))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("申請中のステータスのみ却下できます");
         }

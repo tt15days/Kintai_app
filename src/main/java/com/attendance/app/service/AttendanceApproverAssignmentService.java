@@ -61,6 +61,10 @@ public class AttendanceApproverAssignmentService {
 
         Set<Long> normalizedIds = normalizeAndValidateApproverIds(approverUserIds, applicant.getUserId());
 
+        // 申請者単位のadvisory lockを取得し、delete-then-insertを直列化する（TOCTOUレース対策）
+        // トランザクション終了時に自動解放される
+        assignmentMapper.acquireUserApproverLock(applicantUserId);
+
         assignmentMapper.deleteUserApprovers(applicantUserId);
         for (Long approverUserId : normalizedIds) {
             assignmentMapper.insertUserApprover(applicantUserId, approverUserId);
@@ -82,6 +86,10 @@ public class AttendanceApproverAssignmentService {
 
         Set<Long> normalizedIds = normalizeAndValidateApproverIds(approverUserIds, null);
         String normalizedDepartment = departmentName.trim();
+
+        // 部署単位のadvisory lockを取得し、delete-then-insertを直列化する（TOCTOUレース対策）
+        // トランザクション終了時に自動解放される
+        assignmentMapper.acquireDepartmentApproverLock(normalizedDepartment);
 
         assignmentMapper.deleteDepartmentApprovers(normalizedDepartment);
         for (Long approverUserId : normalizedIds) {

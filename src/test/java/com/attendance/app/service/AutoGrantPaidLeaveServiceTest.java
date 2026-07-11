@@ -15,7 +15,6 @@ import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Optional;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,7 +46,7 @@ public class AutoGrantPaidLeaveServiceTest {
         user1.setUserId(101L);
 
         when(userService.getActiveUsers()).thenReturn(List.of(user1));
-        when(paidLeaveBalanceService.getByUserAndYear(eq(101L), anyInt())).thenReturn(Optional.empty());
+        when(paidLeaveBalanceService.getByUsersAndYear(anyList(), anyInt())).thenReturn(List.of());
 
         autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
@@ -109,7 +108,7 @@ public class AutoGrantPaidLeaveServiceTest {
             User user1 = new User();
             user1.setUserId(101L);
             when(userService.getActiveUsers()).thenReturn(List.of(user1));
-            when(paidLeaveBalanceService.getByUserAndYear(eq(101L), anyInt())).thenReturn(Optional.empty());
+            when(paidLeaveBalanceService.getByUsersAndYear(anyList(), anyInt())).thenReturn(List.of());
 
             autoGrantPaidLeaveService.grantPaidLeaveBatch();
 

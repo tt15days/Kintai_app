@@ -55,7 +55,7 @@ public interface UserMapper {
     List<User> selectAllActive();
     
     /**
-     * すべてのユーザーを取得（ページング対応）
+     * すべてのユーザーを取得（全件取得。ページング引数はなし）
      *
      * @return ユーザー情報のリスト
      */
