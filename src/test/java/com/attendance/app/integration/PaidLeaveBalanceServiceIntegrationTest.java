@@ -3,6 +3,7 @@ package com.attendance.app.integration;
 import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserRole;
+import com.attendance.app.mapper.PaidLeaveBalanceMapper;
 import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.service.PaidLeaveBalanceService;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,9 @@ class PaidLeaveBalanceServiceIntegrationTest {
     private PaidLeaveBalanceService paidLeaveBalanceService;
 
     @Autowired
+    private PaidLeaveBalanceMapper paidLeaveBalanceMapper;
+
+    @Autowired
     private UserMapper userMapper;
 
     @Test
@@ -36,7 +40,7 @@ class PaidLeaveBalanceServiceIntegrationTest {
     void deductBalance_fifo_updatesRowsInOrder() {
         Long userId = createIntegrationUser();
 
-        paidLeaveBalanceService.insert(PaidLeaveBalance.builder()
+        paidLeaveBalanceMapper.insert(PaidLeaveBalance.builder()
                 .userId(userId)
                 .grantYear(2097)
                 .grantedDays(new BigDecimal("5.0"))
@@ -45,7 +49,7 @@ class PaidLeaveBalanceServiceIntegrationTest {
                 .carriedOverDays(BigDecimal.ZERO)
                 .usedDays(BigDecimal.ZERO)
                 .build());
-        paidLeaveBalanceService.insert(PaidLeaveBalance.builder()
+        paidLeaveBalanceMapper.insert(PaidLeaveBalance.builder()
                 .userId(userId)
                 .grantYear(2098)
                 .grantedDays(new BigDecimal("10.0"))
@@ -69,7 +73,7 @@ class PaidLeaveBalanceServiceIntegrationTest {
     void getTotalRemainingDays_sumsActiveBalances() {
         Long userId = createIntegrationUser();
 
-        paidLeaveBalanceService.insert(PaidLeaveBalance.builder()
+        paidLeaveBalanceMapper.insert(PaidLeaveBalance.builder()
                 .userId(userId)
                 .grantYear(2099)
                 .grantedDays(new BigDecimal("8.0"))
@@ -86,7 +90,7 @@ class PaidLeaveBalanceServiceIntegrationTest {
     @DisplayName("返還時は新しい有給から順に used_days が差し引かれる")
     void refundBalance_refundsRecentBalances() {
         Long userId = createIntegrationUser();
-        paidLeaveBalanceService.insert(PaidLeaveBalance.builder()
+        paidLeaveBalanceMapper.insert(PaidLeaveBalance.builder()
                 .userId(userId)
                 .grantYear(2097)
                 .grantedDays(new BigDecimal("10.0"))
@@ -95,7 +99,7 @@ class PaidLeaveBalanceServiceIntegrationTest {
                 .carriedOverDays(BigDecimal.ZERO)
                 .usedDays(new BigDecimal("5.0"))
                 .build());
-        paidLeaveBalanceService.insert(PaidLeaveBalance.builder()
+        paidLeaveBalanceMapper.insert(PaidLeaveBalance.builder()
                 .userId(userId)
                 .grantYear(2098)
                 .grantedDays(new BigDecimal("10.0"))

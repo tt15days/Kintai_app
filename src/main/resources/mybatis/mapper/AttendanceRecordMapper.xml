@@ -83,7 +83,7 @@
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="recordId">
         INSERT INTO attendance_records (user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted)
-        VALUES (#{userId}, #{classId}, #{attendanceDate,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, #{startTime,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, #{endTime,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, #{eventTypeId}, #{workingHours}, #{breakTimeMinutes}, #{overtimeHours}, #{nightShiftHours}, #{holidayWorkHours}, #{remarks}, NOW(), NOW(), COALESCE(#{isDeleted}, false))
+        VALUES (#{userId}, #{classId}, #{attendanceDate,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, #{startTime,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, #{endTime,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, #{eventTypeId}, #{workingHours}, COALESCE(#{breakTimeMinutes}, 0), #{overtimeHours}, COALESCE(#{nightShiftHours}, 0.0), #{holidayWorkHours}, #{remarks}, NOW(), NOW(), COALESCE(#{isDeleted}, false))
     </insert>
 
     <update id="update">
@@ -95,9 +95,9 @@
             end_time = #{endTime,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP}, 
             event_type_id = #{eventTypeId},
             working_hours = #{workingHours},
-            break_time_minutes = #{breakTimeMinutes},
+            break_time_minutes = COALESCE(#{breakTimeMinutes}, 0),
             overtime_hours = #{overtimeHours},
-            night_shift_hours = #{nightShiftHours},
+            night_shift_hours = COALESCE(#{nightShiftHours}, 0.0),
             holiday_work_hours = #{holidayWorkHours},
             remarks = #{remarks},
             is_deleted = #{isDeleted},

@@ -51,6 +51,11 @@ public class UserService {
     /** パスワードポリシー: 英字と数字をそれぞれ1文字以上含む8文字以上 */
     private static final java.util.regex.Pattern PASSWORD_PATTERN =
             java.util.regex.Pattern.compile("^(?=.*[a-zA-Z])(?=.*[0-9]).{8,}$");
+    private static final int MAX_FULL_NAME_LENGTH = 255;
+    private static final int MAX_EMAIL_LENGTH = 255;
+    private static final int MAX_POSITION_TITLE_LENGTH = 100;
+    private static final int MAX_PHONE_NUMBER_LENGTH = 30;
+    private static final int MAX_CLASS_NAME_LENGTH = 100;
 
     private final UserMapper userMapper;
     private final WorkScheduleClassMapper workScheduleClassMapper;
@@ -121,6 +126,7 @@ public class UserService {
      */
     public User createUser(String email, String password, String fullName, UserRole role, java.time.LocalDate hireDate, Long actorUserId) {
         validatePassword(password);
+        validateFieldLengths(fullName, email, null, null, null);
         if (userMapper.existsByEmail(email)) {
             throw new IllegalArgumentException("このメールアドレスは既に登録されています: " + email);
         }
@@ -212,6 +218,11 @@ public class UserService {
             throw new IllegalArgumentException("自分自身のアカウントを無効にすることはできません。");
         }
 
+        validateFieldLengths(fullName, email, positionTitle, phoneNumber, className);
+        if (!user.getEmail().equals(email) && userMapper.existsByEmail(email)) {
+            throw new IllegalArgumentException("このメールアドレスは既に登録されています: " + email);
+        }
+
         user.setEmail(email);
         user.setFullName(fullName);
         user.setUserRole(role);
@@ -241,10 +252,7 @@ public class UserService {
 
         // アカウントが無効化された場合、そのユーザーの承認者割り当て（個人・部署）を解除する
         if (!isActive) {
-            approverAssignmentMapper.deleteUserApproverByApprover(userId);
-            approverAssignmentMapper.deleteDepartmentApproverByApprover(userId);
-            log.info("無効化されたユーザーの承認者割り当てを解除しました: userId={}", userId);
-            
+            cleanupApproverAssignments(userId);
             deletePendingLeaveApplications(userId);
         }
 
@@ -344,6 +352,7 @@ public class UserService {
         userMapper.softDeleteById(userId);
         log.info("ユーザーを削除しました: userId={}", userId);
 
+        cleanupApproverAssignments(userId);
         deletePendingLeaveApplications(userId);
 
         auditLogService.recordUserEvent(
@@ -354,14 +363,15 @@ public class UserService {
     }
 
     /**
-     * ユーザーをハードデリート（物理削除）します。
+     * 指定ユーザーの承認者割り当て（個人・部署）をすべて解除します。
+     * ユーザーの無効化・削除の際に呼び出され、解除後もそのユーザーが承認者として残留しないようにします。
      *
-     * @param userId 削除対象のユーザーID
+     * @param userId 対象ユーザーID
      */
-    public void hardDeleteUser(Long userId) {
-        deletePendingLeaveApplications(userId);
-        userMapper.deleteById(userId);
-        log.info("ユーザーをハードデリートしました: userId={}", userId);
+    private void cleanupApproverAssignments(Long userId) {
+        approverAssignmentMapper.deleteUserApproverByApprover(userId);
+        approverAssignmentMapper.deleteDepartmentApproverByApprover(userId);
+        log.info("ユーザーの承認者割り当てを解除しました: userId={}", userId);
     }
 
     /**
@@ -475,6 +485,27 @@ public class UserService {
         if (password == null || !PASSWORD_PATTERN.matcher(password).matches()) {
             throw new IllegalArgumentException(
                     "\u30d1\u30b9\u30ef\u30fc\u30c9\u306f\u82f1\u5b57\u3068\u6570\u5b57\u3092\u305d\u308c\u305e\u308c1\u6587\u5b57\u4ee5\u4e0a\u542b\u30808\u6587\u5b57\u4ee5\u4e0a\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044");
+        }
+    }
+
+    /**
+     * \u30e6\u30fc\u30b6\u30fc\u60c5\u5831\u306e\u5404\u6587\u5b57\u5217\u9805\u76ee\u306e\u9577\u3055\u3092\u691c\u8a3c\u3057\u307e\u3059\u3002createUser \u3067\u306f positionTitle/phoneNumber/className
+     * \u306f\u672a\u4f7f\u7528\u306e\u305f\u3081 null \u3092\u6e21\u3059\u3053\u3068\u3067\u691c\u8a3c\u3092\u30b9\u30ad\u30c3\u30d7\u3067\u304d\u307e\u3059\u3002
+     *
+     * @throws IllegalArgumentException \u3044\u305a\u308c\u304b\u306e\u9805\u76ee\u304c\u4e0a\u9650\u6587\u5b57\u6570\u3092\u8d85\u3048\u3066\u3044\u308b\u5834\u5408
+     */
+    private void validateFieldLengths(String fullName, String email, String positionTitle,
+            String phoneNumber, String className) {
+        validateLength(fullName, MAX_FULL_NAME_LENGTH, "\u6c0f\u540d");
+        validateLength(email, MAX_EMAIL_LENGTH, "\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9");
+        validateLength(positionTitle, MAX_POSITION_TITLE_LENGTH, "\u5f79\u8077\u540d");
+        validateLength(phoneNumber, MAX_PHONE_NUMBER_LENGTH, "\u96fb\u8a71\u756a\u53f7");
+        validateLength(className, MAX_CLASS_NAME_LENGTH, "\u52e4\u52d9\u30af\u30e9\u30b9\u540d");
+    }
+
+    private void validateLength(String value, int maxLength, String fieldName) {
+        if (value != null && value.length() > maxLength) {
+            throw new IllegalArgumentException(fieldName + "\u306f" + maxLength + "\u6587\u5b57\u4ee5\u5185\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044");
         }
     }
 

@@ -186,19 +186,4 @@ public class PaidLeaveBalanceService {
 
         syncUserPaidLeaveDays(userId);
     }
-
-    /**
-     * 有給残高を挿入します（管理者によるバッチ付与処理などで使用）。
-     *
-     *
-     * @param balance 挿入する有給残高
-     * @return 挿入された有給残高
-     */
-    public PaidLeaveBalance insert(PaidLeaveBalance balance) {
-        paidLeaveBalanceMapper.insert(balance);
-        log.info("有給残高を付与: userId={}, grantYear={}, grantedDays={}",
-                balance.getUserId(), balance.getGrantYear(), balance.getGrantedDays());
-        syncUserPaidLeaveDays(balance.getUserId());
-        return balance;
-    }
 }

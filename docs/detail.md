@@ -4,11 +4,12 @@
 本システムは PostgreSQL を使用し、以下の主要なテーブルで構成されています。用途ごとに分類しています。
 
 ### 1.1 データベース設計の基本方針（論理削除）
-本システムでは、誤操作によるデータ喪失防止と監査目的のため、原則として**論理削除**（ソフトデリート）を採用しています。
-各テーブルには `is_deleted` または `is_active` フラグが設けられており、画面上から「削除」や「取消」操作を行っても物理的なレコード削除（DELETE句）は実行されず、フラグの更新（UPDATE句）が行われます。
+本システムでは、誤操作によるデータ喪失防止と監査目的のため、`users`（is_active）、`attendance_records`／`leave_applications`／`overtime_records`（is_deleted）、`work_schedule_classes`／`event_types`（is_active）、`admin_announcements`（is_active・is_deleted）など主要な業務テーブルでは**論理削除**（ソフトデリート）を採用しています。画面上から「削除」や「無効化」操作を行っても物理的なレコード削除（DELETE句）は実行されず、フラグの更新（UPDATE句）が行われます。ユーザーの物理削除経路（旧hardDeleteUser）は廃止済みで、ユーザー削除は常にソフトデリートに統一されています。
+
+一方、`system_settings`／`holidays`／`paid_leave_balance`／`audit_logs`／`user_notifications`／`attendance_submissions`／`attendance_correction_requests`／`attendance_user_approvers`／`attendance_department_approvers`／`work_schedule_class_breaks` は is_deleted・is_active のいずれも持たず、休憩時間明細の総入れ替えや祝日マスタの一括再登録など、必要に応じて物理DELETEを行う運用です。また `audit_logs` と `user_notifications` は追記型で運用しており、保持期間やアーカイブ・パーティション方針は現時点で未定義です。
 
 ### 1.2 ユーザー・マスタ系
-- `users`: ユーザー情報（ログイン情報、権限、有給設定、アカウントロック情報、社員番号、雇用形態など）
+- `users`: ユーザー情報（ログイン情報、権限、有給設定、アカウントロック情報、社員番号、雇用形態など）。`employment_type` カラムはDBに保持されるが、現状アプリケーションロジックからは参照されない。
   - アカウントロック仕様: ログイン失敗3回で30分の一時ロック、5回で永久ロック（管理者による解除が必要）。管理者ユーザー（UserRole.ADMIN）も一般ユーザーと同じ一時ロックの対象となるが、全管理者がロックアウトされる事態を防ぐため永久ロックは管理者には適用せず、一時ロックの延長で対応する。
 - `holidays`: 祝日マスタ
 - `work_schedule_classes`: 勤務クラス（所属するシフトごとの所定労働時間マスタ）

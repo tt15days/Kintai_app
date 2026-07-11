@@ -129,10 +129,6 @@
         WHERE class_id = #{classId}
     </update>
 
-    <delete id="deleteById">
-        DELETE FROM work_schedule_classes WHERE class_id = #{classId}
-    </delete>
-
     <select id="existsByNameAndNotId" resultType="boolean">
         SELECT EXISTS(
             SELECT 1 FROM work_schedule_classes

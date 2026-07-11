@@ -95,6 +95,21 @@ class DateTimeUtilTest {
     }
 
     @Test
+    @DisplayName("isOvernight(LocalTime, LocalTime) - 終了時刻が開始時刻以前（同時刻含む）の場合のみ日跨ぎと判定すること")
+    void testIsOvernight() {
+        // 通常勤務（開始 < 終了）は日跨ぎではない
+        assertFalse(DateTimeUtil.isOvernight(LocalTime.of(9, 0), LocalTime.of(18, 0)));
+        // 夜勤（終了が開始より前）は日跨ぎ
+        assertTrue(DateTimeUtil.isOvernight(LocalTime.of(22, 0), LocalTime.of(6, 0)));
+        // 同時刻は日跨ぎ扱い（24時間勤務）
+        assertTrue(DateTimeUtil.isOvernight(LocalTime.of(9, 0), LocalTime.of(9, 0)));
+        // null はいずれも false
+        assertFalse(DateTimeUtil.isOvernight(null, LocalTime.of(18, 0)));
+        assertFalse(DateTimeUtil.isOvernight(LocalTime.of(9, 0), null));
+        assertFalse(DateTimeUtil.isOvernight(null, null));
+    }
+
+    @Test
     @DisplayName("now / todayJapan / currentTimeJapan - 現在日時を取得できること")
     void testCurrentDateTimeMethods() {
         assertNotNull(DateTimeUtil.now());

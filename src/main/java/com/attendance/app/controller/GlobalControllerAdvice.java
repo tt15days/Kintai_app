@@ -1,8 +1,8 @@
 package com.attendance.app.controller;
 
 import com.attendance.app.entity.User;
-import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.security.SecurityUtil;
+import com.attendance.app.service.SystemSettingService;
 import com.attendance.app.service.UserService;
 import com.attendance.app.service.AttendanceSubmissionService;
 import com.attendance.app.service.AttendanceCorrectionRequestService;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 public class GlobalControllerAdvice {
 
     private final SecurityUtil securityUtil;
-    private final SystemSettingMapper systemSettingMapper;
+    private final SystemSettingService systemSettingService;
     private final UserService userService;
     private final AttendanceSubmissionService attendanceSubmissionService;
     private final AttendanceCorrectionRequestService correctionRequestService;
@@ -85,7 +85,7 @@ public class GlobalControllerAdvice {
     @ModelAttribute
     public void addCopyrightText(Model model) {
         try {
-            String copyright = systemSettingMapper.selectValueByKey("COPYRIGHT_TEXT");
+            String copyright = systemSettingService.getSettingValue("COPYRIGHT_TEXT");
             if (copyright == null || copyright.trim().isEmpty()) {
                 copyright = "© 2026 勤怠管理システム";
             }
@@ -104,7 +104,7 @@ public class GlobalControllerAdvice {
     @ModelAttribute
     public void addSystemName(Model model) {
         try {
-            String systemName = systemSettingMapper.selectValueByKey("SYSTEM_NAME");
+            String systemName = systemSettingService.getSettingValue("SYSTEM_NAME");
             if (systemName == null || systemName.trim().isEmpty()) {
                 systemName = "勤怠管理システム";
             }
@@ -123,7 +123,7 @@ public class GlobalControllerAdvice {
     @ModelAttribute
     public void addEmpNoPrefix(Model model) {
         try {
-            String prefix = systemSettingMapper.selectValueByKey("EMP_NO_PREFIX");
+            String prefix = systemSettingService.getSettingValue("EMP_NO_PREFIX");
             if (prefix == null) {
                 prefix = "";
             }

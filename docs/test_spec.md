@@ -170,7 +170,7 @@
 - 連続ログイン失敗時のアカウントロック処理と、一定時間経過後のロック解除判定を検証。
 
 #### `OvertimeRecordServiceTest` (残業記録サービス)
-- 残業時間の計算、上限規制（36協定等）との照合判定、およびアラート対象者の抽出を検証。
+- 勤怠実績からの残業記録同期（`syncFromAttendance`）および残業記録の作成ロジック（`createRecord`）を検証。36協定の上限規制判定は `AttendanceRecordServiceTest`、アラート対象者の抽出は `AlertBatchServiceTest` で検証する。
 
 #### `PayrollExportServiceTest` (給与計算エクスポートサービス)
 - 勤怠実績に基づく給与システム向けCSVデータのエクスポートフォーマット生成を検証。

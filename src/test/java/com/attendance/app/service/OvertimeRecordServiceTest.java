@@ -19,6 +19,7 @@ import java.time.LocalTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -131,5 +132,72 @@ class OvertimeRecordServiceTest {
 
         assertThat(result.getOvertimeHours()).isEqualTo(0.0);
         verify(overtimeRecordMapper).insert(result);
+    }
+
+    @Test
+    @DisplayName("開始・終了がnullの場合の作成は残業時間0.0（NPEにならない）")
+    void createRecord_withNullTimes_returnsZeroHours() {
+        LocalDate date = LocalDate.of(2026, 5, 21);
+
+        OvertimeRecord result = service.createRecord(9L, date, null, null, "manual", "test");
+
+        assertThat(result.getOvertimeHours()).isEqualTo(0.0);
+        verify(overtimeRecordMapper).insert(result);
+    }
+
+    @Nested
+    @DisplayName("updateRecord")
+    class UpdateRecord {
+
+        @Test
+        @DisplayName("正常な開始・終了時刻で残業時間を再計算して更新する")
+        void updatesRecordWithRecalculatedHours() {
+            LocalDate date = LocalDate.of(2026, 5, 22);
+            Instant start = DateTimeUtil.toInstant(date, LocalTime.of(18, 0));
+            Instant end = DateTimeUtil.toInstant(date, LocalTime.of(20, 0));
+            OvertimeRecord existing = OvertimeRecord.builder()
+                    .overtimeId(10L)
+                    .userId(9L)
+                    .overtimeDate(date)
+                    .overtimeHours(1.0)
+                    .build();
+            when(overtimeRecordMapper.selectByIdForUpdate(10L)).thenReturn(Optional.of(existing));
+
+            OvertimeRecord result = service.updateRecord(10L, date, start, end, "更新理由", "備考");
+
+            assertThat(result.getOvertimeHours()).isEqualTo(2.0);
+            assertThat(result.getOvertimeStart()).isEqualTo(start);
+            assertThat(result.getOvertimeEnd()).isEqualTo(end);
+            assertThat(result.getReason()).isEqualTo("更新理由");
+            verify(overtimeRecordMapper).update(existing);
+        }
+
+        @Test
+        @DisplayName("開始・終了がnullの場合は残業時間0.0で更新する（NPEにならない）")
+        void nullTimes_updatesWithZeroHours() {
+            LocalDate date = LocalDate.of(2026, 5, 23);
+            OvertimeRecord existing = OvertimeRecord.builder()
+                    .overtimeId(11L)
+                    .userId(9L)
+                    .overtimeDate(date)
+                    .overtimeHours(1.5)
+                    .build();
+            when(overtimeRecordMapper.selectByIdForUpdate(11L)).thenReturn(Optional.of(existing));
+
+            OvertimeRecord result = service.updateRecord(11L, date, null, null, "理由", null);
+
+            assertThat(result.getOvertimeHours()).isEqualTo(0.0);
+            verify(overtimeRecordMapper).update(existing);
+        }
+
+        @Test
+        @DisplayName("存在しない残業記録IDは例外を送出する")
+        void notFound_throwsException() {
+            when(overtimeRecordMapper.selectByIdForUpdate(99L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.updateRecord(99L, LocalDate.of(2026, 5, 24), null, null, null, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("残業記録が見つかりません");
+        }
     }
 }

@@ -195,10 +195,6 @@
         WHERE user_id = #{userId}
     </update>
 
-    <delete id="deleteById">
-        DELETE FROM users WHERE user_id = #{userId}
-    </delete>
-
     <update id="softDeleteById">
         UPDATE users SET is_active = false, deleted_at = NOW(), updated_at = NOW() WHERE user_id = #{userId}
     </update>

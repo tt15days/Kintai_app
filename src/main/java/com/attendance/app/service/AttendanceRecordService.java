@@ -1071,7 +1071,7 @@ public class AttendanceRecordService {
         }
 
         private boolean isOvernight() {
-            return standardStartTime != null && standardEndTime != null && !standardEndTime.isAfter(standardStartTime);
+            return DateTimeUtil.isOvernight(standardStartTime, standardEndTime);
         }
     }
 

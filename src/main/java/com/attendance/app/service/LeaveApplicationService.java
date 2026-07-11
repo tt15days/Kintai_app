@@ -32,6 +32,10 @@ import java.util.Set;
 public class LeaveApplicationService {
 
     private static final String APPLICATION_NOT_FOUND_MESSAGE = "申請が見つかりません";
+    /** 許可される休暇期間種別（DBの check_leave_duration_type 制約と同一） */
+    private static final Set<String> VALID_LEAVE_DURATION_TYPES = Set.of("FULL_DAY", "AM_HALF", "PM_HALF");
+    /** 休暇申請期間の上限日数（うるう年を含む1年分） */
+    private static final long MAX_LEAVE_PERIOD_DAYS = 366;
 
     private final LeaveApplicationMapper leaveApplicationMapper;
     private final PaidLeaveBalanceService paidLeaveBalanceService;
@@ -111,8 +115,12 @@ public class LeaveApplicationService {
         if (startDate.isAfter(endDate)) {
             throw new IllegalArgumentException("開始日は終了日より前である必要があります");
         }
+        validateLeavePeriodLength(startDate, endDate);
 
         String resolvedDurationType = leaveDurationType != null ? leaveDurationType : "FULL_DAY";
+        if (!VALID_LEAVE_DURATION_TYPES.contains(resolvedDurationType)) {
+            throw new IllegalArgumentException("休暇期間種別が不正です: " + resolvedDurationType);
+        }
         if (!"FULL_DAY".equals(resolvedDurationType) && !startDate.isEqual(endDate)) {
             throw new IllegalArgumentException("半休は開始日と終了日が同じ単日でのみ申請できます");
         }
@@ -200,6 +208,7 @@ public class LeaveApplicationService {
         if (startDate.isAfter(endDate)) {
             throw new IllegalArgumentException("開始日は終了日より前である必要があります");
         }
+        validateLeavePeriodLength(startDate, endDate);
 
         if (!"FULL_DAY".equals(application.getLeaveDurationType()) && !startDate.isEqual(endDate)) {
             throw new IllegalArgumentException("半休は開始日と終了日が同じ単日でのみ申請できます");
@@ -383,6 +392,20 @@ public class LeaveApplicationService {
 
     private boolean isHalfDay(String leaveDurationType) {
         return "AM_HALF".equals(leaveDurationType) || "PM_HALF".equals(leaveDurationType);
+    }
+
+    /**
+     * 休暇申請期間が上限日数（366日）を超えていないか検証します。
+     *
+     * @param startDate 開始日
+     * @param endDate   終了日
+     * @throws IllegalArgumentException 期間が上限日数を超えている場合
+     */
+    private void validateLeavePeriodLength(LocalDate startDate, LocalDate endDate) {
+        long periodDays = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        if (periodDays > MAX_LEAVE_PERIOD_DAYS) {
+            throw new IllegalArgumentException("休暇期間は" + MAX_LEAVE_PERIOD_DAYS + "日以内で申請してください");
+        }
     }
 
     /**

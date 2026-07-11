@@ -144,26 +144,26 @@ VALUES (
 INSERT INTO attendance_records (user_id, attendance_date, start_time, end_time, working_hours, event_type_id, created_at, updated_at)
 VALUES (
     2,
-    NOW(),
+    (((NOW() AT TIME ZONE 'Asia/Tokyo')::DATE) AT TIME ZONE 'Asia/Tokyo'),
     (((NOW() AT TIME ZONE 'Asia/Tokyo')::DATE + TIME '09:00') AT TIME ZONE 'Asia/Tokyo'),
     (((NOW() AT TIME ZONE 'Asia/Tokyo')::DATE + TIME '18:00') AT TIME ZONE 'Asia/Tokyo'),
     8.0,
     1,
     NOW(),
     NOW()
-) ON CONFLICT (user_id, attendance_date) WHERE is_deleted = false DO NOTHING;
+) ON CONFLICT (user_id, ((attendance_date AT TIME ZONE 'Asia/Tokyo')::date)) WHERE is_deleted = false DO NOTHING;
 
 INSERT INTO attendance_records (user_id, attendance_date, start_time, end_time, working_hours, event_type_id, created_at, updated_at)
 VALUES (
     2,
-    NOW() - INTERVAL '1 day',
+    ((((NOW() - INTERVAL '1 day') AT TIME ZONE 'Asia/Tokyo')::DATE) AT TIME ZONE 'Asia/Tokyo'),
     ((((NOW() - INTERVAL '1 day') AT TIME ZONE 'Asia/Tokyo')::DATE + TIME '09:15') AT TIME ZONE 'Asia/Tokyo'),
     ((((NOW() - INTERVAL '1 day') AT TIME ZONE 'Asia/Tokyo')::DATE + TIME '17:45') AT TIME ZONE 'Asia/Tokyo'),
     7.5,
     1,
     NOW(),
     NOW()
-) ON CONFLICT (user_id, attendance_date) WHERE is_deleted = false DO NOTHING;
+) ON CONFLICT (user_id, ((attendance_date AT TIME ZONE 'Asia/Tokyo')::date)) WHERE is_deleted = false DO NOTHING;
 
 INSERT INTO attendance_records (user_id, attendance_date, start_time, end_time, working_hours, overtime_hours, event_type_id, remarks)
 VALUES
@@ -175,7 +175,7 @@ VALUES
     (2, '2026-04-27 00:00:00+09', '2026-04-27 08:00:00+09', '2026-04-27 19:00:00+09', 10.0, 1.0,  1, 'Regular workday'),
     (2, '2026-04-28 00:00:00+09', '2026-04-28 12:45:00+09', '2026-04-28 23:15:00+09', 9.5,  5.25, 2, 'Late start'),
     (2, '2026-04-30 00:00:00+09', '2026-04-30 09:00:00+09', '2026-04-30 23:45:00+09', 13.75, 5.75, 1, 'Regular workday')
-ON CONFLICT (user_id, attendance_date) WHERE is_deleted = false DO NOTHING;
+ON CONFLICT (user_id, ((attendance_date AT TIME ZONE 'Asia/Tokyo')::date)) WHERE is_deleted = false DO NOTHING;
 
 -- ============================================================
 -- サンプル勤怠記録挿入 (ユーザーID: 3 テストユーザー / 夜勤パターン)
@@ -192,14 +192,14 @@ VALUES
     (3, '2026-04-25 00:00:00+09', '2026-04-25 22:00:00+09', '2026-04-26 07:00:00+09', 8.0, 0.0, 1, '夜勤'),
     -- 夜勤・早退 (22:00-翌05:00 = 6h, 残業なし)
     (3, '2026-04-27 00:00:00+09', '2026-04-27 22:00:00+09', '2026-04-28 05:00:00+09', 6.0, 0.0, 3, '夜勤・早退')
-ON CONFLICT (user_id, attendance_date) WHERE is_deleted = false DO NOTHING;
+ON CONFLICT (user_id, ((attendance_date AT TIME ZONE 'Asia/Tokyo')::date)) WHERE is_deleted = false DO NOTHING;
 
 -- ============================================================
 -- サンプル休暇申請挿入
 -- ============================================================
 
 INSERT INTO leave_applications (user_id, leave_start_date, leave_end_date, leave_type, reason, status, created_at, updated_at)
-VALUES (
+SELECT
     2,
     CURRENT_DATE + INTERVAL '10 days',
     CURRENT_DATE + INTERVAL '12 days',
@@ -208,6 +208,11 @@ VALUES (
     'PENDING',
     NOW(),
     NOW()
+WHERE NOT EXISTS (
+    SELECT 1 FROM leave_applications
+     WHERE user_id = 2
+       AND leave_start_date = CURRENT_DATE + INTERVAL '10 days'
+       AND leave_type = 'PAID_LEAVE'
 );
 
 -- ============================================================
@@ -224,7 +229,7 @@ VALUES (
     'プロジェクト作業',
     NOW(),
     NOW()
-);
+) ON CONFLICT (user_id, overtime_date) WHERE is_deleted = false DO NOTHING;
 
 INSERT INTO overtime_records (user_id, overtime_date, overtime_start, overtime_end, overtime_hours, reason, created_at, updated_at)
 VALUES (
@@ -236,7 +241,7 @@ VALUES (
     'クライアント対応',
     NOW(),
     NOW()
-);
+) ON CONFLICT (user_id, overtime_date) WHERE is_deleted = false DO NOTHING;
 
 -- ============================================================
 -- システム設定（CSVファイル名パターン）
@@ -323,6 +328,9 @@ SELECT
     user_id
   FROM users
  WHERE email = 'admin@example.com'
+   AND NOT EXISTS (
+       SELECT 1 FROM admin_announcements WHERE title = '勤怠管理システムへようこそ'
+   )
 LIMIT 1;
 
 -- ============================================================
@@ -342,11 +350,26 @@ INSERT INTO user_notifications (user_id, sender_user_id, message, is_read, notif
 SELECT u.user_id, a.user_id, '勤怠の差し戻しがありました。修正して再提出してください。', false, 'REMINDER', NOW() - INTERVAL '1 day'
   FROM users u, users a
  WHERE u.email = 'user@example.com' AND a.email = 'admin@example.com'
-ON CONFLICT (notification_id) DO NOTHING;
+   AND NOT EXISTS (
+       SELECT 1 FROM user_notifications n
+        WHERE n.user_id = u.user_id AND n.sender_user_id = a.user_id
+          AND n.message = '勤怠の差し戻しがありました。修正して再提出してください。'
+   );
 
 -- 管理者 (admin@example.com) から その他ユーザー (other@example.com) への通知
 INSERT INTO user_notifications (user_id, sender_user_id, message, is_read, notification_type, created_at)
 SELECT u.user_id, a.user_id, '提出された残業申請を承認しました。確認してください。', false, 'REMINDER', NOW()
   FROM users u, users a
  WHERE u.email = 'other@example.com' AND a.email = 'admin@example.com'
-ON CONFLICT (notification_id) DO NOTHING;
+   AND NOT EXISTS (
+       SELECT 1 FROM user_notifications n
+        WHERE n.user_id = u.user_id AND n.sender_user_id = a.user_id
+          AND n.message = '提出された残業申請を承認しました。確認してください。'
+   );
+
+-- ============================================================
+-- emp_no_seq の採番位置調整
+-- サンプルの emp_no は EMP-001〜EMP-004, EMP-999 まで手動採番済みのため、
+-- 以降の createUser がこれらと衝突しないよう EMP-999 まで採番済み扱いにする。
+-- ============================================================
+SELECT setval('emp_no_seq', 999);

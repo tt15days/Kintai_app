@@ -154,6 +154,126 @@ class UserServiceTest {
 
             assertThat(result.getEmpNo()).isEqualTo("EMP-004");
         }
+
+        @Test
+        @DisplayName("氏名が255文字を超える場合は例外を送出して insert しない")
+        void fullNameTooLong_throwsException() {
+            String longName = "あ".repeat(256);
+
+            assertThatThrownBy(() -> service.createUser("long@example.com", "Pass1234", longName, UserRole.USER, null, 1L))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("氏名は255文字以内");
+
+            verify(userMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("メールアドレスが255文字を超える場合は例外を送出して insert しない")
+        void emailTooLong_throwsException() {
+            String longEmail = "a".repeat(250) + "@example.com";
+
+            assertThatThrownBy(() -> service.createUser(longEmail, "Pass1234", "ユーザー", UserRole.USER, null, 1L))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("メールアドレスは255文字以内");
+
+            verify(userMapper, never()).insert(any());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // updateUser
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("updateUser")
+    class UpdateUser {
+
+        private User existingUser() {
+            return User.builder()
+                    .userId(2L)
+                    .email("old@example.com")
+                    .fullName("既存ユーザー")
+                    .userRole(UserRole.USER)
+                    .isActive(true)
+                    .canApproveAttendance(false)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("メールアドレス変更時に重複がある場合は例外を送出して update しない")
+        void changedEmailDuplicate_throwsException() {
+            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+            when(userMapper.existsByEmail("dup@example.com")).thenReturn(true);
+
+            assertThatThrownBy(() -> service.updateUser(2L, "dup@example.com", "既存ユーザー", UserRole.USER,
+                    null, null, null, null, null, false, null, true, 1L))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("既に登録されています");
+
+            verify(userMapper, never()).update(any());
+        }
+
+        @Test
+        @DisplayName("メールアドレスが変更されていない場合は重複チェックしない")
+        void unchangedEmail_skipsDuplicateCheck() {
+            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+
+            service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
+                    null, null, null, null, null, false, null, true, 1L);
+
+            verify(userMapper, never()).existsByEmail(any());
+            verify(userMapper).update(any(User.class));
+        }
+
+        @Test
+        @DisplayName("役職名が100文字を超える場合は例外を送出する")
+        void positionTitleTooLong_throwsException() {
+            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+
+            assertThatThrownBy(() -> service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
+                    "役".repeat(101), null, null, null, null, false, null, true, 1L))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("役職名は100文字以内");
+
+            verify(userMapper, never()).update(any());
+        }
+
+        @Test
+        @DisplayName("電話番号が30文字を超える場合は例外を送出する")
+        void phoneNumberTooLong_throwsException() {
+            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+
+            assertThatThrownBy(() -> service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
+                    null, "0".repeat(31), null, null, null, false, null, true, 1L))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("電話番号は30文字以内");
+
+            verify(userMapper, never()).update(any());
+        }
+
+        @Test
+        @DisplayName("無効化時は承認者割り当て（個人・部署）が解除される")
+        void deactivation_cleansUpApproverAssignments() {
+            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+
+            service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
+                    null, null, null, null, null, false, null, false, 1L);
+
+            verify(approverAssignmentMapper).deleteUserApproverByApprover(2L);
+            verify(approverAssignmentMapper).deleteDepartmentApproverByApprover(2L);
+        }
+
+        @Test
+        @DisplayName("有効のままの場合は承認者割り当てを解除しない")
+        void stillActive_doesNotCleanUpApproverAssignments() {
+            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+
+            service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
+                    null, null, null, null, null, false, null, true, 1L);
+
+            verify(approverAssignmentMapper, never()).deleteUserApproverByApprover(any());
+            verify(approverAssignmentMapper, never()).deleteDepartmentApproverByApprover(any());
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -223,11 +343,28 @@ class UserServiceTest {
     class DeleteUser {
 
         @Test
-        @DisplayName("softDeleteById を呼び出す（ハードデリートしない）")
+        @DisplayName("softDeleteById を呼び出す（ソフトデリート）")
         void callsSoftDelete() {
             service.deleteUser(3L, 1L);
             verify(userMapper).softDeleteById(3L);
-            verify(userMapper, never()).deleteById(any());
+        }
+
+        @Test
+        @DisplayName("削除時は承認者割り当て（個人・部署）が解除される")
+        void cleansUpApproverAssignments() {
+            service.deleteUser(3L, 1L);
+            verify(approverAssignmentMapper).deleteUserApproverByApprover(3L);
+            verify(approverAssignmentMapper).deleteDepartmentApproverByApprover(3L);
+        }
+
+        @Test
+        @DisplayName("自分自身の削除は例外を送出する")
+        void selfDelete_throwsException() {
+            assertThatThrownBy(() -> service.deleteUser(1L, 1L))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("自分自身を削除することはできません");
+
+            verify(userMapper, never()).softDeleteById(any());
         }
     }
 

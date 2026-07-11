@@ -28,4 +28,19 @@ class GlobalExceptionHandlerTest {
         String view = exceptionHandler.handleException(new RuntimeException("予期しないエラー"));
         assertEquals("error/500", view);
     }
+
+    @Test
+    @DisplayName("handleTypeMismatch - リクエストパラメータの型不一致時に 'error/400' を返すこと")
+    void testHandleTypeMismatch() {
+        String view = exceptionHandler.handleTypeMismatch();
+        assertEquals("error/400", view);
+    }
+
+    @Test
+    @DisplayName("handleDataIntegrityViolation - データ整合性違反時に 'error/data-conflict' を返すこと")
+    void testHandleDataIntegrityViolation() {
+        String view = exceptionHandler.handleDataIntegrityViolation(
+                new org.springframework.dao.DataIntegrityViolationException("duplicate key"));
+        assertEquals("error/data-conflict", view);
+    }
 }

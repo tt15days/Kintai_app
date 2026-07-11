@@ -2,6 +2,7 @@ package com.attendance.app.service;
 
 import com.attendance.app.entity.User;
 import com.attendance.app.mapper.SystemSettingMapper;
+import com.attendance.app.util.DateTimeUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -95,12 +96,13 @@ public class AutoGrantPaidLeaveServiceTest {
     }
 
     @Test
-    void testGrantPaidLeaveBatch_LeapYear() {
+    void testGrantPaidLeaveBatch_LeapDayGrantDate_GrantsOnLeapDay() {
+        // 付与日設定が "02-29" の場合、うるう年の2/29には実際に付与される
         LocalDate leapDay = LocalDate.of(2024, 2, 29);
         String grantDateStr = "02-29";
 
-        try (MockedStatic<LocalDate> mockedLocalDate = mockStatic(LocalDate.class, CALLS_REAL_METHODS)) {
-            mockedLocalDate.when(() -> LocalDate.now(ZoneId.of("Asia/Tokyo"))).thenReturn(leapDay);
+        try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+            mockedDateTimeUtil.when(DateTimeUtil::todayJapan).thenReturn(leapDay);
 
             when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DATE")).thenReturn(grantDateStr);
             when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DAYS")).thenReturn("20");
@@ -113,6 +115,26 @@ public class AutoGrantPaidLeaveServiceTest {
             autoGrantPaidLeaveService.grantPaidLeaveBatch();
 
             verify(userService).grantAnnualPaidLeave(101L, 20);
+        }
+    }
+
+    @Test
+    void testGrantPaidLeaveBatch_LeapDayGrantDate_NotGrantedInNonLeapYear() {
+        // 付与日設定が "02-29" でも、非うるう年には2/29という日が存在しないため
+        // 付与日は一度も到来せず、その年は付与が行われない（3/1になっても付与されない）
+        LocalDate dayAfterFeb28NonLeapYear = LocalDate.of(2025, 3, 1);
+        String grantDateStr = "02-29";
+
+        try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+            mockedDateTimeUtil.when(DateTimeUtil::todayJapan).thenReturn(dayAfterFeb28NonLeapYear);
+
+            when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DATE")).thenReturn(grantDateStr);
+            when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DAYS")).thenReturn("20");
+
+            autoGrantPaidLeaveService.grantPaidLeaveBatch();
+
+            verify(userService, never()).getActiveUsers();
+            verify(userService, never()).grantAnnualPaidLeave(anyLong(), anyInt());
         }
     }
 }
