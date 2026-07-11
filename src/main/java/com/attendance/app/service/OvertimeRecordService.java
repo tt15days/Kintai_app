@@ -154,7 +154,7 @@ public class OvertimeRecordService {
             return;
         }
 
-        LocalDate standardEndDate = standardStartTime != null && !standardEndTime.isAfter(standardStartTime)
+        LocalDate standardEndDate = DateTimeUtil.isOvernight(standardStartTime, standardEndTime)
                 ? attendanceDate.plusDays(1)
                 : attendanceDate;
         Instant standardEndInstant = DateTimeUtil.toInstant(standardEndDate, standardEndTime);
@@ -244,12 +244,16 @@ public class OvertimeRecordService {
 
     /**
      * 残業時間を計算します（時間単位）。
+     * 開始・終了のいずれかが null の場合は 0.0 を返します（createRecord/updateRecord 共通のnullガード）。
      *
      * @param startTime 残業開始時刻
      * @param endTime 残業終了時刻
      * @return 計算された残業時間
      */
     private double calculateOvertimeHours(Instant startTime, Instant endTime) {
+        if (startTime == null || endTime == null) {
+            return 0.0;
+        }
         long minutes = java.time.Duration.between(startTime, endTime).toMinutes();
         if (minutes <= 0) {
             return 0.0;

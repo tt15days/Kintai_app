@@ -32,6 +32,8 @@ public class AdminAnnouncementController {
 
     private static final String ANNOUNCEMENTS_VIEW = "admin/announcements";
     private static final String ANNOUNCEMENTS_REDIRECT = "redirect:/admin/announcements";
+    /** タイトルの上限文字数（admin_announcements.title VARCHAR(200) と同一） */
+    private static final int MAX_TITLE_LENGTH = 200;
 
     private final AdminAnnouncementService adminAnnouncementService;
     private final SecurityUtil securityUtil;
@@ -67,6 +69,10 @@ public class AdminAnnouncementController {
             @RequestParam LocalDate displayStartDate,
             @RequestParam(required = false) LocalDate displayEndDate,
             RedirectAttributes redirectAttributes) {
+        if (title.strip().length() > MAX_TITLE_LENGTH) {
+            redirectAttributes.addFlashAttribute("errorMessage", "タイトルは" + MAX_TITLE_LENGTH + "文字以内で入力してください。");
+            return ANNOUNCEMENTS_REDIRECT;
+        }
         try {
             Long createdBy = securityUtil.getCurrentUser().getUserId();
             Instant startInstant = DateTimeUtil.toInstant(displayStartDate);
@@ -111,6 +117,10 @@ public class AdminAnnouncementController {
             @RequestParam LocalDate displayStartDate,
             @RequestParam(required = false) LocalDate displayEndDate,
             RedirectAttributes redirectAttributes) {
+        if (title.strip().length() > MAX_TITLE_LENGTH) {
+            redirectAttributes.addFlashAttribute("errorMessage", "タイトルは" + MAX_TITLE_LENGTH + "文字以内で入力してください。");
+            return ANNOUNCEMENTS_REDIRECT;
+        }
         try {
             Instant startInstant = DateTimeUtil.toInstant(displayStartDate);
             Instant endInstant = displayEndDate != null

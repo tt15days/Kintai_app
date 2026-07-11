@@ -115,14 +115,6 @@ public interface UserMapper {
             @Param("passwordResetRequired") boolean passwordResetRequired);
     
     /**
-     * ユーザー情報を削除
-     *
-     * @param userId ユーザーID
-     * @return 削除された件数
-     */
-    int deleteById(@Param("userId") Long userId);
-    
-    /**
      * ユーザーをソフトデリート（isActiveをfalseに）
      *
      * @param userId ユーザーID

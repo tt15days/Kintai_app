@@ -524,7 +524,12 @@ public class AttendanceApprovalController {
                 if (dateStr == null || dateStr.isEmpty())
                     continue;
 
-                LocalDate date = LocalDate.parse(dateStr);
+                LocalDate date;
+                try {
+                    date = LocalDate.parse(dateStr);
+                } catch (java.time.format.DateTimeParseException ex) {
+                    throw new IllegalArgumentException("日付の形式が不正です: " + dateStr);
+                }
 
                 if (leaveDateSet.contains(date)) {
                     log.info("休暇申請済みのため保存をスキップ: date={}", date);
@@ -535,17 +540,13 @@ public class AttendanceApprovalController {
 
                 LocalTime s = null;
                 if (startTimeStrs != null && startTimeStrs.size() > j) {
-                    String sStr = startTimeStrs.get(j);
-                    if (sStr != null && !sStr.isEmpty())
-                        s = LocalTime.parse(sStr);
+                    s = parseTimeOrThrow(startTimeStrs.get(j), "開始時刻", i + 1);
                 }
                 starts.add(s);
 
                 LocalTime e = null;
                 if (endTimeStrs != null && endTimeStrs.size() > j) {
-                    String eStr = endTimeStrs.get(j);
-                    if (eStr != null && !eStr.isEmpty())
-                        e = LocalTime.parse(eStr);
+                    e = parseTimeOrThrow(endTimeStrs.get(j), "終了時刻", i + 1);
                 }
                 ends.add(e);
 
@@ -685,6 +686,27 @@ public class AttendanceApprovalController {
 
     private double resolveOvertimeHours(AttendanceRecord record) {
         return attendanceRecordService.resolveOvertimeHours(record);
+    }
+
+    /**
+     * 一括保存の時刻文字列をパースします。空文字・nullはnull（未入力・削除意図）を返し、
+     * パース失敗時は行番号付きの入力検証例外を送出します。
+     *
+     * @param value     時刻文字列
+     * @param fieldName 項目名（エラーメッセージ用）
+     * @param rowNumber 行番号（1始まり、エラーメッセージ用）
+     * @return パース結果。空入力の場合は null
+     * @throws IllegalArgumentException 時刻の形式が不正な場合
+     */
+    private LocalTime parseTimeOrThrow(String value, String fieldName, int rowNumber) {
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalTime.parse(value);
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new IllegalArgumentException(fieldName + "の形式が不正です: 行=" + rowNumber + ", 値=" + value);
+        }
     }
 }
 

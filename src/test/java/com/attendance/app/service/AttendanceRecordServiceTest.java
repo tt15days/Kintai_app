@@ -25,8 +25,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.util.Map;
 import java.util.Optional;
 import java.util.List;
+import java.util.Set;
 import com.attendance.app.entity.UserRole;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -842,6 +844,379 @@ class AttendanceRecordServiceTest {
                 assertThat(existing.getOvertimeHours()).isEqualTo(0.0);
                 verify(attendanceRecordMapper).update(existing);
             }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // calculateNightShiftHours（saveRecord経由）
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("深夜労働時間の計算（saveRecord経由）")
+    class CalculateNightShiftHours {
+
+        @Test
+        @DisplayName("通常勤務が22:00をまたぐ場合、22:00以降の1時間のみ深夜時間として計上する")
+        void normalShiftCrossing22_countsOnlyOverlapWithNightWindow() {
+            Long userId = 10L;
+            LocalDate attendanceDate = LocalDate.of(2026, 6, 1);
+
+            User user = User.builder().userId(userId).className("遅番勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("遅番勤務")
+                    .startTime(LocalTime.of(14, 0))
+                    .endTime(LocalTime.of(23, 0))
+                    .build();
+
+            when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, attendanceDate)).thenReturn(Optional.empty());
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("遅番勤務")).thenReturn(Optional.of(schedule));
+
+            // 14:00〜23:00勤務のうち22:00〜23:00の1時間のみ深夜帯と重複する
+            AttendanceRecord result = service.saveRecord(
+                    userId, attendanceDate, LocalTime.of(14, 0), LocalTime.of(23, 0), "", false, null);
+
+            assertThat(result.getNightShiftHours()).isEqualTo(1.0);
+        }
+
+        @Test
+        @DisplayName("日跨ぎ夜勤（前日21:00〜翌6:00）は22:00〜翌5:00の7時間を深夜時間として計上する")
+        void overnightShift_countsHoursAcrossMidnight() {
+            Long userId = 10L;
+            LocalDate attendanceDate = LocalDate.of(2026, 6, 1);
+
+            User user = User.builder().userId(userId).className("夜勤勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("夜勤勤務")
+                    .startTime(LocalTime.of(21, 0))
+                    .endTime(LocalTime.of(6, 0))
+                    .build();
+
+            when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, attendanceDate)).thenReturn(Optional.empty());
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("夜勤勤務")).thenReturn(Optional.of(schedule));
+
+            // 21:00〜翌6:00勤務のうち22:00〜翌5:00の7時間が深夜帯と重複する
+            AttendanceRecord result = service.saveRecord(
+                    userId, attendanceDate, LocalTime.of(21, 0), LocalTime.of(6, 0), "", false, null);
+
+            assertThat(result.getNightShiftHours()).isEqualTo(7.0);
+        }
+
+        @Test
+        @DisplayName("休憩が深夜帯と重複する場合は重複分を控除する")
+        void breakOverlappingNightWindow_deductsFromNightShiftHours() {
+            Long userId = 10L;
+            LocalDate attendanceDate = LocalDate.of(2026, 6, 1);
+
+            User user = User.builder().userId(userId).className("夜間休憩あり勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("夜間休憩あり勤務")
+                    .startTime(LocalTime.of(20, 0))
+                    .endTime(LocalTime.of(23, 0))
+                    .breaks(List.of(
+                            com.attendance.app.entity.WorkScheduleClassBreak.builder()
+                                    .breakStartTime(LocalTime.of(22, 0))
+                                    .breakEndTime(LocalTime.of(22, 30))
+                                    .build()
+                    ))
+                    .build();
+
+            when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, attendanceDate)).thenReturn(Optional.empty());
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("夜間休憩あり勤務")).thenReturn(Optional.of(schedule));
+
+            // 20:00〜23:00勤務のうち22:00〜23:00(1時間)が深夜帯と重複するが、
+            // 深夜帯にかかる休憩22:00〜22:30(30分)を控除して0.5時間となる
+            AttendanceRecord result = service.saveRecord(
+                    userId, attendanceDate, LocalTime.of(20, 0), LocalTime.of(23, 0), "", false, null);
+
+            assertThat(result.getNightShiftHours()).isEqualTo(0.5);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // saveRecordsBatch
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("saveRecordsBatch")
+    class SaveRecordsBatch {
+
+        @Test
+        @DisplayName("新規行は insert を呼び保存件数を1件加算する")
+        void newRecord_insertsAndCountsAsSaved() {
+            Long userId = 10L;
+            LocalDate date = LocalDate.of(2026, 6, 1);
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務").startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(18, 0)).build();
+
+            when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, date)).thenReturn(Optional.empty());
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+            int savedCount = service.saveRecordsBatch(
+                    userId,
+                    List.of(date),
+                    List.of(LocalTime.of(9, 0)),
+                    List.of(LocalTime.of(18, 0)),
+                    List.of(""),
+                    Set.of(),
+                    java.util.Collections.singletonList(null));
+
+            assertThat(savedCount).isEqualTo(1);
+            verify(attendanceRecordMapper).insert(any(AttendanceRecord.class));
+        }
+
+        @Test
+        @DisplayName("既存行の内容が変わっていれば update を呼び保存件数を1件加算する")
+        void changedExistingRecord_updatesAndCountsAsSaved() {
+            Long userId = 10L;
+            LocalDate date = LocalDate.of(2026, 6, 1);
+            AttendanceRecord existing = AttendanceRecord.builder()
+                    .recordId(100L)
+                    .startTime(Instant.parse("2026-06-01T00:00:00Z")) // 09:00 JST
+                    .endTime(Instant.parse("2026-06-01T08:00:00Z"))   // 17:00 JST
+                    .remarks("旧備考")
+                    .build();
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務").startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(18, 0)).build();
+
+            when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, date)).thenReturn(Optional.of(existing));
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+            int savedCount = service.saveRecordsBatch(
+                    userId,
+                    List.of(date),
+                    List.of(LocalTime.of(9, 0)),
+                    List.of(LocalTime.of(18, 0)), // 終業時刻が17:00→18:00に変更
+                    List.of("旧備考"),
+                    Set.of(),
+                    java.util.Collections.singletonList(null));
+
+            assertThat(savedCount).isEqualTo(1);
+            verify(attendanceRecordMapper).update(existing);
+        }
+
+        @Test
+        @DisplayName("開始・終了ともにnullの行は既存レコードを削除する")
+        void bothTimesNull_deletesExistingRecord() {
+            Long userId = 10L;
+            LocalDate date = LocalDate.of(2026, 6, 1);
+            AttendanceRecord existing = AttendanceRecord.builder().recordId(100L).build();
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務").startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(18, 0)).build();
+
+            when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, date)).thenReturn(Optional.of(existing));
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+            int savedCount = service.saveRecordsBatch(
+                    userId,
+                    List.of(date),
+                    java.util.Collections.singletonList(null),
+                    java.util.Collections.singletonList(null),
+                    java.util.Collections.singletonList(null),
+                    Set.of(),
+                    java.util.Collections.singletonList(null));
+
+            assertThat(savedCount).isEqualTo(1);
+            verify(attendanceRecordMapper).deleteById(100L);
+        }
+
+        @Test
+        @DisplayName("既存行と内容が変わらなければ保存をスキップし件数に含めない")
+        void unchangedExistingRecord_isSkipped() {
+            Long userId = 10L;
+            LocalDate date = LocalDate.of(2026, 6, 1);
+            AttendanceRecord existing = AttendanceRecord.builder()
+                    .recordId(100L)
+                    .startTime(Instant.parse("2026-06-01T00:00:00Z")) // 09:00 JST
+                    .endTime(Instant.parse("2026-06-01T09:00:00Z"))   // 18:00 JST
+                    .remarks("同じ備考")
+                    .eventTypeId(1)
+                    .holidayWorkHours(0.0)
+                    .build();
+
+            when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, date)).thenReturn(Optional.of(existing));
+
+            int savedCount = service.saveRecordsBatch(
+                    userId,
+                    List.of(date),
+                    List.of(LocalTime.of(9, 0)),
+                    List.of(LocalTime.of(18, 0)),
+                    List.of("同じ備考"),
+                    Set.of(),
+                    List.of(1));
+
+            assertThat(savedCount).isEqualTo(0);
+            verify(attendanceRecordMapper, never()).update(any());
+            verify(attendanceRecordMapper, never()).insert(any());
+            verify(attendanceRecordMapper, never()).deleteById(any());
+        }
+
+        @Test
+        @DisplayName("休日出勤フラグが変化した場合は他の内容が同じでも保存する")
+        void holidayWorkFlagToggled_stillSavesEvenIfOtherFieldsUnchanged() {
+            Long userId = 10L;
+            LocalDate date = LocalDate.of(2026, 6, 6);
+            AttendanceRecord existing = AttendanceRecord.builder()
+                    .recordId(100L)
+                    .startTime(Instant.parse("2026-06-06T00:00:00Z")) // 09:00 JST
+                    .endTime(Instant.parse("2026-06-06T09:00:00Z"))   // 18:00 JST
+                    .remarks("")
+                    .holidayWorkHours(0.0)
+                    .build();
+            User user = User.builder().userId(userId).className("標準勤務").build();
+            WorkScheduleClass schedule = WorkScheduleClass.builder()
+                    .name("標準勤務").startTime(LocalTime.of(9, 0)).endTime(LocalTime.of(18, 0)).build();
+
+            when(attendanceRecordMapper.selectByUserAndDateForUpdate(userId, date)).thenReturn(Optional.of(existing));
+            when(userMapper.selectById(userId)).thenReturn(Optional.of(user));
+            when(workScheduleClassMapper.selectByName("標準勤務")).thenReturn(Optional.of(schedule));
+
+            int savedCount = service.saveRecordsBatch(
+                    userId,
+                    List.of(date),
+                    List.of(LocalTime.of(9, 0)),
+                    List.of(LocalTime.of(18, 0)),
+                    List.of(""),
+                    Set.of(date), // 休日出勤フラグON
+                    java.util.Collections.singletonList(null));
+
+            assertThat(savedCount).isEqualTo(1);
+            assertThat(existing.getHolidayWorkHours()).isGreaterThan(0.0);
+            verify(attendanceRecordMapper).update(existing);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // getMonthlyAggregateForAllUsers
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("getMonthlyAggregateForAllUsers")
+    class GetMonthlyAggregateForAllUsers {
+
+        @Test
+        @DisplayName("正常系: ユーザーごとに勤務・残業・深夜時間を合算する")
+        void aggregatesHoursPerUser() {
+            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
+            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
+
+            AttendanceRecord user1Record1 = AttendanceRecord.builder()
+                    .userId(1L).workingHours(8.0).overtimeHours(2.0).nightShiftHours(1.0).build();
+            AttendanceRecord user1Record2 = AttendanceRecord.builder()
+                    .userId(1L).workingHours(7.5).overtimeHours(0.0).nightShiftHours(null).build();
+            AttendanceRecord user2Record1 = AttendanceRecord.builder()
+                    .userId(2L).workingHours(8.0).overtimeHours(1.0).nightShiftHours(0.5).build();
+
+            when(attendanceRecordMapper.selectAllByDateRange(any(Instant.class), any(Instant.class)))
+                    .thenReturn(List.of(user1Record1, user1Record2, user2Record1));
+
+            List<AttendanceRecordService.MonthlyUserSummary> result =
+                    service.getMonthlyAggregateForAllUsers(YearMonth.of(2026, 6));
+
+            AttendanceRecordService.MonthlyUserSummary user1Summary = result.stream()
+                    .filter(s -> s.userId().equals(1L)).findFirst().orElseThrow();
+            AttendanceRecordService.MonthlyUserSummary user2Summary = result.stream()
+                    .filter(s -> s.userId().equals(2L)).findFirst().orElseThrow();
+
+            assertThat(user1Summary.workingHours()).isEqualTo(15.5);
+            assertThat(user1Summary.overtimeHours()).isEqualTo(2.0);
+            assertThat(user1Summary.nightShiftHours()).isEqualTo(1.0);
+            assertThat(user1Summary.recordCount()).isEqualTo(2);
+
+            assertThat(user2Summary.workingHours()).isEqualTo(8.0);
+            assertThat(user2Summary.overtimeHours()).isEqualTo(1.0);
+            assertThat(user2Summary.nightShiftHours()).isEqualTo(0.5);
+            assertThat(user2Summary.recordCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("月境界: 年をまたぐ場合も前月開始日〜当月終了日の範囲で取得する")
+        void yearBoundary_computesCorrectDateRange() {
+            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
+            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
+            when(attendanceRecordMapper.selectAllByDateRange(any(Instant.class), any(Instant.class)))
+                    .thenReturn(List.of());
+
+            service.getMonthlyAggregateForAllUsers(YearMonth.of(2026, 1));
+
+            Instant expectedStart = DateTimeUtil.toInstant(LocalDate.of(2025, 12, 21));
+            Instant expectedEnd = DateTimeUtil.toInstant(LocalDate.of(2026, 1, 21));
+            verify(attendanceRecordMapper).selectAllByDateRange(expectedStart, expectedEnd);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // getOvertimeSumByUserForMonthRange
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("getOvertimeSumByUserForMonthRange")
+    class GetOvertimeSumByUserForMonthRange {
+
+        @Test
+        @DisplayName("正常系: 複数月・複数ユーザーの残業時間を年月ごとに集計する")
+        void aggregatesOvertimePerMonthAndUser() {
+            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
+            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
+
+            AttendanceRecord mayRecord = AttendanceRecord.builder()
+                    .userId(1L)
+                    .attendanceDate(DateTimeUtil.toInstant(LocalDate.of(2026, 5, 10)))
+                    .overtimeHours(2.0)
+                    .build();
+            AttendanceRecord juneRecord = AttendanceRecord.builder()
+                    .userId(1L)
+                    .attendanceDate(DateTimeUtil.toInstant(LocalDate.of(2026, 6, 10)))
+                    .overtimeHours(3.0)
+                    .build();
+
+            when(attendanceRecordMapper.selectAllByDateRange(any(Instant.class), any(Instant.class)))
+                    .thenReturn(List.of(mayRecord, juneRecord));
+
+            Map<YearMonth, Map<Long, Double>> result = service.getOvertimeSumByUserForMonthRange(
+                    List.of(YearMonth.of(2026, 5), YearMonth.of(2026, 6)));
+
+            assertThat(result.get(YearMonth.of(2026, 5))).containsEntry(1L, 2.0);
+            assertThat(result.get(YearMonth.of(2026, 6))).containsEntry(1L, 3.0);
+        }
+
+        @Test
+        @DisplayName("月境界: 前月最終日は前月の集計へ、当月初日は当月の集計へ振り分ける")
+        void monthBoundaryDates_areAssignedToCorrectMonth() {
+            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
+            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
+
+            // 2026-05の集計期間は 2026-04-21〜2026-05-20、2026-06の集計期間は 2026-05-21〜2026-06-20
+            AttendanceRecord mayLastDay = AttendanceRecord.builder()
+                    .userId(1L)
+                    .attendanceDate(DateTimeUtil.toInstant(LocalDate.of(2026, 5, 20))) // 5月期間の最終日
+                    .overtimeHours(2.0)
+                    .build();
+            AttendanceRecord juneFirstDay = AttendanceRecord.builder()
+                    .userId(1L)
+                    .attendanceDate(DateTimeUtil.toInstant(LocalDate.of(2026, 5, 21))) // 6月期間の初日
+                    .overtimeHours(3.0)
+                    .build();
+            AttendanceRecord juneLastDay = AttendanceRecord.builder()
+                    .userId(2L)
+                    .attendanceDate(DateTimeUtil.toInstant(LocalDate.of(2026, 6, 20))) // 6月期間の最終日
+                    .overtimeHours(1.5)
+                    .build();
+
+            when(attendanceRecordMapper.selectAllByDateRange(any(Instant.class), any(Instant.class)))
+                    .thenReturn(List.of(mayLastDay, juneFirstDay, juneLastDay));
+
+            Map<YearMonth, Map<Long, Double>> result = service.getOvertimeSumByUserForMonthRange(
+                    List.of(YearMonth.of(2026, 5), YearMonth.of(2026, 6)));
+
+            assertThat(result.get(YearMonth.of(2026, 5))).containsEntry(1L, 2.0);
+            assertThat(result.get(YearMonth.of(2026, 5))).doesNotContainKey(2L);
+            assertThat(result.get(YearMonth.of(2026, 6))).containsEntry(1L, 3.0);
+            assertThat(result.get(YearMonth.of(2026, 6))).containsEntry(2L, 1.5);
         }
     }
 }

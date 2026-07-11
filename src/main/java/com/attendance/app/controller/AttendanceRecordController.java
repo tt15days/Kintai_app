@@ -388,17 +388,13 @@ public class AttendanceRecordController {
 
                 LocalTime s = null;
                 if (startTimeStrs != null && startTimeStrs.size() > j) {
-                    String sStr = startTimeStrs.get(j);
-                    if (sStr != null && !sStr.isEmpty())
-                        s = LocalTime.parse(sStr);
+                    s = parseTimeOrThrow(startTimeStrs.get(j), "開始時刻", i + 1);
                 }
                 starts.add(s);
 
                 LocalTime e = null;
                 if (endTimeStrs != null && endTimeStrs.size() > j) {
-                    String eStr = endTimeStrs.get(j);
-                    if (eStr != null && !eStr.isEmpty())
-                        e = LocalTime.parse(eStr);
+                    e = parseTimeOrThrow(endTimeStrs.get(j), "終了時刻", i + 1);
                 }
                 ends.add(e);
 
@@ -927,6 +923,14 @@ public class AttendanceRecordController {
         return CORRECTION_LIST_REDIRECT;
     }
 
+    /**
+     * 時刻文字列をパースします。空文字・nullは「時刻の削除意図」としてnullを返し、
+     * 値があるのにパースできない場合は入力エラーとして例外を送出します。
+     *
+     * @param value 時刻文字列（HH:mm）
+     * @return パース結果。空入力の場合は null
+     * @throws IllegalArgumentException 時刻の形式が不正な場合
+     */
     private LocalTime parseTimeOrNull(String value) {
         if (value == null || value.trim().isEmpty()) {
             return null;
@@ -934,7 +938,28 @@ public class AttendanceRecordController {
         try {
             return LocalTime.parse(value.trim(), DateTimeFormatter.ofPattern("HH:mm"));
         } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("時刻の形式が不正です（HH:mm形式で入力してください）: " + value);
+        }
+    }
+
+    /**
+     * 一括保存の時刻文字列をパースします。空文字・nullはnull（未入力・削除意図）を返し、
+     * パース失敗時は行番号付きの入力検証例外を送出します。
+     *
+     * @param value     時刻文字列
+     * @param fieldName 項目名（エラーメッセージ用）
+     * @param rowNumber 行番号（1始まり、エラーメッセージ用）
+     * @return パース結果。空入力の場合は null
+     * @throws IllegalArgumentException 時刻の形式が不正な場合
+     */
+    private LocalTime parseTimeOrThrow(String value, String fieldName, int rowNumber) {
+        if (value == null || value.isEmpty()) {
             return null;
+        }
+        try {
+            return LocalTime.parse(value);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException(fieldName + "の形式が不正です: 行=" + rowNumber + ", 値=" + value);
         }
     }
 

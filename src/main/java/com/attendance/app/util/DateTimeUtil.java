@@ -116,6 +116,20 @@ public class DateTimeUtil {
         return endMinutes - startMinutes;
     }
 
+    // ========== 勤務時間帯判定 ==========
+
+    /**
+     * 開始時刻・終了時刻から日跨ぎ（終了時刻が翌日にまたがる）勤務かどうかを判定します。
+     * 終了時刻が開始時刻以前（同時刻を含む）の場合は日跨ぎとみなします。
+     *
+     * @param startTime 開始時刻
+     * @param endTime   終了時刻
+     * @return いずれかが null の場合は false、それ以外は日跨ぎなら true
+     */
+    public static boolean isOvernight(LocalTime startTime, LocalTime endTime) {
+        return startTime != null && endTime != null && !endTime.isAfter(startTime);
+    }
+
     // ========== 現在時刻 ==========
 
     /**

@@ -75,13 +75,6 @@ public class CsvFilenamePatternService {
         return filename;
     }
 
-    /**
-     * 画面表示用のトークン説明文を返します。
-     */
-    public String getPatternGuide() {
-        return "使用可能: {yyyy}, {MM}, {userId}(3桁), {name}, {downloadAt}";
-    }
-
     private void validatePattern(String pattern) {
         if (pattern.isEmpty()) {
             throw new IllegalArgumentException("ファイル名パターンを入力してください");

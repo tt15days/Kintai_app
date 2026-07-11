@@ -83,6 +83,8 @@ public interface AttendanceSubmissionMapper {
     /**
      * 指定ユーザー・対象月の勤怠申請を削除します。
      *
+     * <p><b>統合テスト専用。本番コードから呼ばない</b>（削除すると audit_logs の target_id が孤立するため）。
+     *
      * @param userId ユーザーID
      * @param targetYearMonth 対象年月
      * @return 削除された件数

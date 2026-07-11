@@ -90,6 +90,7 @@
         WHERE submission_id = #{submissionId}
     </update>
 
+    <!-- 統合テスト専用。本番コードから呼ばない（audit_logs の target_id が孤立するため） -->
     <delete id="deleteByUserAndMonth">
         DELETE FROM attendance_submissions
         WHERE user_id = #{userId}

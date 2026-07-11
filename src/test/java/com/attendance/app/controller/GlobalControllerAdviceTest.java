@@ -1,8 +1,8 @@
 package com.attendance.app.controller;
 
 import com.attendance.app.entity.User;
-import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.security.SecurityUtil;
+import com.attendance.app.service.SystemSettingService;
 import com.attendance.app.service.UserService;
 import com.attendance.app.service.AttendanceSubmissionService;
 import com.attendance.app.service.AttendanceCorrectionRequestService;
@@ -30,7 +30,7 @@ class GlobalControllerAdviceTest {
     private SecurityUtil securityUtil;
 
     @Mock
-    private SystemSettingMapper systemSettingMapper;
+    private SystemSettingService systemSettingService;
 
     @Mock
     private UserService userService;
@@ -104,7 +104,7 @@ class GlobalControllerAdviceTest {
         @Test
         @DisplayName("データベースからコピーライト設定が正常に取得できた場合、その値がモデルに設定されること")
         void addCopyright_fromDb() {
-            when(systemSettingMapper.selectValueByKey("COPYRIGHT_TEXT")).thenReturn("© 2026 Test Copyright");
+            when(systemSettingService.getSettingValue("COPYRIGHT_TEXT")).thenReturn("© 2026 Test Copyright");
 
             ExtendedModelMap model = new ExtendedModelMap();
             advice.addCopyrightText(model);
@@ -115,7 +115,7 @@ class GlobalControllerAdviceTest {
         @Test
         @DisplayName("コピーライト設定が空またはnullの場合、デフォルトのコピーライトが設定されること")
         void addCopyright_defaultWhenEmpty() {
-            when(systemSettingMapper.selectValueByKey("COPYRIGHT_TEXT")).thenReturn(null);
+            when(systemSettingService.getSettingValue("COPYRIGHT_TEXT")).thenReturn(null);
 
             ExtendedModelMap model = new ExtendedModelMap();
             advice.addCopyrightText(model);
@@ -126,7 +126,7 @@ class GlobalControllerAdviceTest {
         @Test
         @DisplayName("設定取得で例外が発生した場合、デフォルトのコピーライトが設定されること")
         void addCopyright_defaultOnException() {
-            when(systemSettingMapper.selectValueByKey("COPYRIGHT_TEXT")).thenThrow(new RuntimeException("DB Error"));
+            when(systemSettingService.getSettingValue("COPYRIGHT_TEXT")).thenThrow(new RuntimeException("DB Error"));
 
             ExtendedModelMap model = new ExtendedModelMap();
             advice.addCopyrightText(model);
@@ -142,7 +142,7 @@ class GlobalControllerAdviceTest {
         @Test
         @DisplayName("データベースからシステム名設定が正常に取得できた場合、その値がモデルに設定されること")
         void addSystemName_fromDb() {
-            when(systemSettingMapper.selectValueByKey("SYSTEM_NAME")).thenReturn("カスタム勤怠");
+            when(systemSettingService.getSettingValue("SYSTEM_NAME")).thenReturn("カスタム勤怠");
 
             ExtendedModelMap model = new ExtendedModelMap();
             advice.addSystemName(model);
@@ -153,7 +153,7 @@ class GlobalControllerAdviceTest {
         @Test
         @DisplayName("システム名設定が空またはnullの場合、デフォルトのシステム名が設定されること")
         void addSystemName_defaultWhenEmpty() {
-            when(systemSettingMapper.selectValueByKey("SYSTEM_NAME")).thenReturn(" ");
+            when(systemSettingService.getSettingValue("SYSTEM_NAME")).thenReturn(" ");
 
             ExtendedModelMap model = new ExtendedModelMap();
             advice.addSystemName(model);
@@ -164,7 +164,7 @@ class GlobalControllerAdviceTest {
         @Test
         @DisplayName("設定取得で例外が発生した場合、デフォルトのシステム名が設定されること")
         void addSystemName_defaultOnException() {
-            when(systemSettingMapper.selectValueByKey("SYSTEM_NAME")).thenThrow(new RuntimeException("DB Error"));
+            when(systemSettingService.getSettingValue("SYSTEM_NAME")).thenThrow(new RuntimeException("DB Error"));
 
             ExtendedModelMap model = new ExtendedModelMap();
             advice.addSystemName(model);

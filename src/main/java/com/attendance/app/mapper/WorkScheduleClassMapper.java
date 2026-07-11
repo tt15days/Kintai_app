@@ -69,14 +69,6 @@ public interface WorkScheduleClassMapper {
     int update(WorkScheduleClass workScheduleClass);
 
     /**
-     * 勤務クラスを削除
-     *
-     * @param classId 勤務クラスID
-     * @return 削除された件数
-     */
-    int deleteById(@Param("classId") Long classId);
-
-    /**
      * 名称の重複チェック（同一IDを除く）
      *
      * @param name クラス名

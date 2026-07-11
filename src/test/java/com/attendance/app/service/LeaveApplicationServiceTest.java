@@ -195,6 +195,44 @@ class LeaveApplicationServiceTest {
             inOrder.verify(leaveApplicationMapper).acquireUserLock(2L);
             inOrder.verify(leaveApplicationMapper).selectByUserAndDateRange(2L, start, end);
         }
+
+        @Test
+        @DisplayName("休暇期間種別が許可値（FULL_DAY/AM_HALF/PM_HALF）以外の場合は例外を送出する")
+        void invalidDurationType_throwsException() {
+            LocalDate day = LocalDate.of(2026, 6, 1);
+
+            assertThatThrownBy(() ->
+                    service.createApplication(2L, day, day, "INVALID_TYPE", LeaveType.PAID_LEAVE, "半休"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("休暇期間種別が不正です");
+
+            verify(leaveApplicationMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("期間が366日を超える場合は例外を送出する")
+        void periodExceeds366Days_throwsException() {
+            LocalDate start = LocalDate.of(2026, 1, 1);
+            LocalDate end   = start.plusDays(366); // 367日間
+
+            assertThatThrownBy(() ->
+                    service.createApplication(2L, start, end, LeaveType.SPECIAL_LEAVE, "長期"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("366日以内");
+
+            verify(leaveApplicationMapper, never()).insert(any());
+        }
+
+        @Test
+        @DisplayName("期間がちょうど366日の場合は作成できる")
+        void periodExactly366Days_createsSuccessfully() {
+            LocalDate start = LocalDate.of(2026, 1, 1);
+            LocalDate end   = start.plusDays(365); // 366日間
+
+            service.createApplication(2L, start, end, LeaveType.SPECIAL_LEAVE, "上限ちょうど");
+
+            verify(leaveApplicationMapper).insert(any());
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -244,6 +282,21 @@ class LeaveApplicationServiceTest {
                             LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 2),
                             LeaveType.PAID_LEAVE, null))
                     .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
+        @DisplayName("更新後の期間が366日を超える場合は例外を送出する")
+        void periodExceeds366Days_throwsOnUpdate() {
+            LeaveApplication app = pendingApp(1L);
+            when(leaveApplicationMapper.selectByIdForUpdate(1L)).thenReturn(Optional.of(app));
+
+            LocalDate start = LocalDate.of(2026, 1, 1);
+            assertThatThrownBy(() ->
+                    service.updateApplication(1L, start, start.plusDays(366), LeaveType.UNPAID_LEAVE, "長期"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("366日以内");
+
+            verify(leaveApplicationMapper, never()).update(any());
         }
     }
 

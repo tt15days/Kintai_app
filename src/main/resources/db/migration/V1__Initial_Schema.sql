@@ -21,6 +21,14 @@
 --   - overtime_records.overtime_start/overtime_end を TIMESTAMP WITH TIME ZONE 化し
 --     有効行のみを対象とする部分一意インデックスを追加 (旧 V2)
 --   - emp_no_seq シーケンスを追加（emp_no のアトミック採番用） (旧 V2)
+-- 追加変更 (2026-07-11 レビュー反映):
+--   - uq_attendance_user_date_active をJST暦日の式一意インデックスに変更、idx_attendance_records_user_id を
+--     idx_attendance_records_user_date(user_id, attendance_date) に置換 (DB-01)
+--   - leave_applications/paid_leave_balance/admin_announcements に日付範囲順序のCHECKを追加 (DB-04)
+--   - leave_applications.leave_duration_type/user_notifications.notification_type にCHECKを追加 (DB-05)
+--   - work_schedule_class_breaks に idx_wscb_class_id と UNIQUE(class_id, break_start_time) を追加 (DB-06)
+--   - idx_user_notifications_user_id を idx_user_notifications_user_created(user_id, created_at DESC) に置換 (DB-09)
+--   - attendance_user_approvers/attendance_department_approvers の approver_user_id に索引を追加 (DB-10)
 -- サンプルデータは db/sample/V2__Sample_Data.sql に分離
 -- ============================================================
 
@@ -101,8 +109,11 @@ CREATE TABLE IF NOT EXISTS work_schedule_class_breaks (
     break_start_time TIME NOT NULL,
     break_end_time   TIME NOT NULL,
     CONSTRAINT fk_wscb_class FOREIGN KEY (class_id) REFERENCES work_schedule_classes(class_id) ON DELETE CASCADE,
-    CONSTRAINT chk_wscb_time_window CHECK (break_start_time <> break_end_time)
+    CONSTRAINT chk_wscb_time_window CHECK (break_start_time <> break_end_time),
+    CONSTRAINT uq_wscb_class_start UNIQUE (class_id, break_start_time)
 );
+
+CREATE INDEX IF NOT EXISTS idx_wscb_class_id ON work_schedule_class_breaks(class_id);
 
 
 -- ============================================================
@@ -163,7 +174,7 @@ CREATE TABLE IF NOT EXISTS attendance_records (
     FOREIGN KEY (class_id) REFERENCES work_schedule_classes(class_id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_attendance_records_user_id ON attendance_records(user_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_records_user_date ON attendance_records(user_id, attendance_date);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_class_id ON attendance_records(class_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_attendance_date ON attendance_records(attendance_date);
 CREATE INDEX IF NOT EXISTS idx_attendance_records_working_hours ON attendance_records(user_id, working_hours);
@@ -172,9 +183,11 @@ CREATE INDEX IF NOT EXISTS idx_attendance_records_event_type ON attendance_recor
 CREATE INDEX IF NOT EXISTS idx_attendance_records_is_deleted ON attendance_records(is_deleted);
 
 -- 有効行(is_deleted = false)のみを対象とする部分一意インデックス。
+-- attendance_date は TIMESTAMPTZ で保持するため、JST暦日への式インデックスで一意性を担保する
+-- （書き込み経路がJST 00:00に正規化する前提だけに依存しない）。
 -- 論理削除済み行との共存・同一日への再登録を許可しつつ、有効な勤怠は1日1件を担保する。
 CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_user_date_active
-    ON attendance_records(user_id, attendance_date)
+    ON attendance_records(user_id, ((attendance_date AT TIME ZONE 'Asia/Tokyo')::date))
     WHERE is_deleted = false;
 
 -- ============================================================
@@ -198,7 +211,9 @@ CREATE TABLE IF NOT EXISTS leave_applications (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL,
     CONSTRAINT check_leave_type CHECK (leave_type IN ('PAID_LEAVE', 'UNPAID_LEAVE', 'SICK_LEAVE', 'SPECIAL_LEAVE', 'ABSENCE')),
-    CONSTRAINT check_leave_status CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED'))
+    CONSTRAINT check_leave_status CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+    CONSTRAINT check_leave_duration_type CHECK (leave_duration_type IN ('FULL_DAY', 'AM_HALF', 'PM_HALF')),
+    CONSTRAINT check_leave_dates CHECK (leave_end_date >= leave_start_date)
 );
 
 CREATE INDEX IF NOT EXISTS idx_leave_applications_user_id ON leave_applications(user_id);
@@ -284,6 +299,9 @@ CREATE TABLE IF NOT EXISTS attendance_department_approvers (
     CONSTRAINT uq_attendance_department_approvers UNIQUE (department_name, approver_user_id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_attendance_department_approvers_approver_user_id
+    ON attendance_department_approvers(approver_user_id);
+
 CREATE TABLE IF NOT EXISTS attendance_user_approvers (
     id BIGSERIAL PRIMARY KEY,
     applicant_user_id BIGINT NOT NULL,
@@ -294,6 +312,9 @@ CREATE TABLE IF NOT EXISTS attendance_user_approvers (
     CONSTRAINT fk_attendance_user_approvers_approver FOREIGN KEY (approver_user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     CONSTRAINT uq_attendance_user_approvers UNIQUE (applicant_user_id, approver_user_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_attendance_user_approvers_approver_user_id
+    ON attendance_user_approvers(approver_user_id);
 
 
 -- ============================================================
@@ -389,11 +410,13 @@ CREATE TABLE IF NOT EXISTS user_notifications (
     CONSTRAINT fk_un_user
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     CONSTRAINT fk_un_sender
-        FOREIGN KEY (sender_user_id) REFERENCES users(user_id) ON DELETE SET NULL
+        FOREIGN KEY (sender_user_id) REFERENCES users(user_id) ON DELETE SET NULL,
+    CONSTRAINT chk_un_notification_type
+        CHECK (notification_type IN ('REMINDER', 'APPROVAL_REQUEST', 'APPROVED', 'RETURNED', 'REJECTED', 'ARTICLE36_ALERT', 'ADMIN_MESSAGE', 'INTERVAL_ALERT'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id
-    ON user_notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_created
+    ON user_notifications(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_notifications_user_unread
     ON user_notifications(user_id, is_read);
 
@@ -422,7 +445,9 @@ CREATE TABLE IF NOT EXISTS paid_leave_balance (
     CONSTRAINT chk_plb_carried_over_days
         CHECK (carried_over_days >= 0),
     CONSTRAINT chk_plb_used_days
-        CHECK (used_days >= 0)
+        CHECK (used_days >= 0),
+    CONSTRAINT chk_plb_dates
+        CHECK (expiry_date >= grant_date)
 );
 
 CREATE INDEX IF NOT EXISTS idx_plb_user_id
@@ -447,7 +472,9 @@ CREATE TABLE IF NOT EXISTS admin_announcements (
     updated_at         TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     is_deleted         BOOLEAN                  NOT NULL DEFAULT FALSE,
     CONSTRAINT fk_ann_created_by
-        FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE RESTRICT
+        FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE RESTRICT,
+    CONSTRAINT chk_ann_dates
+        CHECK (display_end_date IS NULL OR display_end_date >= display_start_date)
 );
 
 CREATE INDEX IF NOT EXISTS idx_ann_is_active
