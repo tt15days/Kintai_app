@@ -71,4 +71,13 @@ public interface AttendanceCorrectionRequestMapper {
      * @return 更新された件数
      */
     int update(AttendanceCorrectionRequest request);
+
+    /**
+     * ユーザー単位のトランザクションスコープ advisory lock を取得します。
+     * 勤怠修正申請の重複チェック（TOCTOUレース）を直列化するために、重複チェック前に呼び出します。
+     * トランザクション終了時に自動的に解放されます。
+     *
+     * @param userId 対象ユーザーID
+     */
+    void acquireUserLock(@Param("userId") Long userId);
 }

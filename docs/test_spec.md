@@ -141,6 +141,7 @@
 
 #### `AttendanceCorrectionRequestServiceTest` (勤怠修正申請サービス)
 - 修正申請の作成、ステータス変更、および権限チェック等を検証。
+- 承認・却下時の監査ログ（`CORRECTION_APPROVED`/`CORRECTION_REJECTED`）記録を検証。
 
 #### `AttendancePeriodSettingServiceTest` (勤怠期間設定サービス)
 - 勤怠の締め日設定、ロック処理、カレンダー生成ロジック等を検証。
@@ -163,6 +164,7 @@
 
 #### `LeaveApplicationServiceTest` (休暇申請サービス)
 - 休暇申請の登録、承認時の有給残高減算、ステータス更新等のビジネスロジックを検証。
+- 承認・却下時の監査ログ記録を検証。
 
 #### `LoginAttemptServiceTest` (ログイン試行・ロックアウトサービス)
 - 連続ログイン失敗時のアカウントロック処理と、一定時間経過後のロック解除判定を検証。
@@ -253,7 +255,7 @@
 
 ### 3.6 ユーティリティ・キャッシュテスト
 
-#### `DateTimeUtilTest` / `TimeZoneUtilTest` (日時ユーティリティ)
+#### `DateTimeUtilTest` (日時ユーティリティ)
 - 日本時間（Asia/Tokyo）基準の日付取得・変換ロジックを検証。
 
 #### `CacheIntegrationTest` / `CachePerformanceTest` (キャッシュ)

@@ -11,7 +11,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.cache.CacheManager;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -21,9 +20,12 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+// TransactionAwareCacheManagerProxy によりキャッシュの Put/Evict はトランザクションコミット後に
+// 反映されるため、テストを @Transactional（コミットしない）で囲まず、各サービス呼び出しが
+// 自身のトランザクションをコミットする実運用と同じ流れで検証する。
+// DBへの書き込みは Mapper / AttendanceRecordService のモックで遮断している。
 @SpringBootTest(classes = com.attendance.app.AttendanceApplication.class)
 @ActiveProfiles("local")
-@Transactional
 class CacheIntegrationTest {
 
     @Autowired
@@ -43,6 +45,9 @@ class CacheIntegrationTest {
 
     @MockitoBean
     private UserService userService;
+
+    @MockitoBean
+    private AttendanceRecordService attendanceRecordService;
 
     private User adminUser;
 
@@ -66,6 +71,7 @@ class CacheIntegrationTest {
 
         when(userService.isAttendanceApprover(any())).thenReturn(true);
         when(userService.getUserById(1L)).thenReturn(Optional.of(adminUser));
+        when(attendanceRecordService.getRecordByUserAndDate(anyLong(), any())).thenReturn(Optional.empty());
     }
 
     @Test

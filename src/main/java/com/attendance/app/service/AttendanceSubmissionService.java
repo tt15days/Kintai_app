@@ -6,6 +6,7 @@ import com.attendance.app.entity.User;
 import com.attendance.app.mapper.AttendanceSubmissionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.cache.annotation.CacheEvict;
@@ -154,7 +155,12 @@ public class AttendanceSubmissionService {
                 .startDate(startDate)
                 .endDate(endDate)
                 .build();
-        attendanceSubmissionMapper.insert(newSubmission);
+        try {
+            attendanceSubmissionMapper.insert(newSubmission);
+        } catch (DuplicateKeyException e) {
+            // uq_attendance_submissions_user_month に対する同時実行競合（申請ボタンの二重クリック等）。
+            throw new IllegalArgumentException("この月は既に申請中です", e);
+        }
 
         auditLogService.recordSubmissionEvent(
                 AuditEventType.SUBMISSION_SUBMITTED,

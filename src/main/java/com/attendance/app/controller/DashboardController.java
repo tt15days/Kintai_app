@@ -121,8 +121,8 @@ public class DashboardController {
 
             // ログイン時の日付を取得
             LocalDate today = currentUser.getLastLoginAt() != null
-                    ? currentUser.getLastLoginAt().atZone(java.time.ZoneId.of("Asia/Tokyo")).toLocalDate()
-                    : LocalDate.now(java.time.ZoneId.of("Asia/Tokyo"));
+                    ? com.attendance.app.util.DateTimeUtil.toLocalDate(currentUser.getLastLoginAt())
+                    : com.attendance.app.util.DateTimeUtil.todayJapan();
 
             // 本日の打刻レコードを取得
             AttendanceRecord todayRecord = records.stream()
@@ -199,7 +199,7 @@ public class DashboardController {
             log.info("パスワードを変更: userId={}", userId);
             return DASHBOARD_PASSWORD_CHANGED_REDIRECT;
         } catch (IllegalArgumentException e) {
-            log.warn("パスワード変更に失敗: {}", e.getMessage());
+            log.warn("パスワード変更に失敗", e);
             return changePasswordViewWithError(model, e.getMessage());
         } catch (Exception e) {
             logActionError(e, "パスワード変更に失敗");
@@ -238,7 +238,7 @@ public class DashboardController {
      * @param logMessage ログ用メッセージ
      */
     private void logActionError(Exception e, String logMessage) {
-        log.error("{}: {}", logMessage, e.getMessage());
+        log.error("{}", logMessage, e);
     }
 
     /**
@@ -281,7 +281,7 @@ public class DashboardController {
             userNotificationService.markAsRead(notificationId, userId);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
-            log.error("通知の既読処理に失敗しました: {}", e.getMessage());
+            log.error("通知の既読処理に失敗しました", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 /**
  * ユーザー通知に関する業務ロジックを提供するサービスです。
@@ -87,12 +87,19 @@ public class UserNotificationService {
         String monthDisplay = targetMonth.format(YEAR_MONTH_DISPLAY);
         String message = monthDisplay + "の勤怠がまだ提出されていません。提出期限をご確認の上、月次勤怠を申請してください。";
 
+        // N+1対策として対象月の全提出を一括取得し、ユーザーIDをキーにMap参照する
+        Map<Long, com.attendance.app.entity.AttendanceSubmission> submissionByUserId =
+                attendanceSubmissionService.getSubmissionsByTargetYearMonth(targetMonth).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                com.attendance.app.entity.AttendanceSubmission::getUserId,
+                                s -> s));
+
         int count = 0;
         for (User user : activeUsers) {
             if (user.getUserRole() == UserRole.ADMIN) {
                 continue;
             }
-            if (needsReminder(user.getUserId(), targetMonth)) {
+            if (needsReminder(submissionByUserId.get(user.getUserId()))) {
                 UserNotification notification = UserNotification.builder()
                         .userId(user.getUserId())
                         .message(message)
@@ -305,20 +312,17 @@ public class UserNotificationService {
     }
 
     /**
-     * 指定ユーザーの指定年月がリマインド対象かどうかを判定します。
+     * 指定の勤怠申請がリマインド対象かどうかを判定します。
      * 申請なし・差し戻し・取り下げの場合は true を返します。
      *
-     * @param userId ユーザーID
-     * @param yearMonth 対象年月
+     * @param submission 対象年月の勤怠申請（存在しない場合は null）
      * @return リマインド対象であれば true
      */
-    private boolean needsReminder(Long userId, YearMonth yearMonth) {
-        Optional<com.attendance.app.entity.AttendanceSubmission> submission =
-                attendanceSubmissionService.getSubmission(userId, yearMonth);
-        if (submission.isEmpty()) {
+    private boolean needsReminder(com.attendance.app.entity.AttendanceSubmission submission) {
+        if (submission == null) {
             return true;
         }
-        String status = submission.get().getStatus();
+        String status = submission.getStatus();
         return AttendanceSubmissionService.STATUS_RETURNED.equals(status)
                 || AttendanceSubmissionService.STATUS_WITHDRAWN.equals(status);
     }

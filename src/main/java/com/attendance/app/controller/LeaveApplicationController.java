@@ -197,7 +197,7 @@ public class LeaveApplicationController {
             redirectAttributes.addFlashAttribute("message", "休暇申請を送信しました。");
             return LEAVE_REDIRECT;
         } catch (IllegalArgumentException e) {
-            log.warn("休暇申請作成に失敗: {}", e.getMessage());
+            log.warn("休暇申請作成に失敗", e);
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             redirectAttributes.addFlashAttribute("leaveStartDate", startDate);
             redirectAttributes.addFlashAttribute("leaveEndDate", endDate);
@@ -238,7 +238,7 @@ public class LeaveApplicationController {
                 redirectAttributes.addFlashAttribute("error", "指定された休暇申請が見つかりません。");
             }
         } catch (IllegalArgumentException e) {
-            log.warn("休暇申請削除に失敗: {}", e.getMessage());
+            log.warn("休暇申請削除に失敗", e);
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         } catch (Exception e) {
             logActionError(e, "休暇申請削除に失敗");
@@ -319,6 +319,6 @@ public class LeaveApplicationController {
     }
 
     private void logActionError(Exception e, String logMessage) {
-        log.error("{}: {}", logMessage, e.getMessage());
+        log.error("{}", logMessage, e);
     }
 }

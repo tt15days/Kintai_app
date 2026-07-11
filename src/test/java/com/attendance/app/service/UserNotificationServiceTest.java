@@ -127,13 +127,10 @@ class UserNotificationServiceTest {
             User approved = User.builder().userId(5L).userRole(UserRole.USER).build();
 
             when(userService.getActiveUsers()).thenReturn(List.of(admin, unsubmitted, returned, withdrawn, approved));
-            when(attendanceSubmissionService.getSubmission(2L, target)).thenReturn(Optional.empty());
-            when(attendanceSubmissionService.getSubmission(3L, target)).thenReturn(Optional.of(
-                AttendanceSubmission.builder().status(AttendanceSubmissionService.STATUS_RETURNED).build()));
-            when(attendanceSubmissionService.getSubmission(4L, target)).thenReturn(Optional.of(
-                AttendanceSubmission.builder().status(AttendanceSubmissionService.STATUS_WITHDRAWN).build()));
-            when(attendanceSubmissionService.getSubmission(5L, target)).thenReturn(Optional.of(
-                AttendanceSubmission.builder().status(AttendanceSubmissionService.STATUS_APPROVED).build()));
+            when(attendanceSubmissionService.getSubmissionsByTargetYearMonth(target)).thenReturn(List.of(
+                AttendanceSubmission.builder().userId(3L).status(AttendanceSubmissionService.STATUS_RETURNED).build(),
+                AttendanceSubmission.builder().userId(4L).status(AttendanceSubmissionService.STATUS_WITHDRAWN).build(),
+                AttendanceSubmission.builder().userId(5L).status(AttendanceSubmissionService.STATUS_APPROVED).build()));
 
             int count = service.createRemindersForUnsubmittedUsers(target);
 

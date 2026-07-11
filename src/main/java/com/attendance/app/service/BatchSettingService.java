@@ -44,8 +44,8 @@ public class BatchSettingService {
     private static final int DEFAULT_REMINDER_DAY    = 20;
     private static final int DEFAULT_REMINDER_HOUR   = 9;
 
-    private static final int DEFAULT_ALERT_ARTICLE36_LIMIT1  = 30;
-    private static final int DEFAULT_ALERT_ARTICLE36_LIMIT2  = 45;
+    public static final int DEFAULT_ALERT_ARTICLE36_LIMIT1  = 30;
+    public static final int DEFAULT_ALERT_ARTICLE36_LIMIT2  = 45;
     private static final int DEFAULT_ALERT_PAID_LEAVE_MONTHS = 9;
     private static final int DEFAULT_ALERT_PAID_LEAVE_DAYS   = 3;
     private static final int DEFAULT_ALERT_MIN_INTERVAL_HOURS = 11;

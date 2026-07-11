@@ -80,7 +80,7 @@ public class OvertimeRecordController {
      * @param userMessage 画面表示用メッセージ
      */
     private void addViewError(Model model, Exception e, String logMessage, String userMessage) {
-        log.error("{}: {}", logMessage, e.getMessage());
+        log.error("{}", logMessage, e);
         model.addAttribute("error", userMessage);
     }
 

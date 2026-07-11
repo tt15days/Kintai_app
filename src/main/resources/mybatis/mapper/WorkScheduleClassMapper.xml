@@ -49,6 +49,17 @@
         WHERE c.class_id = #{classId}
     </select>
 
+    <select id="selectByIds" resultMap="workScheduleClassResultMap">
+        SELECT <include refid="classWithBreaksFields"/>
+        FROM work_schedule_classes c
+        LEFT JOIN work_schedule_class_breaks b ON c.class_id = b.class_id
+        WHERE c.class_id IN
+        <foreach collection="classIds" item="classId" open="(" separator="," close=")">
+            #{classId}
+        </foreach>
+        ORDER BY c.class_id ASC
+    </select>
+
     <select id="selectByName" resultMap="workScheduleClassResultMap">
         SELECT <include refid="classWithBreaksFields"/>
         FROM work_schedule_classes c

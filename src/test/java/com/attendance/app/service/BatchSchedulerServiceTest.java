@@ -11,13 +11,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -49,7 +48,7 @@ public class BatchSchedulerServiceTest {
     void testExecuteMonthlySummary_Success() {
         YearMonth targetMonth = YearMonth.of(2026, 5);
         AttendanceRecordService.MonthlyUserSummary summary = new AttendanceRecordService.MonthlyUserSummary(
-                1L, 160.0, 10.0, 20
+                1L, 160.0, 10.0, 0.0, 20
         );
 
         when(attendanceRecordService.getMonthlyAggregateForAllUsers(targetMonth)).thenReturn(List.of(summary));
@@ -97,7 +96,7 @@ public class BatchSchedulerServiceTest {
         User user2 = User.builder().userId(2L).annualLeaveGrantDays(11).build();
 
         when(userService.getActiveUsers()).thenReturn(List.of(user1, user2));
-        when(paidLeaveBalanceService.getByUserAndYear(anyLong(), anyInt())).thenReturn(Optional.empty());
+        when(paidLeaveBalanceService.getByUsersAndYear(anyList(), anyInt())).thenReturn(List.of());
 
         BatchSchedulerService.AnnualLeaveGrantResult result = batchSchedulerService.executeAnnualLeaveGrant();
 
@@ -114,10 +113,8 @@ public class BatchSchedulerServiceTest {
         User user2 = User.builder().userId(2L).annualLeaveGrantDays(11).build();
 
         when(userService.getActiveUsers()).thenReturn(List.of(user1, user2));
-        when(paidLeaveBalanceService.getByUserAndYear(eq(1L), anyInt()))
-                .thenReturn(Optional.of(new PaidLeaveBalance()));
-        when(paidLeaveBalanceService.getByUserAndYear(eq(2L), anyInt()))
-                .thenReturn(Optional.empty());
+        when(paidLeaveBalanceService.getByUsersAndYear(anyList(), anyInt()))
+                .thenReturn(List.of(PaidLeaveBalance.builder().userId(1L).build()));
 
         BatchSchedulerService.AnnualLeaveGrantResult result = batchSchedulerService.executeAnnualLeaveGrant();
 

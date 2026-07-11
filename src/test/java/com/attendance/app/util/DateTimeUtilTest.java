@@ -83,15 +83,6 @@ class DateTimeUtilTest {
     }
 
     @Test
-    @DisplayName("calculateWorkingHours(LocalTime, LocalTime) - 開始・終了時刻から稼働時間（時間単位）を正しく計算すること")
-    void testCalculateWorkingHoursLocalTime() {
-        // 9:00 - 18:00 = 9.0時間
-        assertEquals(9.0, DateTimeUtil.calculateWorkingHours(LocalTime.of(9, 0), LocalTime.of(18, 0)), 0.001);
-        // 22:00 - 05:00 = 7.0時間（翌日またぎ）
-        assertEquals(7.0, DateTimeUtil.calculateWorkingHours(LocalTime.of(22, 0), LocalTime.of(5, 0)), 0.001);
-    }
-
-    @Test
     @DisplayName("calculateDurationMinutes(LocalTime, LocalTime) - 開始・終了時刻から経過時間（分単位）を計算すること")
     void testCalculateDurationMinutes() {
         assertEquals(0L, DateTimeUtil.calculateDurationMinutes(null, LocalTime.of(18, 0)));
@@ -101,33 +92,6 @@ class DateTimeUtilTest {
         assertEquals(90L, DateTimeUtil.calculateDurationMinutes(LocalTime.of(9, 0), LocalTime.of(10, 30)));
         // 23:00 - 01:00 = 120分（翌日またぎ）
         assertEquals(120L, DateTimeUtil.calculateDurationMinutes(LocalTime.of(23, 0), LocalTime.of(1, 0)));
-    }
-
-    @Test
-    @DisplayName("calculateWorkingHours(Instant, Instant) - 2つのInstantから稼働時間（時間単位）を計算すること")
-    void testCalculateWorkingHoursInstant() {
-        Instant start = Instant.parse("2026-06-27T09:00:00Z");
-        Instant end = Instant.parse("2026-06-27T17:30:00Z"); // 8.5時間
-        assertEquals(8.5, DateTimeUtil.calculateWorkingHours(start, end), 0.001);
-    }
-
-    @Test
-    @DisplayName("calculateWorkingHours(Instant, Instant, breakMinutes) - 休憩時間を控除して稼働時間を計算すること")
-    void testCalculateWorkingHoursWithBreak() {
-        assertEquals(0.0, DateTimeUtil.calculateWorkingHours(null, Instant.now(), 60), 0.001);
-        assertEquals(0.0, DateTimeUtil.calculateWorkingHours(Instant.now(), null, 60), 0.001);
-
-        Instant start = Instant.parse("2026-06-27T09:00:00Z");
-        Instant end = Instant.parse("2026-06-27T18:00:00Z"); // 9.0時間
-
-        // 休憩60分（1.0時間）控除 -> 8.0時間
-        assertEquals(8.0, DateTimeUtil.calculateWorkingHours(start, end, 60), 0.001);
-
-        // 休憩なし（0分） -> 9.0時間
-        assertEquals(9.0, DateTimeUtil.calculateWorkingHours(start, end, 0), 0.001);
-
-        // 終了が開始より前の場合は0.0時間
-        assertEquals(0.0, DateTimeUtil.calculateWorkingHours(end, start, 60), 0.001);
     }
 
     @Test

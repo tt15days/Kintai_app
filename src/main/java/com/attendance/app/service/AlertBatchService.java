@@ -17,11 +17,17 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AlertBatchService {
+
+    private static final String BATCH_LOG_START = "バッチ開始: {}";
+    private static final String BATCH_LOG_DONE  = "バッチ完了: {}";
+    private static final String BATCH_LOG_ERROR = "バッチ異常終了: job={}, error={}";
 
     private final AlertBatchMapper alertBatchMapper;
     private final BatchSettingService batchSettingService;
@@ -31,12 +37,14 @@ public class AlertBatchService {
     /**
      * 毎月1日の深夜3時に実行されるアラートバッチ（前月の36協定・有給消化をチェック）
      * （実際の運用に合わせてcron式は変更可能）
+     *
+     * 36協定チェックと有給消化チェックは互いに独立した通知作成処理であり、
+     * 通知INSERTは1文で原子的に完結するため、チェック単位で個別にtry/catchし、
+     * 他バッチ（BatchSchedulerService 等）と同じ構造化ログで失敗を記録する。
+     * 一方のチェックが失敗しても、もう一方の結果はロールバックされない。
      */
     @Scheduled(cron = "0 0 3 1 * ?", zone = "Asia/Tokyo")
-    @Transactional
     public void runAlertBatch() {
-        log.info("アラートバッチ処理を開始します。");
-
         LocalDate currentDate = DateTimeUtil.todayJapan();
         // 36協定は直近で締まった勤怠期間（設定された締め日基準）を対象とする
         YearMonth lastMonth = YearMonth.from(currentDate).minusMonths(1);
@@ -45,10 +53,21 @@ public class AlertBatchService {
         LocalDate startDate = lastMonth.minusMonths(1).atDay(startDay);
         LocalDate endDate = lastMonth.atDay(endDay);
 
-        checkArticle36Alerts(startDate, endDate);
-        checkPaidLeaveAlerts(currentDate);
+        log.info(BATCH_LOG_START, "36協定アラートバッチ");
+        try {
+            checkArticle36Alerts(startDate, endDate);
+            log.info(BATCH_LOG_DONE, "36協定アラートバッチ");
+        } catch (Exception e) {
+            log.error(BATCH_LOG_ERROR, "36協定アラートバッチ", e.getMessage(), e);
+        }
 
-        log.info("アラートバッチ処理が完了しました。");
+        log.info(BATCH_LOG_START, "有給消化アラートバッチ");
+        try {
+            checkPaidLeaveAlerts(currentDate);
+            log.info(BATCH_LOG_DONE, "有給消化アラートバッチ");
+        } catch (Exception e) {
+            log.error(BATCH_LOG_ERROR, "有給消化アラートバッチ", e.getMessage(), e);
+        }
     }
 
     /**
@@ -80,6 +99,11 @@ public class AlertBatchService {
         List<Article36AlertDto> alertUsers = alertBatchMapper.findUsersExceedingOvertimeLimit(startDate, endDate, limit1);
         Instant periodSince = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
 
+        // N+1対策として対象ユーザー分の重複チェックを1クエリで一括取得する
+        List<Long> userIds = alertUsers.stream().map(Article36AlertDto::getUserId).toList();
+        Set<String> existingKeys = fetchExistingNotificationKeys(
+                userIds, List.of("ALERT_ARTICLE_36_LIMIT1", "ALERT_ARTICLE_36_LIMIT2"), periodSince);
+
         int count = 0;
         for (Article36AlertDto dto : alertUsers) {
             int hours = dto.getTotalOvertimeHours().intValue();
@@ -98,7 +122,7 @@ public class AlertBatchService {
                         startDate, endDate, hours, limit1);
             }
 
-            if (userNotificationMapper.countByUserAndTypeSince(dto.getUserId(), type, periodSince) > 0) {
+            if (existingKeys.contains(notificationKey(dto.getUserId(), type))) {
                 // 同一対象期間について既に同種の通知が送信済みのためスキップ
                 continue;
             }
@@ -119,9 +143,13 @@ public class AlertBatchService {
         String type = "ALERT_PAID_LEAVE";
         Instant monthSince = YearMonth.from(currentDate).atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
 
+        // N+1対策として対象ユーザー分の重複チェックを1クエリで一括取得する
+        List<Long> userIds = alertUsers.stream().map(PaidLeaveAlertDto::getUserId).toList();
+        Set<String> existingKeys = fetchExistingNotificationKeys(userIds, List.of(type), monthSince);
+
         int count = 0;
         for (PaidLeaveAlertDto dto : alertUsers) {
-            if (userNotificationMapper.countByUserAndTypeSince(dto.getUserId(), type, monthSince) > 0) {
+            if (existingKeys.contains(notificationKey(dto.getUserId(), type))) {
                 // 当月分の有給消化アラートを既に通知済みのためスキップ
                 continue;
             }
@@ -133,6 +161,23 @@ public class AlertBatchService {
             count++;
         }
         log.info("有給消化アラート: {} 件の通知を作成しました。", count);
+    }
+
+    /**
+     * 指定ユーザー・通知種別について、指定日時以降に既に通知済みの (userId, notificationType) の
+     * 組み合わせをまとめて取得します（IN句バルク取得によるN+1対策）。
+     */
+    private Set<String> fetchExistingNotificationKeys(List<Long> userIds, List<String> types, Instant since) {
+        if (userIds.isEmpty()) {
+            return Set.of();
+        }
+        return userNotificationMapper.selectExistingNotificationKeys(userIds, types, since).stream()
+                .map(k -> notificationKey(k.getUserId(), k.getNotificationType()))
+                .collect(Collectors.toSet());
+    }
+
+    private String notificationKey(Long userId, String type) {
+        return userId + "_" + type;
     }
 
     private void createNotification(Long userId, String message, String type) {

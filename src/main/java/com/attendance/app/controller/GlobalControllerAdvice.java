@@ -46,7 +46,7 @@ public class GlobalControllerAdvice {
             }
         } catch (Exception e) {
             // 未ログイン時または匿名ユーザーアクセス時は例外を無視します
-            log.trace("グローバルユーザー情報の取得をスキップしました: {}", e.getMessage());
+            log.trace("グローバルユーザー情報の取得をスキップしました", e);
         }
     }
 
@@ -71,7 +71,9 @@ public class GlobalControllerAdvice {
                 }
             }
         } catch (Exception e) {
-            log.trace("グローバル承認待ち件数の取得をスキップしました: {}", e.getMessage());
+            // ここに到達する時点で未ログイン・匿名ユーザーは除外済みのため、
+            // 認証済みユーザーでの取得失敗は実行時エラー（DBエラー等）の可能性が高い
+            log.warn("承認待ち件数の取得に失敗しました", e);
         }
     }
 
@@ -89,7 +91,7 @@ public class GlobalControllerAdvice {
             }
             model.addAttribute("copyrightText", copyright);
         } catch (Exception e) {
-            log.warn("コピーライト設定の取得に失敗しました。デフォルト値を使用します。: {}", e.getMessage());
+            log.warn("コピーライト設定の取得に失敗しました。デフォルト値を使用します。", e);
             model.addAttribute("copyrightText", "© 2026 勤怠管理システム");
         }
     }
@@ -108,7 +110,7 @@ public class GlobalControllerAdvice {
             }
             model.addAttribute("systemName", systemName);
         } catch (Exception e) {
-            log.warn("システム名設定の取得に失敗しました。デフォルト値を使用します。: {}", e.getMessage());
+            log.warn("システム名設定の取得に失敗しました。デフォルト値を使用します。", e);
             model.addAttribute("systemName", "勤怠管理システム");
         }
     }
@@ -127,7 +129,7 @@ public class GlobalControllerAdvice {
             }
             model.addAttribute("empNoPrefix", prefix);
         } catch (Exception e) {
-            log.warn("社員番号プレフィックス設定の取得に失敗しました。デフォルト値（空）を使用します。: {}", e.getMessage());
+            log.warn("社員番号プレフィックス設定の取得に失敗しました。デフォルト値（空）を使用します。", e);
             model.addAttribute("empNoPrefix", "");
         }
     }

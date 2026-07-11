@@ -296,7 +296,7 @@ public class AttendanceRecordController {
                     .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                     .body(csvBytes);
         } catch (IllegalArgumentException e) {
-            log.warn("月次勤怠CSVダウンロード（本人）に失敗: {}", e.getMessage());
+            log.warn("月次勤怠CSVダウンロード（本人）に失敗", e);
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             logError(e, "月次勤怠CSVダウンロード（本人）に失敗");
@@ -772,7 +772,7 @@ public class AttendanceRecordController {
      * @param logMessage ログ用メッセージ
      */
     private void logError(Exception e, String logMessage) {
-        log.error("{}: {}", logMessage, e.getMessage());
+        log.error("{}", logMessage, e);
     }
 
     /**
@@ -782,7 +782,7 @@ public class AttendanceRecordController {
      * @param logMessage ログ用メッセージ
      */
     private void logWarn(Exception e, String logMessage) {
-        log.warn("{}: {}", logMessage, e.getMessage());
+        log.warn("{}", logMessage, e);
     }
 
     /**
@@ -813,7 +813,7 @@ public class AttendanceRecordController {
             model.addAttribute("correctionStatusRejected", AttendanceCorrectionRequestService.STATUS_REJECTED);
             model.addAttribute("correctionStatusWithdrawn", AttendanceCorrectionRequestService.STATUS_WITHDRAWN);
         } catch (Exception e) {
-            log.error("修正申請一覧の表示に失敗: {}", e.getMessage());
+            log.error("修正申請一覧の表示に失敗", e);
             model.addAttribute("error", "修正申請一覧の表示に失敗しました");
             model.addAttribute("requests", java.util.Collections.emptyList());
         }
@@ -866,7 +866,7 @@ public class AttendanceRecordController {
             model.addAttribute("currentRemarks", currentRemarks);
 
         } catch (Exception e) {
-            log.error("修正申請フォームの表示に失敗: {}", e.getMessage());
+            log.error("修正申請フォームの表示に失敗", e);
             model.addAttribute("error", "修正申請フォームの表示に失敗しました");
         }
         return CORRECTION_CREATE_VIEW;
@@ -898,10 +898,10 @@ public class AttendanceRecordController {
                     date + " の勤怠修正申請を提出しました。承認者の確認をお待ちください。");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
-            log.warn("勤怠修正申請の提出に失敗: {}", e.getMessage());
+            log.warn("勤怠修正申請の提出に失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "勤怠修正申請の提出に失敗しました");
-            log.error("勤怠修正申請の提出に失敗: {}", e.getMessage());
+            log.error("勤怠修正申請の提出に失敗", e);
         }
         return CORRECTION_LIST_REDIRECT;
     }
@@ -919,10 +919,10 @@ public class AttendanceRecordController {
             redirectAttributes.addFlashAttribute("message", "勤怠修正申請を取り下げました");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
-            log.warn("勤怠修正申請の取り下げに失敗: {}", e.getMessage());
+            log.warn("勤怠修正申請の取り下げに失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "勤怠修正申請の取り下げに失敗しました");
-            log.error("勤怠修正申請の取り下げに失敗: {}", e.getMessage());
+            log.error("勤怠修正申請の取り下げに失敗", e);
         }
         return CORRECTION_LIST_REDIRECT;
     }

@@ -85,4 +85,23 @@ public interface AttendanceApproverAssignmentMapper {
      * 指定された承認者IDを持つ部署別承認者設定を削除します。
      */
     int deleteDepartmentApproverByApprover(@Param("approverUserId") Long approverUserId);
+
+    /**
+     * 申請者単位のトランザクションスコープ advisory lock を取得します。
+     * 個人別承認者設定の delete-then-insert（TOCTOUレース）を直列化するために、更新前に呼び出します。
+     * トランザクション終了時に自動的に解放されます。
+     *
+     * @param applicantUserId 対象の申請者ユーザーID
+     */
+    void acquireUserApproverLock(@Param("applicantUserId") Long applicantUserId);
+
+    /**
+     * 部署単位のトランザクションスコープ advisory lock を取得します。
+     * 部署別承認者設定の delete-then-insert（TOCTOUレース）を直列化するために、更新前に呼び出します。
+     * 部署名は安定したハッシュ（PostgreSQLの hashtext）でキー化します。
+     * トランザクション終了時に自動的に解放されます。
+     *
+     * @param departmentName 対象の部署名
+     */
+    void acquireDepartmentApproverLock(@Param("departmentName") String departmentName);
 }

@@ -89,7 +89,7 @@ public class SecurityConfig {
                                     return;
                                 }
                             } catch (Exception e) {
-                                log.error("ログイン成功時処理に失敗: {}", e.getMessage());
+                                log.error("ログイン成功時処理に失敗", e);
                             }
 
                             response.sendRedirect(contextPath + "/dashboard");
@@ -98,11 +98,11 @@ public class SecurityConfig {
                             String failEmail = request.getParameter("email");
                             String contextPath = request.getContextPath();
 
-                            log.warn("ログイン失敗: email={}, 原因={}", failEmail, exception.getMessage());
+                            log.warn("ログイン失敗: email={}, 原因={}", failEmail, exception.getMessage(), exception);
                             try {
                                 auditLogService.recordUserEvent(AuditEventType.LOGIN_FAILED, null, null, "ログイン失敗: email=" + failEmail);
                             } catch (Exception e) {
-                                log.error("監査ログ(ログイン失敗)の記録に失敗: {}", e.getMessage());
+                                log.error("監査ログ(ログイン失敗)の記録に失敗", e);
                             }
 
                             if (exception instanceof LockedException) {
@@ -116,7 +116,7 @@ public class SecurityConfig {
                                             response.sendRedirect(contextPath + "/login?error=templock");
                                         }
                                     } catch (Exception ex) {
-                                        log.error("ロック中試行のカウント更新に失敗: {}", ex.getMessage());
+                                        log.error("ロック中試行のカウント更新に失敗", ex);
                                         response.sendRedirect(contextPath + "/login?error=templock");
                                     }
                                 } else {
@@ -134,7 +134,7 @@ public class SecurityConfig {
                                             response.sendRedirect(contextPath + "/login?error=true");
                                         }
                                     } catch (Exception ex) {
-                                        log.error("ログイン試行記録に失敗: {}", ex.getMessage());
+                                        log.error("ログイン試行記録に失敗", ex);
                                         response.sendRedirect(contextPath + "/login?error=true");
                                     }
                                 } else {
@@ -153,7 +153,7 @@ public class SecurityConfig {
                                 try {
                                     auditLogService.recordUserEvent(AuditEventType.LOGOUT, null, null, "ログアウト: email=" + email);
                                 } catch (Exception e) {
-                                    log.error("監査ログ(ログアウト)の記録に失敗: {}", e.getMessage());
+                                    log.error("監査ログ(ログアウト)の記録に失敗", e);
                                 }
                             }
                         })

@@ -75,8 +75,10 @@ class AttendanceRecordServiceTest {
                 attendanceSubmissionMapper,
                 userNotificationService,
                 batchSettingService);
-        lenient().when(batchSettingService.getAlertArticle36Limit1()).thenReturn(36);
-        lenient().when(batchSettingService.getAlertArticle36Limit2()).thenReturn(45);
+        lenient().when(batchSettingService.getAlertArticle36Limit1())
+                .thenReturn(BatchSettingService.DEFAULT_ALERT_ARTICLE36_LIMIT1);
+        lenient().when(batchSettingService.getAlertArticle36Limit2())
+                .thenReturn(BatchSettingService.DEFAULT_ALERT_ARTICLE36_LIMIT2);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -93,25 +95,25 @@ class AttendanceRecordServiceTest {
         }
 
         @Test
-        @DisplayName("残業35.9時間（WARNING閾値未満）は NORMAL を返す")
+        @DisplayName("残業29.9時間（既定WARNING閾値30時間未満）は NORMAL を返す")
         void justBelowWarning_returnsNormal() {
-            assertThat(service.checkArticle36(35.9)).isEqualTo("NORMAL");
+            assertThat(service.checkArticle36(29.9)).isEqualTo("NORMAL");
         }
 
         @Test
-        @DisplayName("残業36.0時間（WARNING閾値ちょうど）は WARNING を返す")
+        @DisplayName("残業30.0時間（既定WARNING閾値ちょうど）は WARNING を返す")
         void exactWarningThreshold_returnsWarning() {
-            assertThat(service.checkArticle36(36.0)).isEqualTo("WARNING");
+            assertThat(service.checkArticle36(30.0)).isEqualTo("WARNING");
         }
 
         @Test
-        @DisplayName("残業44.9時間（ALERT閾値未満）は WARNING を返す")
+        @DisplayName("残業44.9時間（既定ALERT閾値45時間未満）は WARNING を返す")
         void justBelowAlert_returnsWarning() {
             assertThat(service.checkArticle36(44.9)).isEqualTo("WARNING");
         }
 
         @Test
-        @DisplayName("残業45.0時間（ALERT閾値ちょうど）は ALERT を返す")
+        @DisplayName("残業45.0時間（既定ALERT閾値ちょうど）は ALERT を返す")
         void exactAlertThreshold_returnsAlert() {
             assertThat(service.checkArticle36(45.0)).isEqualTo("ALERT");
         }
@@ -119,13 +121,13 @@ class AttendanceRecordServiceTest {
         @ParameterizedTest(name = "{0}時間 → {1}")
         @CsvSource({
             "0.0,    NORMAL",
-            "35.99,  NORMAL",
-            "36.0,   WARNING",
+            "29.99,  NORMAL",
+            "30.0,   WARNING",
             "44.99,  WARNING",
             "45.0,   ALERT",
             "80.0,   ALERT"
         })
-        @DisplayName("パラメータ化: 各時間帯のステータスが正しい")
+        @DisplayName("パラメータ化: 既定閾値（30h/45h）での各時間帯のステータスが正しい")
         void parameterized_allBoundaries(double hours, String expectedStatus) {
             assertThat(service.checkArticle36(hours)).isEqualTo(expectedStatus);
         }

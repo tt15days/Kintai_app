@@ -4,6 +4,7 @@ import com.attendance.app.entity.WorkScheduleClass;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,6 +35,14 @@ public interface WorkScheduleClassMapper {
      * @return 勤務クラス。存在しない場合は Optional.empty()
      */
     Optional<WorkScheduleClass> selectById(@Param("classId") Long classId);
+
+    /**
+     * 複数IDで勤務クラスを一括取得します（集計処理でのN+1対策用）。
+     *
+     * @param classIds 勤務クラスIDのコレクション
+     * @return 該当する勤務クラスのリスト
+     */
+    List<WorkScheduleClass> selectByIds(@Param("classIds") Collection<Long> classIds);
 
     /**
      * 名称で勤務クラスを取得

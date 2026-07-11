@@ -53,4 +53,16 @@
         WHERE approver_user_id = #{approverUserId}
     </delete>
 
+    <!-- 申請者単位のトランザクションスコープ advisory lock を取得し、個人別承認者設定の更新をレース無く直列化する -->
+    <!-- キー空間 (3, applicant_user_id): LeaveApplicationMapper(1,-) / AttendanceCorrectionRequestMapper(2,-) とは別名前空間のため衝突しない -->
+    <select id="acquireUserApproverLock" resultType="java.lang.Object">
+        SELECT pg_advisory_xact_lock(3, CAST(#{applicantUserId} AS INT))
+    </select>
+
+    <!-- 部署単位のトランザクションスコープ advisory lock を取得し、部署別承認者設定の更新をレース無く直列化する -->
+    <!-- キー空間 (4, hashtext(department_name)): 部署名はPostgreSQL組み込みのhashtextで安定的にint化する -->
+    <select id="acquireDepartmentApproverLock" resultType="java.lang.Object">
+        SELECT pg_advisory_xact_lock(4, hashtext(#{departmentName}))
+    </select>
+
 </mapper>

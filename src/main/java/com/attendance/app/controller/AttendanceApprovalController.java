@@ -96,7 +96,7 @@ public class AttendanceApprovalController {
             model.addAttribute("submissionStatusApproved", AttendanceSubmissionService.STATUS_APPROVED);
             model.addAttribute("submissionStatusReturned", AttendanceSubmissionService.STATUS_RETURNED);
         } catch (Exception e) {
-            log.error("承認一覧の表示に失敗: {}", e.getMessage());
+            log.error("承認一覧の表示に失敗", e);
             model.addAttribute("error", "承認一覧の表示に失敗しました");
             model.addAttribute("pendingSubmissions", java.util.Collections.emptyList());
             model.addAttribute("applicantUsers", java.util.Collections.emptyMap());
@@ -117,17 +117,25 @@ public class AttendanceApprovalController {
             // 申請情報を承認前に取得（通知生成用）
             AttendanceSubmission submission = attendanceSubmissionService.getSubmissionById(submissionId).orElse(null);
             attendanceSubmissionService.approve(submissionId, approverUserId, comment);
-            if (submission != null) {
-                userNotificationService.notifyApplicantApproved(submission.getUserId(),
-                        submission.getTargetYearMonth() + "分の月次勤怠申請");
-            }
             redirectAttributes.addFlashAttribute("message", "勤怠申請を承認しました");
+
+            // 通知作成は承認処理とは別トランザクション（別Bean）のため、
+            // ここで例外が起きても承認自体は既にコミット済み。失敗を承認の失敗として扱わない。
+            try {
+                if (submission != null) {
+                    userNotificationService.notifyApplicantApproved(submission.getUserId(),
+                            submission.getTargetYearMonth() + "分の月次勤怠申請");
+                }
+            } catch (Exception notifyEx) {
+                redirectAttributes.addFlashAttribute("message", "勤怠申請の承認は完了しましたが、通知の送信に失敗しました");
+                log.warn("勤怠申請承認の通知送信に失敗: submissionId={}", submissionId, notifyEx);
+            }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
-            log.warn("勤怠申請の承認に失敗: {}", e.getMessage());
+            log.warn("勤怠申請の承認に失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "勤怠申請の承認に失敗しました");
-            log.error("勤怠申請の承認に失敗: {}", e.getMessage());
+            log.error("勤怠申請の承認に失敗", e);
         }
         return APPROVAL_REDIRECT;
     }
@@ -145,17 +153,25 @@ public class AttendanceApprovalController {
             // 申請情報を差し戻し前に取得（通知生成用）
             AttendanceSubmission submission = attendanceSubmissionService.getSubmissionById(submissionId).orElse(null);
             attendanceSubmissionService.returnForCorrection(submissionId, approverUserId, comment);
-            if (submission != null) {
-                userNotificationService.notifyApplicantReturned(submission.getUserId(),
-                        submission.getTargetYearMonth() + "分の月次勤怠申請", comment);
-            }
             redirectAttributes.addFlashAttribute("message", "勤怠申請を差し戻しました");
+
+            // 通知作成は差し戻し処理とは別トランザクション（別Bean）のため、
+            // ここで例外が起きても差し戻し自体は既にコミット済み。失敗を差し戻しの失敗として扱わない。
+            try {
+                if (submission != null) {
+                    userNotificationService.notifyApplicantReturned(submission.getUserId(),
+                            submission.getTargetYearMonth() + "分の月次勤怠申請", comment);
+                }
+            } catch (Exception notifyEx) {
+                redirectAttributes.addFlashAttribute("message", "勤怠申請の差し戻しは完了しましたが、通知の送信に失敗しました");
+                log.warn("勤怠申請差し戻しの通知送信に失敗: submissionId={}", submissionId, notifyEx);
+            }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
-            log.warn("勤怠申請の差し戻しに失敗: {}", e.getMessage());
+            log.warn("勤怠申請の差し戻しに失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "勤怠申請の差し戻しに失敗しました");
-            log.error("勤怠申請の差し戻しに失敗: {}", e.getMessage());
+            log.error("勤怠申請の差し戻しに失敗", e);
         }
         return APPROVAL_REDIRECT;
     }
@@ -186,7 +202,7 @@ public class AttendanceApprovalController {
             model.addAttribute("correctionStatusApproved", AttendanceCorrectionRequestService.STATUS_APPROVED);
             model.addAttribute("correctionStatusRejected", AttendanceCorrectionRequestService.STATUS_REJECTED);
         } catch (Exception e) {
-            log.error("勤怠修正申請一覧の表示に失敗: {}", e.getMessage());
+            log.error("勤怠修正申請一覧の表示に失敗", e);
             model.addAttribute("error", "勤怠修正申請一覧の表示に失敗しました");
             model.addAttribute("pendingRequests", java.util.Collections.emptyList());
             model.addAttribute("applicantUsers", java.util.Collections.emptyMap());
@@ -207,17 +223,25 @@ public class AttendanceApprovalController {
             // 申請情報を承認前に取得（通知生成用）
             AttendanceCorrectionRequest request = correctionRequestService.getRequestById(requestId).orElse(null);
             correctionRequestService.approveRequest(requestId, approverUserId, comment);
-            if (request != null) {
-                userNotificationService.notifyApplicantApproved(request.getUserId(),
-                        request.getAttendanceDate() + " の勤怠修正申請");
-            }
             redirectAttributes.addFlashAttribute("message", "勤怠修正申請を承認し、勤怠記録を更新しました");
+
+            // 通知作成は承認処理とは別トランザクション（別Bean）のため、
+            // ここで例外が起きても承認自体は既にコミット済み。失敗を承認の失敗として扱わない。
+            try {
+                if (request != null) {
+                    userNotificationService.notifyApplicantApproved(request.getUserId(),
+                            request.getAttendanceDate() + " の勤怠修正申請");
+                }
+            } catch (Exception notifyEx) {
+                redirectAttributes.addFlashAttribute("message", "勤怠修正申請の承認は完了しましたが、通知の送信に失敗しました");
+                log.warn("勤怠修正申請承認の通知送信に失敗: requestId={}", requestId, notifyEx);
+            }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
-            log.warn("勤怠修正申請の承認に失敗: {}", e.getMessage());
+            log.warn("勤怠修正申請の承認に失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "勤怠修正申請の承認に失敗しました");
-            log.error("勤怠修正申請の承認に失敗: {}", e.getMessage());
+            log.error("勤怠修正申請の承認に失敗", e);
         }
         return CORRECTION_APPROVAL_REDIRECT;
     }
@@ -235,17 +259,25 @@ public class AttendanceApprovalController {
             // 申請情報を却下前に取得（通知生成用）
             AttendanceCorrectionRequest request = correctionRequestService.getRequestById(requestId).orElse(null);
             correctionRequestService.rejectRequest(requestId, approverUserId, comment);
-            if (request != null) {
-                userNotificationService.notifyApplicantRejected(request.getUserId(),
-                        request.getAttendanceDate() + " の勤怠修正申請", comment);
-            }
             redirectAttributes.addFlashAttribute("message", "勤怠修正申請を却下しました");
+
+            // 通知作成は却下処理とは別トランザクション（別Bean）のため、
+            // ここで例外が起きても却下自体は既にコミット済み。失敗を却下の失敗として扱わない。
+            try {
+                if (request != null) {
+                    userNotificationService.notifyApplicantRejected(request.getUserId(),
+                            request.getAttendanceDate() + " の勤怠修正申請", comment);
+                }
+            } catch (Exception notifyEx) {
+                redirectAttributes.addFlashAttribute("message", "勤怠修正申請の却下は完了しましたが、通知の送信に失敗しました");
+                log.warn("勤怠修正申請却下の通知送信に失敗: requestId={}", requestId, notifyEx);
+            }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
-            log.warn("勤怠修正申請の却下に失敗: {}", e.getMessage());
+            log.warn("勤怠修正申請の却下に失敗", e);
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "勤怠修正申請の却下に失敗しました");
-            log.error("勤怠修正申請の却下に失敗: {}", e.getMessage());
+            log.error("勤怠修正申請の却下に失敗", e);
         }
         return CORRECTION_APPROVAL_REDIRECT;
     }
@@ -350,7 +382,7 @@ public class AttendanceApprovalController {
 
             log.info("ユーザー勤怠記録詳細を表示: userId={}, yearMonth={}, count={}", userId, currentMonth, records.size());
         } catch (Exception e) {
-            log.error("ユーザー勤怠記録詳細表示に失敗: {}", e.getMessage());
+            log.error("ユーザー勤怠記録詳細表示に失敗", e);
             model.addAttribute("error", "勤怠記録詳細の表示に失敗しました");
         }
 
@@ -441,7 +473,7 @@ public class AttendanceApprovalController {
         try {
             model.addAttribute("holidays", holidayService.getHolidaysByYear(currentMonth.getYear()));
         } catch (Exception e) {
-            log.error("祝日のロードに失敗: {}", e.getMessage());
+            log.error("祝日のロードに失敗", e);
             model.addAttribute("holidays", Collections.emptySet());
         }
 
@@ -546,7 +578,7 @@ public class AttendanceApprovalController {
                 redirectAttributes.addFlashAttribute("successMessage", "保存対象はありませんでした");
             }
         } catch (IllegalArgumentException ex) {
-            log.warn("管理者による勤怠保存の入力検証に失敗: {}", ex.getMessage());
+            log.warn("管理者による勤怠保存の入力検証に失敗", ex);
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
         } catch (Exception ex) {
             log.error("管理者による勤怠保存に失敗", ex);

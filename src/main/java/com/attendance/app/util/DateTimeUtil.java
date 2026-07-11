@@ -2,8 +2,8 @@ package com.attendance.app.util;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
@@ -96,18 +96,6 @@ public class DateTimeUtil {
     // ========== 時間差計算 ==========
 
     /**
-     * 2つの時刻（LocalTime）から稼働時間（時間）を計算します。
-     * 24時間を超える場合は、翌日にまたがるものとして計算します。
-     *
-     * @param startTime 開始時刻
-     * @param endTime 終了時刻
-     * @return 稼働時間（時間単位）
-     */
-    public static double calculateWorkingHours(LocalTime startTime, LocalTime endTime) {
-        return calculateDurationMinutes(startTime, endTime) / 60.0;
-    }
-
-    /**
      * 2つの時刻（LocalTime）から経過時間（分）を計算します。
      * 終了時刻が開始時刻より前の場合は翌日にまたがるものとして扱います。
      *
@@ -126,37 +114,6 @@ public class DateTimeUtil {
         }
 
         return endMinutes - startMinutes;
-    }
-
-    /**
-     * 2つの Instant（時刻）から稼働時間（時間）を計算します。
-     *
-     * @param startInstant 開始時刻
-     * @param endInstant 終了時刻
-     * @return 稼働時間（時間単位）
-     */
-    public static double calculateWorkingHours(Instant startInstant, Instant endInstant) {
-        return calculateWorkingHours(startInstant, endInstant, 0);
-    }
-
-    /**
-     * 2つの Instant（時刻）から休憩時間を控除した稼働時間（時間）を計算します。
-     *
-     * @param startInstant 開始時刻
-     * @param endInstant 終了時刻
-     * @param breakMinutes 控除する休憩時間（分）
-     * @return 休憩時間を控除した稼働時間（時間単位）
-     */
-    public static double calculateWorkingHours(Instant startInstant, Instant endInstant, int breakMinutes) {
-        if (startInstant == null || endInstant == null) return 0.0;
-
-        long durationMinutes = Duration.between(startInstant, endInstant).toMinutes();
-        if (durationMinutes <= 0) {
-            return 0.0;
-        }
-
-        long adjustedMinutes = Math.max(0, durationMinutes - Math.max(breakMinutes, 0));
-        return adjustedMinutes / 60.0;
     }
 
     // ========== 現在時刻 ==========
@@ -186,6 +143,15 @@ public class DateTimeUtil {
      */
     public static LocalTime currentTimeJapan() {
         return LocalTime.now(JAPAN);
+    }
+
+    /**
+     * 現在日時を LocalDateTime（日本時間）で取得します。
+     *
+     * @return 現在の日本の LocalDateTime オブジェクト
+     */
+    public static LocalDateTime nowJapan() {
+        return LocalDateTime.now(JAPAN);
     }
 
     /**
