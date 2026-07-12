@@ -105,6 +105,8 @@
                     </div>
                     <div th:each="note : ${notifications}"
                         th:onclick="'markDashboardNotificationAsRead(' + ${note.notificationId} + ', this)'"
+                        th:onkeydown="'if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();markDashboardNotificationAsRead(' + ${note.notificationId} + ', this);}'"
+                        role="button" tabindex="0"
                         class="mb-2 py-2 px-3 rounded-lg bg-black/5 border border-glass-border hover:bg-black/10 cursor-pointer transition-colors duration-200 text-left">
                         <div class="text-[0.75rem] text-accent mb-0.5" th:if="${note.senderName != null}" th:text="'送信元: ' + ${note.senderName}">
                             送信元: 管理者名</div>

@@ -53,7 +53,7 @@ public class ProfileController {
     public String showProfile(Model model) {
         try {
             User currentUser = securityUtil.getCurrentUser();
-            List<WorkScheduleClass> workScheduleClasses = workScheduleClassService.getAllClasses();
+            List<WorkScheduleClass> workScheduleClasses = workScheduleClassService.getAllActiveClasses();
 
             int currentYear = com.attendance.app.util.DateTimeUtil.todayJapan().getYear();
             java.math.BigDecimal yearlyUsedPaidLeaveDays = leaveApplicationService.calculateYearlyUsedPaidLeaveDays(
@@ -64,6 +64,9 @@ public class ProfileController {
 
             model.addAttribute("currentUser", currentUser);
             model.addAttribute("workScheduleClasses", workScheduleClasses);
+            // 無効化されたクラスに割当中でも「現在の所属クラス」表示が壊れないよう別途取得する
+            model.addAttribute("currentWorkScheduleClass",
+                    workScheduleClassService.getClassByName(currentUser.getClassName()).orElse(null));
             model.addAttribute("yearlyUsedPaidLeaveDays", yearlyUsedPaidLeaveDays);
             model.addAttribute("remainingPaidLeaveDays", remainingPaidLeaveDays);
             // 有給残高年次一覧

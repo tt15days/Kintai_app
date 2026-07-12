@@ -4,6 +4,8 @@ function openModal(id) {
     if (!el) return;
     el.classList.remove('hidden');
     el.classList.add('flex');
+    const focusable = el.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusable) focusable.focus();
 }
 function closeModal(id) {
     const el = document.getElementById(id);
@@ -14,6 +16,12 @@ function closeModal(id) {
 document.addEventListener('click', function (e) {
     document.querySelectorAll('.modal').forEach(function (modal) {
         if (e.target === modal) closeModal(modal.id);
+    });
+});
+document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('.modal').forEach(function (modal) {
+        if (!modal.classList.contains('hidden')) closeModal(modal.id);
     });
 });
 
@@ -55,152 +63,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ==========================================
-    // Notification Bell & Dropdown Logic
-    // ==========================================
-    const bell = document.getElementById('notification-bell');
-    const badge = document.getElementById('notification-badge');
-    const dropdown = document.getElementById('notification-dropdown');
-    const dropdownList = document.getElementById('notification-dropdown-list');
-    const readAllBtn = document.getElementById('notification-read-all-btn');
-
-    if (bell && badge && dropdown && dropdownList) {
-        // CSRF Token logic for POST request
-        const csrfTokenHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
-        const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
-
-        // Fetch notifications on load
-        fetchUnreadNotifications();
-
-        // Toggle dropdown display
-        bell.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dropdown.classList.toggle('show');
-        });
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!dropdown.contains(e.target) && !bell.contains(e.target)) {
-                dropdown.classList.remove('show');
-            }
-        });
-
-        // "Mark all as read" button click
-        if (readAllBtn) {
-            readAllBtn.addEventListener('click', async () => {
-                try {
-                    const headers = {};
-                    if (csrfTokenHeader && csrfToken) {
-                        headers[csrfTokenHeader] = csrfToken;
-                    }
-                    const response = await fetch(`${contextPath}/dashboard/notifications/read-all`, {
-                        method: 'POST',
-                        headers: headers
-                    });
-                    if (response.ok || response.redirected) {
-                        // Refresh notifications list and badge
-                        badge.style.display = 'none';
-                        badge.textContent = '0';
-                        dropdownList.innerHTML = '<div class="notification-empty">新しい通知はありません</div>';
-                    }
-                } catch (error) {
-                    console.error('Failed to mark all as read:', error);
-                }
-            });
-        }
-
-        async function fetchUnreadNotifications() {
-            try {
-                const response = await fetch(`${contextPath}/dashboard/notifications/unread`);
-                if (!response.ok) throw new Error('Network response was not ok');
-                const notifications = await response.json();
-                updateNotificationUI(notifications);
-            } catch (error) {
-                console.error('Failed to fetch notifications:', error);
-            }
-        }
-
-        function updateNotificationUI(notifications) {
-            if (notifications && notifications.length > 0) {
-                // Update badge
-                badge.textContent = notifications.length;
-                badge.style.display = 'block';
-
-                // Update list
-                dropdownList.innerHTML = '';
-                notifications.forEach(notification => {
-                    const item = document.createElement('div');
-                    item.className = 'notification-item';
-                    item.dataset.id = notification.notificationId;
-
-                    // Format date time
-                    let timeStr = '';
-                    if (notification.createdAt) {
-                        const date = new Date(notification.createdAt);
-                        timeStr = date.toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-                    }
-
-                    item.innerHTML = `
-                        <div class="notification-item-text">${escapeHtml(notification.message)}</div>
-                        <div class="notification-item-time">${timeStr}</div>
-                    `;
-
-                    // Mark individual notification as read on click
-                    item.addEventListener('click', async () => {
-                        await markAsRead(notification.notificationId, item);
-                    });
-
-                    dropdownList.appendChild(item);
-                });
-            } else {
-                badge.style.display = 'none';
-                badge.textContent = '0';
-                dropdownList.innerHTML = '<div class="notification-empty">新しい通知はありません</div>';
-            }
-        }
-
-        async function markAsRead(id, itemElement) {
-            try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (csrfTokenHeader && csrfToken) {
-                    headers[csrfTokenHeader] = csrfToken;
-                }
-                const response = await fetch(`${contextPath}/dashboard/notifications/${id}/read`, {
-                    method: 'POST',
-                    headers: headers
-                });
-                if (response.ok) {
-                    // Remove item visually
-                    itemElement.style.opacity = '0';
-                    setTimeout(() => {
-                        itemElement.remove();
-                        // Update badge count
-                        const currentCount = parseInt(badge.textContent || '0') - 1;
-                        if (currentCount > 0) {
-                            badge.textContent = currentCount;
-                        } else {
-                            badge.style.display = 'none';
-                            badge.textContent = '0';
-                            dropdownList.innerHTML = '<div class="notification-empty">新しい通知はありません</div>';
-                        }
-                    }, 200);
-                }
-            } catch (error) {
-                console.error('Failed to mark notification as read:', error);
-            }
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>'"]/g,
-                tag => ({
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;',
-                    "'": '&#39;',
-                    '"': '&quot;'
-                }[tag] || tag)
-            );
-        }
-    }
 });

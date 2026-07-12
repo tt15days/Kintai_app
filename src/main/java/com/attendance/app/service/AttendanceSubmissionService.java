@@ -336,6 +336,20 @@ public class AttendanceSubmissionService {
         }
     }
 
+    /**
+     * 指定した承認者が申請者の勤怠申請を承認できるかを判定します。
+     * 承認可否（個人/部署アサイン優先、フォールバックで同一勤務クラスのみ）を
+     * 外部（通知の宛先絞り込み等）から利用するための公開ラッパーです。
+     *
+     * @param approver        承認者ユーザー
+     * @param applicantUserId 申請者のユーザーID
+     * @return 承認可能であれば true
+     */
+    @Transactional(readOnly = true)
+    public boolean canApprove(User approver, Long applicantUserId) {
+        return canApproveSubmission(approver, applicantUserId);
+    }
+
     private boolean canApproveSubmission(User approver, Long applicantUserId) {
         if (approver == null || applicantUserId == null) {
             return false;

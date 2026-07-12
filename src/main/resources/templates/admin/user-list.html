@@ -23,6 +23,25 @@
             </div>
         </div>
 
+        <div class="card mb-6">
+            <form class="flex flex-wrap items-end gap-4" method="get" th:action="@{/admin/users}">
+                <div class="flex flex-col min-w-[180px]">
+                    <label class="form-label">部署 / クラス</label>
+                    <select class="form-select h-11" name="department">
+                        <option value="All Departments" th:selected="${department == 'All Departments' or department == null}">全部署</option>
+                        <option th:each="dept : ${departments}" th:value="${dept}" th:text="${dept}" th:selected="${department == dept}"></option>
+                    </select>
+                </div>
+                <div class="flex flex-col flex-1 min-w-[200px]">
+                    <label class="form-label">社員検索</label>
+                    <input type="text" class="form-input h-11" name="keyword" placeholder="名前またはID" th:value="${keyword}">
+                </div>
+                <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
+                    <i class="fa-solid fa-filter"></i> 表示
+                </button>
+            </form>
+        </div>
+
         <div class="card">
             <h4
                 class="text-base font-bold text-txt-primary flex items-center pb-4 mb-4 border-b border-glass-border/30">

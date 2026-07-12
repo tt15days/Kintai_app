@@ -162,15 +162,26 @@ public class AdminController {
     /**
      * ユーザー一覧を表示します。
      *
-     * @param model Spring MVC のモデル
+     * @param department 部署名によるフィルタ（省略可）
+     * @param keyword    氏名/社員IDキーワードによるフィルタ（省略可）
+     * @param model      Spring MVC のモデル
      * @return テンプレート名 (admin/user-list)
      */
     @GetMapping("/users")
-    public String showUserList(Model model) {
+    public String showUserList(
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String keyword,
+            Model model) {
         try {
-            List<User> users = userService.getAllUsers();
+            List<User> users = filterUsersByDepartmentAndKeyword(userService.getAllUsers(), department, keyword);
             model.addAttribute("users", users);
             model.addAttribute("userCount", users.size());
+            model.addAttribute("department", department);
+            model.addAttribute("keyword", keyword);
+            List<String> departments = workScheduleClassService.getAllClasses().stream()
+                    .map(c -> c.getName())
+                    .collect(Collectors.toList());
+            model.addAttribute("departments", departments);
             log.info("ユーザー一覧を表示: count={}", users.size());
         } catch (Exception e) {
             handleAdminViewError(model, e, "ユーザー一覧表示に失敗", "ユーザー一覧の表示に失敗しました");
@@ -356,8 +367,33 @@ public class AdminController {
     }
 
     /**
+     * ユーザー一覧を部署/氏名キーワードで絞り込みます。
+     *
+     * @param users      絞込前のユーザー一覧
+     * @param department 部署名（"All Departments"または空はフィルタなし）
+     * @param keyword    氏名/社員IDに対する部分一致キーワード
+     * @return 絞込後のユーザー一覧
+     */
+    private List<User> filterUsersByDepartmentAndKeyword(List<User> users, String department, String keyword) {
+        if (department != null && !department.isEmpty() && !"All Departments".equals(department)) {
+            users = users.stream()
+                    .filter(u -> department.equals(u.getClassName()))
+                    .collect(Collectors.toList());
+        }
+        if (keyword != null && !keyword.isEmpty()) {
+            String lowerKeyword = keyword.toLowerCase();
+            users = users.stream()
+                    .filter(u -> (u.getFullName() != null && u.getFullName().toLowerCase().contains(lowerKeyword))
+                            ||
+                            (u.getEmpNo() != null && u.getEmpNo().toLowerCase().contains(lowerKeyword)))
+                    .collect(Collectors.toList());
+        }
+        return users;
+    }
+
+    /**
      * 勤怠管理ダッシュボード（管理者用）を表示します。
-     * 
+     *
      * 全ユーザーの指定年月の申請状況一覧を表示します。
      *
      * @param yearMonth 表示する年月（YYYY-MM形式、省略可）
@@ -374,20 +410,7 @@ public class AdminController {
             List<User> users = userService.getActiveUsers();
             YearMonth currentMonth = parseYearMonthOrNow(yearMonth);
 
-            // Filter users based on department and keyword
-            if (department != null && !department.isEmpty() && !"All Departments".equals(department)) {
-                users = users.stream()
-                        .filter(u -> department.equals(u.getClassName()))
-                        .collect(Collectors.toList());
-            }
-            if (keyword != null && !keyword.isEmpty()) {
-                String lowerKeyword = keyword.toLowerCase();
-                users = users.stream()
-                        .filter(u -> (u.getFullName() != null && u.getFullName().toLowerCase().contains(lowerKeyword))
-                                ||
-                                (u.getEmpNo() != null && u.getEmpNo().toLowerCase().contains(lowerKeyword)))
-                        .collect(Collectors.toList());
-            }
+            users = filterUsersByDepartmentAndKeyword(users, department, keyword);
 
             List<AttendanceSubmission> submissions = attendanceSubmissionService
                     .getSubmissionsByTargetYearMonth(currentMonth);
@@ -1094,16 +1117,21 @@ public class AdminController {
     /**
      * 全アクティブユーザーの月次勤怠CSVをまとめたZIPをダウンロードします。
      *
-     * @param yearMonth 対象年月（YYYY-MM形式、省略可）
+     * @param yearMonth  対象年月（YYYY-MM形式、省略可）
+     * @param department 部署名によるフィルタ（省略可、一覧表示と同条件）
+     * @param keyword    氏名/社員IDキーワードによるフィルタ（省略可、一覧表示と同条件）
      * @return ZIPファイルレスポンス
      */
     @GetMapping("/attendance/export/zip")
     public ResponseEntity<byte[]> downloadAllAttendanceZip(
-            @RequestParam(required = false) String yearMonth) {
+            @RequestParam(required = false) String yearMonth,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String keyword) {
         try {
             YearMonth targetMonth = parseYearMonthOrNow(yearMonth);
             OffsetDateTime downloadedAt = DateTimeUtil.toOffsetDateTime(DateTimeUtil.now());
-            byte[] zipBytes = reportService.generateAllUsersAttendanceZip(targetMonth, downloadedAt);
+            List<User> users = filterUsersByDepartmentAndKeyword(userService.getActiveUsers(), department, keyword);
+            byte[] zipBytes = reportService.generateAllUsersAttendanceZip(targetMonth, downloadedAt, users);
             String filename = targetMonth + "_attendance.zip";
             log.info("全ユーザー月次勤怠ZIPをダウンロード: yearMonth={}, filename={}", targetMonth, filename);
             return ResponseEntity.ok()

@@ -12,6 +12,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -110,19 +112,20 @@ public class AlertBatchService {
         int count = 0;
         for (Article36AlertDto dto : alertUsers) {
             int hours = dto.getTotalOvertimeHours().intValue();
+            BigDecimal displayHours = dto.getTotalOvertimeHours().setScale(1, RoundingMode.HALF_UP);
             String message;
             String type;
 
             if (hours >= limit2) {
                 // 第2警告
                 type = "ALERT_ARTICLE_36_LIMIT2";
-                message = String.format("【警告】集計期間 (%s〜%s) の残業時間が %d 時間に達しました。第2警告閾値(%d時間)を超過しています。直ちに労務管理者に報告し、労働時間の是正を行ってください。",
-                        startDate, endDate, hours, limit2);
+                message = String.format("【警告】集計期間 (%s〜%s) の残業時間が %s 時間に達しました。第2警告閾値(%d時間)を超過しています。直ちに労務管理者に報告し、労働時間の是正を行ってください。",
+                        startDate, endDate, displayHours, limit2);
             } else {
                 // 第1警告
                 type = "ALERT_ARTICLE_36_LIMIT1";
-                message = String.format("【注意】集計期間 (%s〜%s) の残業時間が %d 時間に達しました。第1警告閾値(%d時間)を超過しています。労働時間の調整を行ってください。",
-                        startDate, endDate, hours, limit1);
+                message = String.format("【注意】集計期間 (%s〜%s) の残業時間が %s 時間に達しました。第1警告閾値(%d時間)を超過しています。労働時間の調整を行ってください。",
+                        startDate, endDate, displayHours, limit1);
             }
 
             if (existingKeys.contains(notificationKey(dto.getUserId(), type))) {
@@ -197,8 +200,7 @@ public class AlertBatchService {
         notification.setMessage(message);
         notification.setIsRead(false);
         notification.setNotificationType(type);
-        notification.setCreatedAt(Instant.now());
-        
+
         userNotificationMapper.insert(notification);
     }
 }

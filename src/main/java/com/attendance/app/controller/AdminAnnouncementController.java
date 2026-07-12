@@ -73,6 +73,10 @@ public class AdminAnnouncementController {
             redirectAttributes.addFlashAttribute("errorMessage", "タイトルは" + MAX_TITLE_LENGTH + "文字以内で入力してください。");
             return ANNOUNCEMENTS_REDIRECT;
         }
+        if (displayEndDate != null && displayEndDate.isBefore(displayStartDate)) {
+            redirectAttributes.addFlashAttribute("errorMessage", "表示終了日は表示開始日より後の日付を指定してください。");
+            return ANNOUNCEMENTS_REDIRECT;
+        }
         try {
             Long createdBy = securityUtil.getCurrentUser().getUserId();
             Instant startInstant = DateTimeUtil.toInstant(displayStartDate);
@@ -119,6 +123,10 @@ public class AdminAnnouncementController {
             RedirectAttributes redirectAttributes) {
         if (title.strip().length() > MAX_TITLE_LENGTH) {
             redirectAttributes.addFlashAttribute("errorMessage", "タイトルは" + MAX_TITLE_LENGTH + "文字以内で入力してください。");
+            return ANNOUNCEMENTS_REDIRECT;
+        }
+        if (displayEndDate != null && displayEndDate.isBefore(displayStartDate)) {
+            redirectAttributes.addFlashAttribute("errorMessage", "表示終了日は表示開始日より後の日付を指定してください。");
             return ANNOUNCEMENTS_REDIRECT;
         }
         try {

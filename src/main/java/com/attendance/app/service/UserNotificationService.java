@@ -132,7 +132,7 @@ public class UserNotificationService {
     }
 
     /**
-     * 月次勤怠が申請されたとき、承認権限を持つ全ユーザーに通知を送信します。
+     * 月次勤怠が申請されたとき、その申請を承認できる承認者にのみ通知を送信します。
      *
      * @param applicantUserId   申請者のユーザーID
      * @param applicantName     申請者の氏名
@@ -144,7 +144,7 @@ public class UserNotificationService {
     }
 
     /**
-     * 勤怠修正申請が提出されたとき、承認権限を持つ全ユーザーに通知を送信します。
+     * 勤怠修正申請が提出されたとき、その申請を承認できる承認者にのみ通知を送信します。
      *
      * @param applicantUserId   申請者のユーザーID
      * @param applicantName     申請者の氏名
@@ -196,7 +196,9 @@ public class UserNotificationService {
     }
 
     /**
-     * 承認権限を持つ全有効ユーザーに通知を送信します。
+     * 申請者の勤怠申請を実際に承認できる有効な承認者にのみ通知を送信します。
+     * 承認可否は {@link AttendanceSubmissionService#canApprove} と同一の
+     * アサイン制ロジック（個人/部署アサイン優先、フォールバックで同一勤務クラスのみ）で判定します。
      * 申請者自身には送信しません。
      *
      * @param applicantUserId 申請者のユーザーID（除外対象）
@@ -210,7 +212,7 @@ public class UserNotificationService {
             if (user.getUserId().equals(applicantUserId)) {
                 continue;
             }
-            if (userService.isAttendanceApprover(user)) {
+            if (attendanceSubmissionService.canApprove(user, applicantUserId)) {
                 insertNotification(user.getUserId(), message, notificationType, null);
                 count++;
             }

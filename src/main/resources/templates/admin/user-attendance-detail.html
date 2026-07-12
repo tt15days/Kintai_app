@@ -14,10 +14,16 @@
                 </div>
                 <div>
                     <div class="mb-4" th:if="${successMessage != null}">
-                        <div class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+                        <div class="alert alert-success" role="alert">
+                            <span><i class="fa-solid fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
+                            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+                        </div>
                     </div>
                     <div class="mb-4" th:if="${errorMessage != null}">
-                        <div class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+                        <div class="alert alert-danger" role="alert">
+                            <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
+                            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+                        </div>
                     </div>
 
                     <!-- ユーザー情報 -->

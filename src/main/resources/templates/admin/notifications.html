@@ -63,7 +63,7 @@
                     </div>
                 </div>
                 <div class="pt-2">
-                    <button type="submit" class="btn btn-primary gap-2 text-sm">
+                    <button type="submit" class="btn btn-primary gap-2 text-sm" onclick="return confirmSendNotification()">
                         <i class="fa-solid fa-paper-plane"></i> 通知を送信
                     </button>
                 </div>
@@ -71,6 +71,14 @@
         </div>
 
         <script>
+            function confirmSendNotification() {
+                const targetType = document.querySelector('input[name="targetType"]:checked').value;
+                const message = targetType === 'all'
+                    ? '送信対象は「全従業員」です。この内容で通知を送信します。よろしいですか？'
+                    : '通知を送信します。よろしいですか？';
+                return confirm(message);
+            }
+
             function toggleTargetFields() {
                 const targetType = document.querySelector('input[name="targetType"]:checked').value;
                 const userWrapper = document.getElementById('userTargetWrapper');

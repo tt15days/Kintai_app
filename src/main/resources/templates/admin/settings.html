@@ -7,9 +7,18 @@
     <h2 layout:fragment="page-title">システム設定</h2>
 
     <div layout:fragment="content" class="w-full py-4 space-y-6 animate-fade-in">
-        <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
-        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-        <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+        <div th:if="${message}" class="alert alert-success">
+            <span><i class="fa-solid fa-check-circle"></i> <span th:text="${message}"></span></span>
+            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger">
+            <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
+            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+        </div>
+        <div th:if="${error}" class="alert alert-danger">
+            <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${error}"></span></span>
+            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+        </div>
 
         <!-- 勤怠期間設定 -->
         <div class="card">

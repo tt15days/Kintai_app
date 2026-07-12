@@ -33,7 +33,7 @@
         <div class="card">
             <div class="flex justify-between items-center pb-4 mb-6 border-b border-glass-border/30">
                 <h3 class="text-base font-bold text-txt-primary">勤怠一覧</h3>
-                <a th:href="@{/admin/attendance/export/zip(yearMonth=${yearMonth})}" class="btn btn-success gap-2 text-sm px-4 py-2"><i class="fa-solid fa-file-export"></i> ZIP出力</a>
+                <a th:href="@{/admin/attendance/export/zip(yearMonth=${yearMonth},department=${department},keyword=${keyword})}" class="btn btn-success gap-2 text-sm px-4 py-2"><i class="fa-solid fa-file-export"></i> ZIP出力</a>
             </div>
             <div class="table-container">
                 <table class="table-custom">
