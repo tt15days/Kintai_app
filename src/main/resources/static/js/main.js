@@ -33,8 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (menuToggle && sidebar && mobileOverlay) {
         function toggleMenu() {
-            sidebar.classList.toggle('open');
+            const isOpen = sidebar.classList.toggle('open');
             mobileOverlay.classList.toggle('open');
+            menuToggle.setAttribute('aria-expanded', String(isOpen));
         }
 
         menuToggle.addEventListener('click', toggleMenu);

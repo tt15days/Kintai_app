@@ -81,7 +81,7 @@ public class SecurityConfig {
 
                                 userService.updateLastLogin(user.getUserId());
 
-                                log.info("ログイン成功: email={}", email);
+                                log.info("ログイン成功: userId={}", user.getUserId());
                                 auditLogService.recordUserEvent(AuditEventType.LOGIN_SUCCESS, user.getUserId(), user.getUserId(), "ログイン成功");
 
                                 if (Boolean.TRUE.equals(user.getPasswordResetRequired())) {
@@ -98,7 +98,7 @@ public class SecurityConfig {
                             String failEmail = request.getParameter("email");
                             String contextPath = request.getContextPath();
 
-                            log.warn("ログイン失敗: email={}, 原因={}", failEmail, exception.getMessage(), exception);
+                            log.warn("ログイン失敗: email={}, 原因={}", maskEmail(failEmail), exception.getMessage(), exception);
                             try {
                                 auditLogService.recordUserEvent(AuditEventType.LOGIN_FAILED, null, null, "ログイン失敗: email=" + failEmail);
                             } catch (Exception e) {
@@ -149,7 +149,7 @@ public class SecurityConfig {
                         .addLogoutHandler((request, response, authentication) -> {
                             if (authentication != null) {
                                 String email = authentication.getName();
-                                log.info("ログアウト: email={}", email);
+                                log.info("ログアウト: email={}", maskEmail(email));
                                 try {
                                     auditLogService.recordUserEvent(AuditEventType.LOGOUT, null, null, "ログアウト: email=" + email);
                                 } catch (Exception e) {
@@ -199,5 +199,19 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         log.debug("PasswordEncoder Bean を初期化しています");
         return new BCryptPasswordEncoder(10); // 強度10でエンコード
+    }
+
+    /**
+     * ログに出力するメールアドレスの個人情報漏洩を抑えるため、先頭1文字以外をマスクします。
+     */
+    private static String maskEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return email;
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 1) {
+            return "*".repeat(email.length());
+        }
+        return email.charAt(0) + "***" + email.substring(atIndex);
     }
 }

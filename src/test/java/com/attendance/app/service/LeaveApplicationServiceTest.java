@@ -107,7 +107,7 @@ class LeaveApplicationServiceTest {
         @DisplayName("同日（開始日＝終了日）は正常に作成される")
         void sameStartEnd_createsSuccessfully() {
             LocalDate sameDay = LocalDate.of(2026, 6, 10);
-            service.createApplication(2L, sameDay, sameDay, LeaveType.SPECIAL_LEAVE, null);
+            service.createApplication(2L, sameDay, sameDay, LeaveType.SPECIAL_LEAVE, "私用のため");
             verify(leaveApplicationMapper).insert(any());
         }
 
