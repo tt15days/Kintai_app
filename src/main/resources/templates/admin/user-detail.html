@@ -190,7 +190,7 @@
                                     </button>
                                 </div>
                                 <div id="noApproversMsg" class="text-txt-secondary text-sm opacity-80 py-2"
-                                     th:style="${assignedUserApproverIds != null and !assignedUserApproverIds.isEmpty() ? 'display: none;' : ''}">
+                                     th:classappend="${assignedUserApproverIds != null and !assignedUserApproverIds.isEmpty() ? 'hidden' : ''}">
                                     承認者が設定されていません。上のリストから追加してください。
                                 </div>
                             </div>

@@ -12,13 +12,13 @@
         <div class="w-full">
             <div class="content mt-4">
 
-                <div th:if="${successMessage}" class="alert alert-success">
+                <div th:if="${successMessage}" class="alert alert-success" role="alert">
                     <span><i class="fas fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
-                    <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert], .bg-success\/15, .bg-danger\/12').remove()" aria-label="閉じる">×</button>
+                    <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-2 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert], .bg-success\/15, .bg-danger\/12').remove()" aria-label="閉じる">×</button>
                 </div>
-                <div th:if="${errorMessage}" class="alert alert-danger">
+                <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
                     <span><i class="fas fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
-                    <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.parentElement.remove()" aria-label="閉じる">×</button>
+                    <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-2 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.parentElement.remove()" aria-label="閉じる">×</button>
                 </div>
                 <div th:if="${error}" class="alert alert-danger justify-center text-center" role="alert">
                     <span th:text="${error}"></span>
@@ -89,11 +89,11 @@
 
                         <!-- 現在のクラス情報 -->
                         <div th:with="currentClassName=${currentUser != null ? currentUser.className : null}">
-                            <div th:if="${currentClassName != null and workScheduleClasses != null}"
+                            <div th:if="${currentClassName != null and currentWorkScheduleClass != null}"
                                 class="bg-primary/10 border border-primary/20 text-primary p-4 rounded-xl mb-4 text-sm">
                                 <i class="fas fa-info-circle"></i>
                                 現在の所属クラス:
-                                <strong th:each="wsc : ${workScheduleClasses}" th:if="${wsc.name == currentClassName}">
+                                <strong th:with="wsc=${currentWorkScheduleClass}">
                                     <span th:text="${wsc.name}"></span>
                                     （<span th:text="${#strings.substring(wsc.startTime.toString(), 0, 5)}"></span>
                                     〜

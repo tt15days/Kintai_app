@@ -57,7 +57,7 @@ class ProfileControllerTest {
         user.setPaidLeaveDays(null);
 
         when(securityUtil.getCurrentUser()).thenReturn(user);
-        when(workScheduleClassService.getAllClasses()).thenReturn(Collections.emptyList());
+        when(workScheduleClassService.getAllActiveClasses()).thenReturn(Collections.emptyList());
         when(leaveApplicationService.calculateYearlyUsedPaidLeaveDays(eq(1L), anyInt())).thenReturn(new BigDecimal("2"));
         when(paidLeaveBalanceService.getBalancesByUserId(1L)).thenReturn(Collections.emptyList());
         when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(BigDecimal.ZERO);
@@ -86,7 +86,7 @@ class ProfileControllerTest {
         user.setPaidLeaveDays(new BigDecimal("10.5"));
 
         when(securityUtil.getCurrentUser()).thenReturn(user);
-        when(workScheduleClassService.getAllClasses()).thenReturn(List.of(new WorkScheduleClass()));
+        when(workScheduleClassService.getAllActiveClasses()).thenReturn(List.of(new WorkScheduleClass()));
         when(leaveApplicationService.calculateYearlyUsedPaidLeaveDays(eq(1L), anyInt())).thenReturn(new BigDecimal("3"));
         when(paidLeaveBalanceService.getBalancesByUserId(1L)).thenReturn(Collections.emptyList());
         when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(new BigDecimal("7.5"));

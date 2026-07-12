@@ -118,7 +118,19 @@ public class ReportService {
      * @throws IOException ZIP生成に失敗した場合
      */
     public byte[] generateAllUsersAttendanceZip(YearMonth yearMonth, OffsetDateTime downloadedAt) throws IOException {
-        List<User> users = userService.getActiveUsers();
+        return generateAllUsersAttendanceZip(yearMonth, downloadedAt, userService.getActiveUsers());
+    }
+
+    /**
+     * 指定ユーザー一覧の月次勤怠CSVをまとめたZIPをバイト配列で返します。
+     *
+     * @param yearMonth 対象年月
+     * @param downloadedAt ダウンロード日時
+     * @param users 出力対象ユーザー一覧（画面のフィルタ結果等）
+     * @return ZIPバイト配列
+     * @throws IOException ZIP生成に失敗した場合
+     */
+    public byte[] generateAllUsersAttendanceZip(YearMonth yearMonth, OffsetDateTime downloadedAt, List<User> users) throws IOException {
         AttendanceRecordService.MonthRange monthRange = attendanceRecordService.getMonthRange(yearMonth);
 
         // ユーザーごとの実対象期間（勤怠申請提出時にスナップショットされた期間があればそれを優先。

@@ -49,19 +49,6 @@ public interface UserNotificationMapper {
     int markAllAsRead(@Param("userId") Long userId);
 
     /**
-     * 指定ユーザー・通知種別について、指定日時以降に作成された通知の件数を取得します。
-     * バッチ処理での重複通知防止（同一対象期間の再通知抑止）に使用します。
-     *
-     * @param userId ユーザーID
-     * @param notificationType 通知種別
-     * @param since この日時以降に作成された通知を対象とする
-     * @return 該当する通知の件数
-     */
-    int countByUserAndTypeSince(@Param("userId") Long userId,
-                                 @Param("notificationType") String notificationType,
-                                 @Param("since") Instant since);
-
-    /**
      * 複数ユーザー・複数通知種別について、指定日時以降に作成された通知の (userId, notificationType) の
      * 組み合わせを一括取得します。バッチ処理での重複通知チェックのN+1解消に使用します。
      *

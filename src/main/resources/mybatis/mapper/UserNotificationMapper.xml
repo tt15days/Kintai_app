@@ -54,14 +54,6 @@
            AND user_id          = #{userId}
     </update>
 
-    <select id="countByUserAndTypeSince" resultType="int">
-        SELECT COUNT(*)
-          FROM user_notifications
-         WHERE user_id = #{userId}
-           AND notification_type = #{notificationType}
-           AND created_at &gt;= #{since, typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler}
-    </select>
-
     <select id="selectExistingNotificationKeys" resultMap="notificationKeyResultMap">
         SELECT DISTINCT user_id, notification_type
           FROM user_notifications

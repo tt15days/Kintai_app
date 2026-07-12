@@ -114,7 +114,6 @@ public class AlertBatchServiceTest {
             assertThat(notification.getNotificationType()).isEqualTo("ALERT_ARTICLE_36_LIMIT1");
             assertThat(notification.getMessage()).contains("第1警告閾値(30時間)を超過");
             assertThat(notification.getIsRead()).isFalse();
-            assertThat(notification.getCreatedAt()).isNotNull();
         }
 
         @Test

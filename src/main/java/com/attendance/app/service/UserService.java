@@ -3,6 +3,7 @@ package com.attendance.app.service;
 import com.attendance.app.entity.AuditEventType;
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserRole;
+import com.attendance.app.entity.WorkScheduleClass;
 import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.mapper.WorkScheduleClassMapper;
@@ -230,7 +231,7 @@ public class UserService {
         user.setUserRole(role);
         user.setPositionTitle(normalizeOptionalText(positionTitle));
         user.setPhoneNumber(normalizeOptionalText(phoneNumber));
-        user.setClassName(validateWorkScheduleClassName(className));
+        user.setClassName(validateWorkScheduleClassName(className, user.getClassName()));
         user.setPaidLeaveDays(paidLeaveDays != null ? paidLeaveDays : DEFAULT_PAID_LEAVE_DAYS);
         adjustPaidLeaveBalance(userId, user.getPaidLeaveDays());
 
@@ -557,19 +558,25 @@ public class UserService {
      * className に null を渡すと勤務クラスの割当を解除します。
      */
     public void updateWorkScheduleClass(Long userId, String className) {
-        findUserOrThrow(userId);
-        String normalizedClassName = validateWorkScheduleClassName(className);
+        User user = findUserOrThrow(userId);
+        String normalizedClassName = validateWorkScheduleClassName(className, user.getClassName());
         userMapper.updateWorkScheduleClass(userId, normalizedClassName);
         log.info("勤務クラスを更新しました: userId={}, className={}", userId, normalizedClassName);
     }
 
-    private String validateWorkScheduleClassName(String className) {
+    /**
+     * 勤務クラス名を検証します。無効化(is_active=false)されたクラスへの新規割当は拒否しますが、
+     * 既に割り当て済みのクラス名（currentClassName と一致）はそのまま許容し、既存表示・更新の互換性を保ちます。
+     */
+    private String validateWorkScheduleClassName(String className, String currentClassName) {
         String normalizedClassName = normalizeOptionalText(className);
         if (normalizedClassName == null) {
             return null;
         }
-        if (workScheduleClassMapper.selectByName(normalizedClassName).isEmpty()) {
-            throw new IllegalArgumentException("指定された勤務クラスが存在しません: " + normalizedClassName);
+        WorkScheduleClass workScheduleClass = workScheduleClassMapper.selectByName(normalizedClassName)
+                .orElseThrow(() -> new IllegalArgumentException("指定された勤務クラスが存在しません: " + normalizedClassName));
+        if (!normalizedClassName.equals(currentClassName) && !Boolean.TRUE.equals(workScheduleClass.getIsActive())) {
+            throw new IllegalArgumentException("指定された勤務クラスは無効化されています: " + normalizedClassName);
         }
         return normalizedClassName;
     }

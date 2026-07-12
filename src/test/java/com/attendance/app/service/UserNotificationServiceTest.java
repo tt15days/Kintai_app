@@ -180,9 +180,9 @@ class UserNotificationServiceTest {
         User admin = User.builder().userId(13L).userRole(UserRole.ADMIN).isActive(true).build();
 
         when(userService.getActiveUsers()).thenReturn(List.of(applicant, approver, nonApprover, admin));
-        when(userService.isAttendanceApprover(approver)).thenReturn(true);
-        when(userService.isAttendanceApprover(nonApprover)).thenReturn(false);
-        when(userService.isAttendanceApprover(admin)).thenReturn(true);
+        when(attendanceSubmissionService.canApprove(approver, 10L)).thenReturn(true);
+        when(attendanceSubmissionService.canApprove(nonApprover, 10L)).thenReturn(false);
+        when(attendanceSubmissionService.canApprove(admin, 10L)).thenReturn(true);
 
         service.notifyApproversNewSubmission(10L, "申請者A", "2026-06");
 
