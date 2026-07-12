@@ -4,6 +4,7 @@ import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.entity.User;
 import com.attendance.app.service.PaidLeaveBalanceService;
 import com.attendance.app.service.UserService;
+import com.attendance.app.service.WorkScheduleClassService;
 import com.attendance.app.util.DateTimeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -28,11 +30,21 @@ public class AdminLeaveUsageController {
 
     private final UserService userService;
     private final PaidLeaveBalanceService paidLeaveBalanceService;
+    private final WorkScheduleClassService workScheduleClassService;
 
     @GetMapping
-    public String showLeaveUsage(Model model) {
+    public String showLeaveUsage(
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String keyword,
+            Model model) {
         try {
-            List<User> users = userService.getActiveUsers();
+            List<User> users = filterUsersByDepartmentAndKeyword(userService.getActiveUsers(), department, keyword);
+            model.addAttribute("department", department);
+            model.addAttribute("keyword", keyword);
+            List<String> departments = workScheduleClassService.getAllActiveClasses().stream()
+                    .map(c -> c.getName())
+                    .collect(Collectors.toList());
+            model.addAttribute("departments", departments);
 
             int currentYear = DateTimeUtil.todayJapan().getYear();
 
@@ -78,5 +90,22 @@ public class AdminLeaveUsageController {
         }
 
         return "admin/leave-usage";
+    }
+
+    private List<User> filterUsersByDepartmentAndKeyword(List<User> users, String department, String keyword) {
+        if (department != null && !department.isEmpty() && !"All Departments".equals(department)) {
+            users = users.stream()
+                    .filter(u -> department.equals(u.getClassName()))
+                    .collect(Collectors.toList());
+        }
+        if (keyword != null && !keyword.isEmpty()) {
+            String lowerKeyword = keyword.toLowerCase();
+            users = users.stream()
+                    .filter(u -> (u.getFullName() != null && u.getFullName().toLowerCase().contains(lowerKeyword))
+                            ||
+                            (u.getEmpNo() != null && u.getEmpNo().toLowerCase().contains(lowerKeyword)))
+                    .collect(Collectors.toList());
+        }
+        return users;
     }
 }

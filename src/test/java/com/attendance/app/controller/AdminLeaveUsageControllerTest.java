@@ -4,6 +4,7 @@ import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.entity.User;
 import com.attendance.app.service.PaidLeaveBalanceService;
 import com.attendance.app.service.UserService;
+import com.attendance.app.service.WorkScheduleClassService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,9 @@ class AdminLeaveUsageControllerTest {
 
     @Mock
     private PaidLeaveBalanceService paidLeaveBalanceService;
+
+    @Mock
+    private WorkScheduleClassService workScheduleClassService;
 
     @InjectMocks
     private AdminLeaveUsageController controller;
@@ -77,7 +81,7 @@ class AdminLeaveUsageControllerTest {
                 .thenReturn(List.of(balance1, balance2));
 
         ExtendedModelMap model = new ExtendedModelMap();
-        String view = controller.showLeaveUsage(model);
+        String view = controller.showLeaveUsage(null, null, model);
 
         assertEquals("admin/leave-usage", view);
         assertEquals(currentYear, model.getAttribute("currentYear"));
@@ -122,7 +126,7 @@ class AdminLeaveUsageControllerTest {
         when(userService.getActiveUsers()).thenThrow(new RuntimeException("DB Error"));
 
         ExtendedModelMap model = new ExtendedModelMap();
-        String view = controller.showLeaveUsage(model);
+        String view = controller.showLeaveUsage(null, null, model);
 
         assertEquals("admin/leave-usage", view);
         assertEquals("有給休暇取得状況画面の表示に失敗しました", model.getAttribute("error"));
