@@ -44,6 +44,8 @@ class AttendanceSubmissionServiceStateTest {
     private AttendancePeriodSettingService attendancePeriodSettingService;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private AttendanceApproverAssignmentService approverAssignmentService;
 
     @InjectMocks
     private AttendanceSubmissionService service;
@@ -336,6 +338,46 @@ class AttendanceSubmissionServiceStateTest {
             assertThatThrownBy(() -> service.approve(100L, 10L, null))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("申請中のデータのみ承認できます");
+        }
+
+        @Test
+        @DisplayName("個人・部署アサインが存在する場合、同じ勤務クラスでもアサイン外の承認者は承認できない")
+        void assignedApproverExists_unassignedSameClassApprover_throwsException() {
+            User applicant = User.builder().userId(20L).className("A").build();
+            User unassignedSameClassApprover = User.builder()
+                    .userId(31L).userRole(UserRole.USER).className("A")
+                    .isActive(true).canApproveAttendance(true).build();
+
+            when(userService.getUserById(31L)).thenReturn(Optional.of(unassignedSameClassApprover));
+            when(userService.isAttendanceApprover(unassignedSameClassApprover)).thenReturn(true);
+            when(attendanceSubmissionMapper.selectByIdForUpdate(99L))
+                    .thenReturn(Optional.of(pendingSubmission));
+            when(userService.getUserById(20L)).thenReturn(Optional.of(applicant));
+            when(approverAssignmentService.resolveAssignedApproverIds(20L, "A")).thenReturn(List.of(30L));
+
+            assertThatThrownBy(() -> service.approve(99L, 31L, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("この申請を承認する権限がありません");
+        }
+
+        @Test
+        @DisplayName("個人・部署アサインが存在する場合、アサインされた承認者は承認できる")
+        void assignedApproverExists_assignedApprover_canApprove() {
+            User applicant = User.builder().userId(20L).className("A").build();
+            User assignedApprover = User.builder()
+                    .userId(30L).userRole(UserRole.USER).className("A")
+                    .isActive(true).canApproveAttendance(true).build();
+
+            when(userService.getUserById(30L)).thenReturn(Optional.of(assignedApprover));
+            when(userService.isAttendanceApprover(assignedApprover)).thenReturn(true);
+            when(attendanceSubmissionMapper.selectByIdForUpdate(99L))
+                    .thenReturn(Optional.of(pendingSubmission));
+            when(userService.getUserById(20L)).thenReturn(Optional.of(applicant));
+            when(approverAssignmentService.resolveAssignedApproverIds(20L, "A")).thenReturn(List.of(30L));
+
+            service.approve(99L, 30L, null);
+
+            assertThat(pendingSubmission.getStatus()).isEqualTo(AttendanceSubmissionService.STATUS_APPROVED);
         }
     }
 

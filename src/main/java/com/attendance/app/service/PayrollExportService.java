@@ -14,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -88,19 +89,27 @@ public class PayrollExportService {
             }
 
             // ヘッダー書き込み (フォーマットに関わらず標準的な汎用ヘッダーとする)
+            // 時間列は給与計算ソフトでの自動取込を想定し、"8時間30分"等の表示用文字列ではなく小数時間で出力する
             csvPrinter.printRecord(
                     "従業員コード",
                     "氏名",
                     "出勤日数",
                     "欠勤日数",
                     "有休消化日数",
+                    "その他休暇日数",
                     "総労働時間",
                     "時間外労働時間",
                     "深夜労働時間",
                     "休日労働時間"
             );
 
+            java.nio.charset.CharsetEncoder encoder = charset.newEncoder();
             for (User user : users) {
+                if (user.getFullName() != null && !encoder.canEncode(user.getFullName())) {
+                    // Shift_JIS等では未対応文字が無警告で '?' に置換されるため、氏名特定を誤らないよう運用者に警告する
+                    log.warn("氏名に出力文字コード({})で表現できない文字が含まれています。CSV上で文字化けする可能性があります: userId={}",
+                            charset.name(), user.getUserId());
+                }
                 LocalDate[] userRange = effectiveRangeByUser.getOrDefault(user.getUserId(),
                         new LocalDate[]{monthRange.getStartDate(), monthRange.getEndDate()});
                 LocalDate userStart = userRange[0];
@@ -141,6 +150,7 @@ public class PayrollExportService {
                 BigDecimal paidLeaveDays = BigDecimal.ZERO;
                 BigDecimal unpaidLeaveDays = BigDecimal.ZERO;
                 BigDecimal absenceDays = BigDecimal.ZERO;
+                BigDecimal otherLeaveDays = BigDecimal.ZERO;
 
                 if (leaveApplications != null) {
                     Map<LocalDate, LeaveApplication> leaveMap = new HashMap<>();
@@ -168,6 +178,9 @@ public class PayrollExportService {
                                 unpaidLeaveDays = unpaidLeaveDays.add(consumed);
                             } else if (la.getLeaveType() == LeaveType.ABSENCE) {
                                 absenceDays = absenceDays.add(consumed);
+                            } else if (la.getLeaveType() == LeaveType.SICK_LEAVE
+                                    || la.getLeaveType() == LeaveType.SPECIAL_LEAVE) {
+                                otherLeaveDays = otherLeaveDays.add(consumed);
                             }
                         }
                     }
@@ -180,10 +193,11 @@ public class PayrollExportService {
                         workingDays,
                         formatDays(absenceDays.add(unpaidLeaveDays)),
                         formatDays(paidLeaveDays),
-                        com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalWorkingHours),
-                        com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalOvertimeHours),
-                        com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalNightShiftHours),
-                        com.attendance.app.util.DateTimeUtil.formatHoursToHHmm(totalHolidayWorkHours)
+                        formatDays(otherLeaveDays),
+                        formatDecimalHours(totalWorkingHours),
+                        formatDecimalHours(totalOvertimeHours),
+                        formatDecimalHours(totalNightShiftHours),
+                        formatDecimalHours(totalHolidayWorkHours)
                 );
             }
         }
@@ -220,5 +234,12 @@ public class PayrollExportService {
             return "0";
         }
         return days.stripTrailingZeros().toPlainString();
+    }
+
+    /**
+     * 時間列を給与計算ソフトが自動取込可能な小数時間（小数点以下2桁）の文字列に整形します。
+     */
+    private String formatDecimalHours(double hours) {
+        return BigDecimal.valueOf(hours).setScale(2, RoundingMode.HALF_UP).toPlainString();
     }
 }

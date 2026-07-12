@@ -95,6 +95,19 @@
                             <i class="fa-solid fa-umbrella-beach"></i> 有給一括付与を実行
                         </button>
                     </form>
+                    <!-- 36協定・有給消化アラート -->
+                    <form method="post" th:action="@{/admin/batch/alert}" class="flex items-end gap-2 flex-wrap">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <div class="form-group mb-0">
+                            <label for="alertBatchYearMonth" class="form-label">対象年月</label>
+                            <input type="month" class="form-input w-[160px] h-[48px] p-3" id="alertBatchYearMonth" name="yearMonth"
+                                   th:value="${#temporals.format(#temporals.createNow().minusMonths(1), 'yyyy-MM')}">
+                        </div>
+                        <button type="submit" class="btn btn-warning px-5 py-3 text-sm h-[48px] gap-2"
+                                onclick="return confirm('指定年月を基準に36協定・有給消化アラートバッチを実行します。よろしいですか？')">
+                            <i class="fa-solid fa-triangle-exclamation"></i> アラートバッチを実行
+                        </button>
+                    </form>
                 </div>
             </div>
 
@@ -131,6 +144,14 @@
                                     <span th:if="${lastReminderExecutedAt != null}"
                                           th:text="${#temporals.format(lastReminderExecutedAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy年M月d日 HH:mm')}"></span>
                                     <span th:unless="${lastReminderExecutedAt != null}" class="text-txt-secondary">未実行</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-left">36協定・有給消化アラート</th>
+                                <td class="text-left">
+                                    <span th:if="${lastAlertBatchExecutedAt != null}"
+                                          th:text="${#temporals.format(lastAlertBatchExecutedAt.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy年M月d日 HH:mm')}"></span>
+                                    <span th:unless="${lastAlertBatchExecutedAt != null}" class="text-txt-secondary">未実行</span>
                                 </td>
                             </tr>
                         </tbody>

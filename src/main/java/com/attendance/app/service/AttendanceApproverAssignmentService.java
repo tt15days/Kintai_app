@@ -122,6 +122,27 @@ public class AttendanceApproverAssignmentService {
     }
 
     /**
+     * 申請者に対して管理者が明示的にアサインした承認者ID一覧（個人アサイン＋部署アサインの合算）を返します。
+     * 個人・部署いずれのアサインも1件も無い場合は空リストを返します。呼び出し側は、
+     * 空リストの場合のみ勤務クラス一致等の既定ルールにフォールバックしてください
+     * （1件でもアサインが存在する場合は、それ以外の承認者を許可してはいけません）。
+     *
+     * @param applicantUserId 申請者のユーザーID
+     * @param applicantClassName 申請者の所属勤務クラス名（部署アサインの判定に使用）
+     * @return アサイン済み承認者IDのリスト（アサインが無い場合は空リスト）
+     */
+    public List<Long> resolveAssignedApproverIds(Long applicantUserId, String applicantClassName) {
+        List<Long> userApprovers = getUserApproverIds(applicantUserId);
+        List<Long> departmentApprovers = getDepartmentApproverIds(applicantClassName);
+        if (userApprovers.isEmpty() && departmentApprovers.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<Long> combined = new LinkedHashSet<>(userApprovers);
+        combined.addAll(departmentApprovers);
+        return List.copyOf(combined);
+    }
+
+    /**
      * 承認者IDリストの正規化（重複排除、null除去）と妥当性検証を行います。
      *
      * @param approverUserIds 検証対象の承認者IDリスト

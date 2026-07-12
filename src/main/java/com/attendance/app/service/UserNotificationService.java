@@ -11,10 +11,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * ユーザー通知に関する業務ロジックを提供するサービスです。
@@ -94,9 +98,21 @@ public class UserNotificationService {
                                 com.attendance.app.entity.AttendanceSubmission::getUserId,
                                 s -> s));
 
+        // 手動送信と自動ポーリングの重複実行に備え、当月分の既存REMINDER通知をN+1対策で一括取得しスキップする
+        Instant monthSince = targetMonth.atDay(1).atStartOfDay(ZoneId.of("Asia/Tokyo")).toInstant();
+        List<Long> userIds = activeUsers.stream().map(User::getUserId).toList();
+        Set<Long> alreadyRemindedUserIds = userIds.isEmpty()
+                ? Set.of()
+                : userNotificationMapper.selectExistingNotificationKeys(userIds, List.of(TYPE_REMINDER), monthSince).stream()
+                        .map(com.attendance.app.dto.UserNotificationKeyDto::getUserId)
+                        .collect(Collectors.toSet());
+
         int count = 0;
         for (User user : activeUsers) {
             if (user.getUserRole() == UserRole.ADMIN) {
+                continue;
+            }
+            if (alreadyRemindedUserIds.contains(user.getUserId())) {
                 continue;
             }
             if (needsReminder(submissionByUserId.get(user.getUserId()))) {

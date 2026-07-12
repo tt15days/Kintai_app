@@ -88,4 +88,29 @@ class AttendanceApprovalControllerIntegrationTest {
         assertThat(approved.getActionBy()).isEqualTo(adminUserId);
         assertThat(approved.getActionComment()).isEqualTo("integration-approve");
     }
+
+    @Test
+    @WithMockUser(username = "admin@example.com", roles = "ADMIN")
+    @DisplayName("POST /attendance/approval/{userId}/detail/saveAll: 管理者は一括保存を実行できる(hasRole記法ミスの回帰確認)")
+    void postSaveAll_asAdmin_isNotForbidden() throws Exception {
+        Long applicantUserId = userMapper.selectByEmail("user@example.com").orElseThrow().getUserId();
+
+        mockMvc.perform(post("/attendance/approval/{userId}/detail/saveAll", applicantUserId)
+                        .with(csrf())
+                        .param("attendanceDate", ""))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("successMessage", "保存対象はありませんでした"));
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com", roles = "USER")
+    @DisplayName("POST /attendance/approval/{userId}/detail/saveAll: 管理者以外はアクセス拒否される")
+    void postSaveAll_asNonAdmin_isForbidden() throws Exception {
+        Long applicantUserId = userMapper.selectByEmail("user@example.com").orElseThrow().getUserId();
+
+        mockMvc.perform(post("/attendance/approval/{userId}/detail/saveAll", applicantUserId)
+                        .with(csrf())
+                        .param("attendanceDate", ""))
+                .andExpect(status().isForbidden());
+    }
 }

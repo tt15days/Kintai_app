@@ -1,5 +1,6 @@
 package com.attendance.app.service;
 
+import com.attendance.app.dto.UserNotificationKeyDto;
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserNotification;
 import com.attendance.app.entity.UserRole;
@@ -143,6 +144,30 @@ class UserNotificationServiceTest {
             assertThat(captor.getAllValues())
                 .extracting(u -> u.getNotificationType())
                 .containsOnly(UserNotificationService.TYPE_REMINDER);
+        }
+
+        @Test
+        @DisplayName("当月分のREMINDER通知が既に存在するユーザーへは重複作成しない（手動送信と自動ポーリングの重複対策）")
+        void skipsUsersWithExistingReminderThisMonth() {
+            YearMonth target = YearMonth.of(2026, 6);
+            User alreadyReminded = User.builder().userId(2L).userRole(UserRole.USER).build();
+            User notYetReminded = User.builder().userId(3L).userRole(UserRole.USER).build();
+
+            when(userService.getActiveUsers()).thenReturn(List.of(alreadyReminded, notYetReminded));
+            when(attendanceSubmissionService.getSubmissionsByTargetYearMonth(target)).thenReturn(List.of());
+            UserNotificationKeyDto existingKey = new UserNotificationKeyDto();
+            existingKey.setUserId(2L);
+            existingKey.setNotificationType(UserNotificationService.TYPE_REMINDER);
+            when(userNotificationMapper.selectExistingNotificationKeys(
+                    org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any()))
+                    .thenReturn(List.of(existingKey));
+
+            int count = service.createRemindersForUnsubmittedUsers(target);
+
+            assertThat(count).isEqualTo(1);
+            ArgumentCaptor<UserNotification> captor = ArgumentCaptor.forClass(UserNotification.class);
+            verify(userNotificationMapper, org.mockito.Mockito.times(1)).insert(captor.capture());
+            assertThat(captor.getValue().getUserId()).isEqualTo(3L);
         }
         }
 
