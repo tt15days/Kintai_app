@@ -56,6 +56,8 @@ public class UserService {
     private static final int MAX_POSITION_TITLE_LENGTH = 100;
     private static final int MAX_PHONE_NUMBER_LENGTH = 30;
     private static final int MAX_CLASS_NAME_LENGTH = 100;
+    private static final java.util.regex.Pattern EMAIL_PATTERN =
+            java.util.regex.Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private final UserMapper userMapper;
     private final WorkScheduleClassMapper workScheduleClassMapper;
@@ -168,7 +170,7 @@ public class UserService {
                 .build();
         paidLeaveBalanceMapper.insert(balance);
 
-        log.info("ユーザーを作成しました: fullName={}, role={}", fullName, role);
+        log.info("ユーザーを作成しました: userId={}, role={}", user.getUserId(), role);
 
         auditLogService.recordUserEvent(
                 AuditEventType.USER_CREATED,
@@ -501,6 +503,9 @@ public class UserService {
         validateLength(positionTitle, MAX_POSITION_TITLE_LENGTH, "\u5f79\u8077\u540d");
         validateLength(phoneNumber, MAX_PHONE_NUMBER_LENGTH, "\u96fb\u8a71\u756a\u53f7");
         validateLength(className, MAX_CLASS_NAME_LENGTH, "\u52e4\u52d9\u30af\u30e9\u30b9\u540d");
+        if (email == null || !EMAIL_PATTERN.matcher(email).matches()) {
+            throw new IllegalArgumentException("\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9\u306e\u5f62\u5f0f\u304c\u4e0d\u6b63\u3067\u3059");
+        }
     }
 
     private void validateLength(String value, int maxLength, String fieldName) {

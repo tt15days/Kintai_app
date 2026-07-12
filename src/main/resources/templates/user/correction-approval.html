@@ -100,7 +100,7 @@
                                 <div class="flex flex-col gap-2 min-w-[150px]">
                                     <!-- 承認フォーム -->
                                     <form th:action="@{/attendance/approval/corrections/{id}/approve(id=${req.requestId})}"
-                                          method="post">
+                                          method="post" onsubmit="return confirm('この修正申請を承認しますか？');">
                                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                                         <input type="text" class="form-input px-2.5 py-1 text-xs mb-1.5"
                                                name="comment" placeholder="承認コメント（任意）" maxlength="500">
@@ -110,7 +110,7 @@
                                     </form>
                                     <!-- 却下フォーム -->
                                     <form th:action="@{/attendance/approval/corrections/{id}/reject(id=${req.requestId})}"
-                                          method="post">
+                                          method="post" onsubmit="return confirm('この修正申請を却下しますか？');">
                                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                                         <input type="text" class="form-input px-2.5 py-1 text-xs mb-1.5"
                                                name="comment" placeholder="却下理由（任意）" maxlength="500">

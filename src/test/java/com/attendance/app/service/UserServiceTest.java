@@ -178,6 +178,16 @@ class UserServiceTest {
 
             verify(userMapper, never()).insert(any());
         }
+
+        @Test
+        @DisplayName("メールアドレスの形式が不正な場合は例外を送出して insert しない")
+        void emailInvalidFormat_throwsException() {
+            assertThatThrownBy(() -> service.createUser("invalid-email", "Pass1234", "ユーザー", UserRole.USER, null, 1L))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("メールアドレスの形式が不正です");
+
+            verify(userMapper, never()).insert(any());
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

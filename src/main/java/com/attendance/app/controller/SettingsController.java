@@ -279,6 +279,9 @@ public class SettingsController {
         } catch (IOException e) {
             log.error("祝日CSVの解析に失敗しました", e);
             redirectAttributes.addFlashAttribute("errorMessage", "ファイルの解析に失敗しました: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.warn("祝日CSVの解析に失敗しました", e);
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/admin/settings";
     }

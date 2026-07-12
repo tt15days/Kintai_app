@@ -474,6 +474,22 @@ class SettingsControllerTest {
     }
 
     @Test
+    @DisplayName("uploadCsv: 日付形式不正行を含むCSV(IllegalArgumentException)発生時のハンドリング")
+    void uploadCsv_illegalArgumentException_returnsError() throws IOException {
+        MultipartFile file = mock(MultipartFile.class);
+        RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        when(holidayService.parseFromCsv(file)).thenThrow(new IllegalArgumentException("1行目の日付形式が不正です: 2026/01/01"));
+
+        String viewName = controller.uploadCsv(file, redirectAttributes, model);
+
+        assertThat(viewName).isEqualTo("redirect:/admin/settings");
+        assertThat(model.get("previewHolidays")).isNull();
+        assertThat((String) redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("1行目の日付形式が不正です: 2026/01/01");
+    }
+
+    @Test
     @DisplayName("confirmAndSave: 正常にJSONデータがデシリアライズされて保存されること")
     void confirmAndSave_success() throws IOException {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();

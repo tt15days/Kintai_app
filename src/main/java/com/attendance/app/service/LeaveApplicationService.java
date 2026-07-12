@@ -36,6 +36,8 @@ public class LeaveApplicationService {
     private static final Set<String> VALID_LEAVE_DURATION_TYPES = Set.of("FULL_DAY", "AM_HALF", "PM_HALF");
     /** 休暇申請期間の上限日数（うるう年を含む1年分） */
     private static final long MAX_LEAVE_PERIOD_DAYS = 366;
+    /** 休暇理由の最大文字数 */
+    private static final int REASON_MAX_LENGTH = 500;
 
     private final LeaveApplicationMapper leaveApplicationMapper;
     private final PaidLeaveBalanceService paidLeaveBalanceService;
@@ -114,6 +116,12 @@ public class LeaveApplicationService {
     public LeaveApplication createApplication(Long userId, LocalDate startDate, LocalDate endDate, String leaveDurationType, LeaveType leaveType, String reason) {
         if (startDate.isAfter(endDate)) {
             throw new IllegalArgumentException("開始日は終了日より前である必要があります");
+        }
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new IllegalArgumentException("休暇理由を入力してください");
+        }
+        if (reason.trim().length() > REASON_MAX_LENGTH) {
+            throw new IllegalArgumentException("休暇理由は" + REASON_MAX_LENGTH + "文字以内で入力してください");
         }
         validateLeavePeriodLength(startDate, endDate);
 
@@ -207,6 +215,12 @@ public class LeaveApplicationService {
 
         if (startDate.isAfter(endDate)) {
             throw new IllegalArgumentException("開始日は終了日より前である必要があります");
+        }
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new IllegalArgumentException("休暇理由を入力してください");
+        }
+        if (reason.trim().length() > REASON_MAX_LENGTH) {
+            throw new IllegalArgumentException("休暇理由は" + REASON_MAX_LENGTH + "文字以内で入力してください");
         }
         validateLeavePeriodLength(startDate, endDate);
 

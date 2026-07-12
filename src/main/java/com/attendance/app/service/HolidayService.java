@@ -69,10 +69,17 @@ public class HolidayService {
         List<Holiday> holidays = new java.util.ArrayList<>();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
+            int lineNumber = 0;
             while ((line = br.readLine()) != null) {
+                lineNumber++;
                 if (line.trim().isEmpty()) continue;
                 String[] parts = line.split(",");
-                LocalDate d = LocalDate.parse(parts[0]);
+                LocalDate d;
+                try {
+                    d = LocalDate.parse(parts[0]);
+                } catch (java.time.format.DateTimeParseException e) {
+                    throw new IllegalArgumentException(lineNumber + "行目の日付形式が不正です: " + parts[0]);
+                }
                 String name = parts.length > 1 ? parts[1] : "";
                 Holiday h = Holiday.builder()
                         .holidayDate(d)

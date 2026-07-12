@@ -43,4 +43,11 @@ class GlobalExceptionHandlerTest {
                 new org.springframework.dao.DataIntegrityViolationException("duplicate key"));
         assertEquals("error/data-conflict", view);
     }
+
+    @Test
+    @DisplayName("handleMissingParameter - 必須リクエストパラメータ欠落時に 'error/400' を返すこと")
+    void testHandleMissingParameter() {
+        String view = exceptionHandler.handleMissingParameter();
+        assertEquals("error/400", view);
+    }
 }

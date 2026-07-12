@@ -14,7 +14,6 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,7 +59,8 @@ class HolidayServiceTest {
                 "2026/01/01,元日\n".getBytes(StandardCharsets.UTF_8));
 
         assertThatThrownBy(() -> service.parseFromCsv(file))
-                .isInstanceOf(DateTimeParseException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("1行目の日付形式が不正です");
     }
 
     @Test
