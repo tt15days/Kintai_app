@@ -139,7 +139,7 @@ class UserServiceAuditTest {
         @Test
         @DisplayName("ユーザー更新成功時に USER_UPDATED が記録される")
         void update_recordsUpdatedEvent() {
-            when(userMapper.selectById(TARGET_ID)).thenReturn(Optional.of(existingUser));
+            when(userMapper.selectByIdForUpdate(TARGET_ID)).thenReturn(Optional.of(existingUser));
 
             userService.updateUser(
                     TARGET_ID, "user@example.com", "更新ユーザー",

@@ -208,7 +208,7 @@ public class UserService {
             java.time.LocalDate hireDate,
             boolean isActive,
             Long actorUserId) {
-        User user = findUserOrThrow(userId);
+        User user = findUserForUpdateOrThrow(userId);
 
         if (userId.equals(actorUserId) && user.getUserRole() == UserRole.ADMIN && role != UserRole.ADMIN) {
             throw new IllegalArgumentException("自分自身の管理者ロールを降格することはできません。");
