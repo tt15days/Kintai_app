@@ -50,6 +50,7 @@ public class AttendanceCorrectionRequestService {
     private final AttendanceSubmissionService attendanceSubmissionService;
     private final UserService userService;
     private final AuditLogService auditLogService;
+    private final AttendanceApproverAssignmentService approverAssignmentService;
 
     /**
      * ユーザーが勤怠修正申請を提出します。
@@ -362,12 +363,21 @@ public class AttendanceCorrectionRequestService {
         if (approver.getUserRole() == UserRole.ADMIN) {
             return true;
         }
-        String approverClass = approver.getClassName();
-        if (approverClass == null || approverClass.trim().isEmpty()) {
-            return false;
-        }
         User applicant = userService.getUserById(applicantUserId).orElse(null);
         if (applicant == null) {
+            return false;
+        }
+
+        // 管理者が個人・部署アサインを1件でも設定している場合は、アサイン済み承認者のみ許可する
+        List<Long> assignedApproverIds = approverAssignmentService.resolveAssignedApproverIds(
+                applicantUserId, applicant.getClassName());
+        if (!assignedApproverIds.isEmpty()) {
+            return assignedApproverIds.contains(approver.getUserId());
+        }
+
+        // アサインが一件も無い場合は、同じ勤務クラスの申請のみ承認可能というフォールバックルールを適用
+        String approverClass = approver.getClassName();
+        if (approverClass == null || approverClass.trim().isEmpty()) {
             return false;
         }
         String applicantClass = applicant.getClassName();

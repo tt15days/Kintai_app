@@ -126,7 +126,7 @@ public class BatchSchedulerService {
      * 管理者画面からの手動送信でも利用されます。
      */
     public void executeSubmissionReminder() {
-        YearMonth currentMonth = YearMonth.now();
+        YearMonth currentMonth = YearMonth.from(DateTimeUtil.todayJapan());
         log.info(BATCH_LOG_START, "勤怠提出リマインド: targetMonth=" + currentMonth);
         try {
             int count = userNotificationService.createRemindersForUnsubmittedUsers(currentMonth);

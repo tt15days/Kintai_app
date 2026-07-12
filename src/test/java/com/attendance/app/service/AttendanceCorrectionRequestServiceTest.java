@@ -42,6 +42,8 @@ class AttendanceCorrectionRequestServiceTest {
     private UserService userService;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private AttendanceApproverAssignmentService approverAssignmentService;
 
     @InjectMocks
     private AttendanceCorrectionRequestService service;
@@ -232,6 +234,23 @@ class AttendanceCorrectionRequestServiceTest {
             assertThat(pending.getActionComment()).isEqualTo("承認します");
             verify(auditLogService).recordCorrectionRequestEvent(
                     eq(AuditEventType.CORRECTION_APPROVED), eq(3L), eq(21L), eq(300L), any());
+        }
+
+        @Test
+        @DisplayName("異常系: 個人アサインが存在する場合、同じ勤務クラスでもアサイン外の承認者は承認できない")
+        void approve_assignedApproverExists_unassignedSameClassApprover_throwsException() {
+            AttendanceCorrectionRequest pending = AttendanceCorrectionRequest.builder()
+                    .requestId(300L).userId(21L).status(AttendanceCorrectionRequestService.STATUS_PENDING).build();
+
+            when(userService.getUserById(3L)).thenReturn(Optional.of(approverUserClassA));
+            when(userService.isAttendanceApprover(approverUserClassA)).thenReturn(true);
+            when(correctionRequestMapper.selectByIdForUpdate(300L)).thenReturn(Optional.of(pending));
+            when(userService.getUserById(21L)).thenReturn(Optional.of(applicantClassA));
+            when(approverAssignmentService.resolveAssignedApproverIds(21L, "A")).thenReturn(List.of(99L));
+
+            assertThatThrownBy(() -> service.approveRequest(300L, 3L, "承認"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("この申請を承認する権限がありません");
         }
 
         @Test

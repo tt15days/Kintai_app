@@ -68,6 +68,8 @@ public class AlertBatchService {
         } catch (Exception e) {
             log.error(BATCH_LOG_ERROR, "有給消化アラートバッチ", e.getMessage(), e);
         }
+
+        batchSettingService.recordAlertBatchExecutedAt(DateTimeUtil.nowJapan());
     }
 
     /**
@@ -85,6 +87,7 @@ public class AlertBatchService {
 
         checkArticle36Alerts(startDate, endDate);
         checkPaidLeaveAlerts(currentDate);
+        batchSettingService.recordAlertBatchExecutedAt(DateTimeUtil.nowJapan());
 
         log.info("手動アラートバッチ処理が完了しました。");
     }
@@ -127,8 +130,12 @@ public class AlertBatchService {
                 continue;
             }
 
-            createNotification(dto.getUserId(), message, type);
-            count++;
+            try {
+                createNotification(dto.getUserId(), message, type);
+                count++;
+            } catch (Exception e) {
+                log.error("ユーザー {} への36協定アラート通知作成に失敗しました。", dto.getUserId(), e);
+            }
         }
         log.info("36協定アラート: {} 件の通知を作成しました。", count);
     }
@@ -157,8 +164,12 @@ public class AlertBatchService {
             String message = String.format("【重要: 有給消化】有給休暇が付与された日（%s）から %d ヶ月が経過しましたが、消化日数が %s 日となっており、基準である %d 日を下回っています。計画的な有給取得をお願いします。",
                     dto.getGrantDate(), months, dto.getUsedDays().toString(), days);
 
-            createNotification(dto.getUserId(), message, type);
-            count++;
+            try {
+                createNotification(dto.getUserId(), message, type);
+                count++;
+            } catch (Exception e) {
+                log.error("ユーザー {} への有給消化アラート通知作成に失敗しました。", dto.getUserId(), e);
+            }
         }
         log.info("有給消化アラート: {} 件の通知を作成しました。", count);
     }

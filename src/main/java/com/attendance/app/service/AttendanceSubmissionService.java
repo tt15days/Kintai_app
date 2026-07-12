@@ -44,6 +44,7 @@ public class AttendanceSubmissionService {
     private final UserService userService;
     private final AttendancePeriodSettingService attendancePeriodSettingService;
     private final AuditLogService auditLogService;
+    private final AttendanceApproverAssignmentService approverAssignmentService;
 
     /**
      * 指定ユーザー・対象月の勤怠申請を取得します。
@@ -348,14 +349,21 @@ public class AttendanceSubmissionService {
             return true;
         }
 
-        // 一般承認者は同じ勤務クラスの申請のみ承認可能
-        String approverClass = approver.getClassName();
-        if (approverClass == null || approverClass.trim().isEmpty()) {
+        User applicant = userService.getUserById(applicantUserId).orElse(null);
+        if (applicant == null) {
             return false;
         }
 
-        User applicant = userService.getUserById(applicantUserId).orElse(null);
-        if (applicant == null) {
+        // 管理者が個人・部署アサインを1件でも設定している場合は、アサイン済み承認者のみ許可する
+        List<Long> assignedApproverIds = approverAssignmentService.resolveAssignedApproverIds(
+                applicantUserId, applicant.getClassName());
+        if (!assignedApproverIds.isEmpty()) {
+            return assignedApproverIds.contains(approver.getUserId());
+        }
+
+        // アサインが一件も無い場合は、同じ勤務クラスの申請のみ承認可能というフォールバックルールを適用
+        String approverClass = approver.getClassName();
+        if (approverClass == null || approverClass.trim().isEmpty()) {
             return false;
         }
 

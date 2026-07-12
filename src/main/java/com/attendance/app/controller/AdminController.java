@@ -4,6 +4,7 @@ import com.attendance.app.entity.AttendanceSubmission;
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserRole;
 import com.attendance.app.security.SecurityUtil;
+import com.attendance.app.service.AlertBatchService;
 import com.attendance.app.service.AttendanceApproverAssignmentService;
 import com.attendance.app.service.BatchSchedulerService;
 import com.attendance.app.service.BatchSettingService;
@@ -81,6 +82,7 @@ public class AdminController {
     private final CsvFilenamePatternService csvFilenamePatternService;
     private final BatchSettingService batchSettingService;
     private final BatchSchedulerService batchSchedulerService;
+    private final AlertBatchService alertBatchService;
     private final UserNotificationService userNotificationService;
 
     /**
@@ -101,6 +103,7 @@ public class AdminController {
             model.addAttribute("lastAnnualLeaveGrantExecutedAt",
                     batchSettingService.getLastAnnualLeaveGrantExecutedAt());
             model.addAttribute("lastReminderExecutedAt", batchSettingService.getLastReminderExecutedAt());
+            model.addAttribute("lastAlertBatchExecutedAt", batchSettingService.getLastAlertBatchExecutedAt());
             log.info("管理者ダッシュボードを表示: userCount={}", users.size());
         } catch (Exception e) {
             handleAdminViewError(model, e, "管理者ダッシュボード表示に失敗", "ダッシュボード表示に失敗しました");
@@ -496,6 +499,27 @@ public class AdminController {
         } catch (Exception e) {
             logActionError(e, "手動有給一括付与に失敗");
             redirectAttributes.addFlashAttribute("errorMessage", "有給一括付与の実行に失敗しました");
+        }
+        return "redirect:/admin/dashboard";
+    }
+
+    /**
+     * 手動で36協定・有給消化アラートバッチを実行します。
+     *
+     * @param yearMonth 有給消化アラートの基準年月（YYYY-MM形式、省略時は当月）
+     */
+    @PostMapping("/batch/alert")
+    public String runManualAlertBatch(
+            @RequestParam(required = false) String yearMonth,
+            RedirectAttributes redirectAttributes) {
+        try {
+            YearMonth targetMonth = parseYearMonthOrPrevious(yearMonth);
+            alertBatchService.runAlertBatchManually(targetMonth);
+            redirectAttributes.addFlashAttribute("successMessage", "36協定・有給消化アラートバッチを実行しました");
+            log.info("手動アラートバッチを実行: targetMonth={}", targetMonth);
+        } catch (Exception e) {
+            logActionError(e, "手動アラートバッチに失敗");
+            redirectAttributes.addFlashAttribute("errorMessage", "アラートバッチの実行に失敗しました");
         }
         return "redirect:/admin/dashboard";
     }

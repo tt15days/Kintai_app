@@ -66,4 +66,20 @@ class UserNotificationMapperIntegrationTest {
                 .toList();
         assertThat(unreadAfterAllRead).isEmpty();
     }
+
+    @Test
+    @DisplayName("AlertBatchServiceが使う通知種別(ALERT_ARTICLE_36_LIMIT1/2, ALERT_PAID_LEAVE)がchk_un_notification_typeで拒否されない")
+    void alertBatchNotificationTypes_areAcceptedByCheckConstraint() {
+        Long userId = userMapper.selectByEmail("user@example.com").orElseThrow().getUserId();
+
+        for (String type : List.of("ALERT_ARTICLE_36_LIMIT1", "ALERT_ARTICLE_36_LIMIT2", "ALERT_PAID_LEAVE")) {
+            UserNotification notification = UserNotification.builder()
+                    .userId(userId)
+                    .message("[IT-ALERT-TYPE] " + type)
+                    .notificationType(type)
+                    .build();
+            assertThat(userNotificationMapper.insert(notification)).isEqualTo(1);
+            assertThat(notification.getNotificationId()).isNotNull();
+        }
+    }
 }

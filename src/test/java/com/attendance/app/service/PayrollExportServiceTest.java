@@ -115,8 +115,8 @@ public class PayrollExportServiceTest {
         String[] lines = csvString.split("\r\n");
         assertThat(lines).hasSize(2); // 1 header + 1 data row
         
-        assertThat(lines[0]).isEqualTo("従業員コード,氏名,出勤日数,欠勤日数,有休消化日数,総労働時間,時間外労働時間,深夜労働時間,休日労働時間");
-        assertThat(lines[1]).isEqualTo("EMP001,テスト 太郎,1,0,0,8時間0分,1時間30分,0時間0分,0時間0分");
+        assertThat(lines[0]).isEqualTo("従業員コード,氏名,出勤日数,欠勤日数,有休消化日数,その他休暇日数,総労働時間,時間外労働時間,深夜労働時間,休日労働時間");
+        assertThat(lines[1]).isEqualTo("EMP001,テスト 太郎,1,0,0,0,8.00,1.50,0.00,0.00");
     }
 
     @Test
@@ -253,8 +253,15 @@ public class PayrollExportServiceTest {
         rejectedPaidLeave.setLeaveStartDate(LocalDate.of(2023, 10, 5));
         rejectedPaidLeave.setLeaveEndDate(LocalDate.of(2023, 10, 5));
 
+        LeaveApplication specialLeave = new LeaveApplication();
+        specialLeave.setUserId(2L);
+        specialLeave.setLeaveType(LeaveType.SPECIAL_LEAVE);
+        specialLeave.setStatus(LeaveStatus.APPROVED);
+        specialLeave.setLeaveStartDate(LocalDate.of(2023, 10, 7));
+        specialLeave.setLeaveEndDate(LocalDate.of(2023, 10, 7));
+
         when(leaveApplicationMapper.selectAllByDateRange(any(), any()))
-                .thenReturn(List.of(paidLeave, unpaidLeave, absence, rejectedPaidLeave));
+                .thenReturn(List.of(paidLeave, unpaidLeave, absence, rejectedPaidLeave, specialLeave));
 
         when(leaveApplicationService.calculateDailyConsumedDays(any()))
                 .thenAnswer(inv -> {
@@ -286,15 +293,15 @@ public class PayrollExportServiceTest {
         assertThat(lines).hasSize(3); // Header + User1 + User2
 
         // Header check
-        assertThat(lines[0]).isEqualTo("従業員コード,氏名,出勤日数,欠勤日数,有休消化日数,総労働時間,時間外労働時間,深夜労働時間,休日労働時間");
+        assertThat(lines[0]).isEqualTo("従業員コード,氏名,出勤日数,欠勤日数,有休消化日数,その他休暇日数,総労働時間,時間外労働時間,深夜労働時間,休日労働時間");
 
         // User1 data row check
-        // EMP001,テスト 太郎, 出勤日数:2, 欠勤日数:0, 有休消化日数:0, 総労働:15.50, 残業:1.00, 深夜:1.00, 休日:0.00
-        assertThat(lines[1]).isEqualTo("EMP001,テスト 太郎,2,0,0,15時間30分,1時間0分,1時間0分,0時間0分");
+        // EMP001,テスト 太郎, 出勤日数:2, 欠勤日数:0, 有休消化日数:0, その他休暇日数:0, 総労働:15.50, 残業:1.00, 深夜:1.00, 休日:0.00
+        assertThat(lines[1]).isEqualTo("EMP001,テスト 太郎,2,0,0,0,15.50,1.00,1.00,0.00");
 
         // User2 data row check
-        // EMP002,テスト 次郎, 出勤日数:0, 欠勤日数:2 (unpaid + absence), 有休消化日数:1, 総労働:0.00, 残業:0.00, 深夜:0.00, 休日:0.00
-        assertThat(lines[2]).isEqualTo("EMP002,テスト 次郎,0,2,1,0時間0分,0時間0分,0時間0分,0時間0分");
+        // EMP002,テスト 次郎, 出勤日数:0, 欠勤日数:2 (unpaid + absence), 有休消化日数:1, その他休暇日数:1 (special leave), 総労働:0.00, 残業:0.00, 深夜:0.00, 休日:0.00
+        assertThat(lines[2]).isEqualTo("EMP002,テスト 次郎,0,2,1,1,0.00,0.00,0.00,0.00");
     }
 
     @Test
@@ -344,6 +351,6 @@ public class PayrollExportServiceTest {
         String[] lines = csvString.split("\r\n");
 
         // 一括取得レンジがユーザーの申請スナップショット期間まで広がり、出勤日数に計上されること
-        assertThat(lines[1]).isEqualTo("EMP001,テスト 太郎,1,0,0,6時間0分,0時間0分,0時間0分,0時間0分");
+        assertThat(lines[1]).isEqualTo("EMP001,テスト 太郎,1,0,0,0,6.00,0.00,0.00,0.00");
     }
 }

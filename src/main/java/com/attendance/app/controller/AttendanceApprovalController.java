@@ -484,7 +484,7 @@ public class AttendanceApprovalController {
      * 管理者がユーザーの勤怠記録を一括保存します。
      */
     @PostMapping("/{userId}/detail/saveAll")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public String saveUserAttendance(
             @PathVariable Long userId,
             @RequestParam(required = false) String yearMonth,

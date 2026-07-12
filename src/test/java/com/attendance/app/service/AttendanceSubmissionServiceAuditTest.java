@@ -45,6 +45,9 @@ class AttendanceSubmissionServiceAuditTest {
     @Mock
     private AuditLogService auditLogService;
 
+    @Mock
+    private AttendanceApproverAssignmentService approverAssignmentService;
+
     @InjectMocks
     private AttendanceSubmissionService service;
 

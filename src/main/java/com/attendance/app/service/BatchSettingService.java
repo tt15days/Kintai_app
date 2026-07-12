@@ -39,6 +39,7 @@ public class BatchSettingService {
     public static final String KEY_LAST_MONTHLY_SUMMARY_EXECUTED_AT    = "last_monthly_summary_executed_at";
     public static final String KEY_LAST_ANNUAL_LEAVE_GRANT_EXECUTED_AT = "last_annual_leave_grant_executed_at";
     public static final String KEY_LAST_REMINDER_EXECUTED_AT           = "last_reminder_executed_at";
+    public static final String KEY_LAST_ALERT_BATCH_EXECUTED_AT        = "last_alert_batch_executed_at";
 
     private static final int DEFAULT_DAYS_AFTER_END  = 5;
     private static final int DEFAULT_REMINDER_DAY    = 20;
@@ -178,6 +179,17 @@ public class BatchSettingService {
     @Transactional
     public void recordReminderExecutedAt(LocalDateTime executedAt) {
         systemSettingMapper.upsertValue(KEY_LAST_REMINDER_EXECUTED_AT, executedAt.toString());
+    }
+
+    /** 36協定・有給消化アラートバッチの最終実行日時を返します。未実行の場合は {@code null} を返します。 */
+    public LocalDateTime getLastAlertBatchExecutedAt() {
+        return parseLocalDateTime(systemSettingMapper.selectValueByKey(KEY_LAST_ALERT_BATCH_EXECUTED_AT));
+    }
+
+    /** 36協定・有給消化アラートバッチの実行日時を記録します。 */
+    @Transactional
+    public void recordAlertBatchExecutedAt(LocalDateTime executedAt) {
+        systemSettingMapper.upsertValue(KEY_LAST_ALERT_BATCH_EXECUTED_AT, executedAt.toString());
     }
 
     private static int parseIntValue(String value, int defaultValue) {
