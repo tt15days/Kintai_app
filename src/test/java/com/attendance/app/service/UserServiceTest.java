@@ -202,7 +202,7 @@ class UserServiceTest {
         @Test
         @DisplayName("メールアドレス変更時に重複がある場合は例外を送出して update しない")
         void changedEmailDuplicate_throwsException() {
-            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+            when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(existingUser()));
             when(userMapper.existsByEmail("dup@example.com")).thenReturn(true);
 
             assertThatThrownBy(() -> service.updateUser(2L, "dup@example.com", "既存ユーザー", UserRole.USER,
@@ -216,7 +216,7 @@ class UserServiceTest {
         @Test
         @DisplayName("メールアドレスが変更されていない場合は重複チェックしない")
         void unchangedEmail_skipsDuplicateCheck() {
-            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+            when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(existingUser()));
 
             service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
                     null, null, null, null, null, false, null, true, 1L);
@@ -228,7 +228,7 @@ class UserServiceTest {
         @Test
         @DisplayName("役職名が100文字を超える場合は例外を送出する")
         void positionTitleTooLong_throwsException() {
-            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+            when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(existingUser()));
 
             assertThatThrownBy(() -> service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
                     "役".repeat(101), null, null, null, null, false, null, true, 1L))
@@ -241,7 +241,7 @@ class UserServiceTest {
         @Test
         @DisplayName("電話番号が30文字を超える場合は例外を送出する")
         void phoneNumberTooLong_throwsException() {
-            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+            when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(existingUser()));
 
             assertThatThrownBy(() -> service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
                     null, "0".repeat(31), null, null, null, false, null, true, 1L))
@@ -254,7 +254,7 @@ class UserServiceTest {
         @Test
         @DisplayName("無効化時は承認者割り当て（個人・部署）が解除される")
         void deactivation_cleansUpApproverAssignments() {
-            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+            when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(existingUser()));
 
             service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
                     null, null, null, null, null, false, null, false, 1L);
@@ -266,7 +266,7 @@ class UserServiceTest {
         @Test
         @DisplayName("有効のままの場合は承認者割り当てを解除しない")
         void stillActive_doesNotCleanUpApproverAssignments() {
-            when(userMapper.selectById(2L)).thenReturn(Optional.of(existingUser()));
+            when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(existingUser()));
 
             service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
                     null, null, null, null, null, false, null, true, 1L);
