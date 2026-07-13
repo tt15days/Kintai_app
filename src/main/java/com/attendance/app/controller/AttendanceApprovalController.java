@@ -53,6 +53,7 @@ import java.util.Set;
 public class AttendanceApprovalController {
 
     private static final String APPROVAL_VIEW = "user/attendance-approval";
+    private static final String TODAY_STATUS_VIEW = "user/today-status";
     private static final String APPROVAL_REDIRECT = "redirect:/attendance/approval";
     private static final String CORRECTION_APPROVAL_REDIRECT = "redirect:/attendance/approval/corrections";
     private static final String USER_ATTENDANCE_DETAIL_VIEW = "admin/user-attendance-detail";
@@ -70,6 +71,7 @@ public class AttendanceApprovalController {
     private final HolidayService holidayService;
     private final PaidLeaveBalanceService paidLeaveBalanceService;
     private final BatchSettingService batchSettingService;
+    private final com.attendance.app.service.DepartmentService departmentService;
 
     /**
      * 現在ユーザーが承認可能な勤怠申請一覧を表示します。
@@ -102,6 +104,127 @@ public class AttendanceApprovalController {
             model.addAttribute("applicantUsers", java.util.Collections.emptyMap());
         }
         return APPROVAL_VIEW;
+    }
+
+    /**
+     * 承認対象メンバーの当日勤務状況一覧を表示します。
+     * 管理者は全有効ユーザー、承認者は自分が承認可能なユーザーのみが対象です。
+     *
+     * @param department 部署名によるフィルタ（省略可）
+     * @param className  勤務地（勤務クラス名）によるフィルタ（省略可）
+     */
+    @GetMapping("/today-status")
+    public String showTodayStatus(
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String className,
+            Model model) {
+        model.addAttribute("rows", Collections.emptyList());
+        model.addAttribute("departments", Collections.emptyList());
+        model.addAttribute("workScheduleClasses", Collections.emptyList());
+        model.addAttribute("department", department);
+        model.addAttribute("className", className);
+        model.addAttribute("today", DateTimeUtil.todayJapan());
+        try {
+            User currentUser = securityUtil.getCurrentUser();
+            if (!userService.isAttendanceApprover(currentUser)) {
+                throw new IllegalArgumentException("勤怠承認権限がありません");
+            }
+            LocalDate today = DateTimeUtil.todayJapan();
+
+            List<User> targets = userService.getActiveUsers();
+            if (currentUser.getUserRole() != UserRole.ADMIN) {
+                targets = targets.stream()
+                        .filter(u -> !u.getUserId().equals(currentUser.getUserId()))
+                        .filter(u -> attendanceSubmissionService.canApprove(currentUser, u.getUserId()))
+                        .toList();
+            }
+            if (department != null && !department.isEmpty()) {
+                targets = targets.stream().filter(u -> department.equals(u.getDepartment())).toList();
+            }
+            if (className != null && !className.isEmpty()) {
+                targets = targets.stream().filter(u -> className.equals(u.getClassName())).toList();
+            }
+
+            // 当日の勤怠記録・承認済み休暇・当月提出状況を一括取得し、ユーザー単位に結合する（N+1回避）
+            Map<Long, AttendanceRecord> recordByUser = new HashMap<>();
+            for (AttendanceRecord r : attendanceRecordService.getRecordsForAllUsersByDate(today)) {
+                recordByUser.putIfAbsent(r.getUserId(), r);
+            }
+            Map<Long, LeaveApplication> leaveByUser = new HashMap<>();
+            for (LeaveApplication la : leaveApplicationService.getAllApplicationsByDateRange(today, today)) {
+                if (la.getStatus() == LeaveStatus.APPROVED) {
+                    leaveByUser.putIfAbsent(la.getUserId(), la);
+                }
+            }
+            YearMonth payrollMonth = attendanceSubmissionService.resolvePayrollMonth(today);
+            Map<Long, String> submissionStatusByUser = new HashMap<>();
+            for (AttendanceSubmission s : attendanceSubmissionService.getSubmissionsByTargetYearMonth(payrollMonth)) {
+                submissionStatusByUser.put(s.getUserId(), s.getStatus());
+            }
+            Map<Integer, String> eventNameById = new HashMap<>();
+            for (com.attendance.app.entity.EventType et : eventTypeService.getAllActiveEventTypes()) {
+                eventNameById.put(et.getEventTypeId(), et.getDisplayName());
+            }
+
+            java.time.format.DateTimeFormatter hhmm = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+            List<TodayStatusRow> rows = new ArrayList<>();
+            for (User u : targets) {
+                AttendanceRecord record = recordByUser.get(u.getUserId());
+                LeaveApplication leave = leaveByUser.get(u.getUserId());
+                String status;
+                if (leave != null) {
+                    status = "休暇";
+                } else if (record != null && record.getStartTime() != null && record.getEndTime() != null) {
+                    status = "退勤済";
+                } else if (record != null && record.getStartTime() != null) {
+                    status = "勤務中";
+                } else {
+                    status = "未出勤";
+                }
+                String start = record != null && record.getStartTime() != null
+                        ? DateTimeUtil.toLocalTime(record.getStartTime()).format(hhmm)
+                        : null;
+                String end = record != null && record.getEndTime() != null
+                        ? DateTimeUtil.toLocalTime(record.getEndTime()).format(hhmm)
+                        : null;
+                String eventName = leave != null
+                        ? leave.getLeaveType().getDisplayName()
+                        : (record != null && record.getEventTypeId() != null
+                                ? eventNameById.get(record.getEventTypeId())
+                                : null);
+                rows.add(new TodayStatusRow(u, status, start, end, eventName,
+                        submissionStatusByUser.get(u.getUserId())));
+            }
+
+            model.addAttribute("rows", rows);
+            model.addAttribute("payrollMonth", payrollMonth);
+            model.addAttribute("departments", departmentService.getActiveDepartments());
+            model.addAttribute("workScheduleClasses", workScheduleClassService.getAllActiveClasses());
+            model.addAttribute("submissionStatusPending", AttendanceSubmissionService.STATUS_PENDING);
+            model.addAttribute("submissionStatusApproved", AttendanceSubmissionService.STATUS_APPROVED);
+            model.addAttribute("submissionStatusReturned", AttendanceSubmissionService.STATUS_RETURNED);
+        } catch (IllegalArgumentException e) {
+            log.warn("当日状況一覧の表示に失敗", e);
+            model.addAttribute("error", e.getMessage());
+        } catch (Exception e) {
+            log.error("当日状況一覧の表示に失敗", e);
+            model.addAttribute("error", "当日状況一覧の表示に失敗しました");
+        }
+        return TODAY_STATUS_VIEW;
+    }
+
+    /**
+     * 当日状況一覧の1行分の表示データ。
+     *
+     * @param user             対象ユーザー
+     * @param status           当日ステータス（未出勤/勤務中/退勤済/休暇）
+     * @param startTime        出勤時刻（HH:mm、未打刻はnull）
+     * @param endTime          退勤時刻（HH:mm、未打刻はnull）
+     * @param eventName        当日イベント名（休暇種別または勤怠事由。なければnull）
+     * @param submissionStatus 当月提出状況（未提出はnull）
+     */
+    public record TodayStatusRow(User user, String status, String startTime, String endTime,
+            String eventName, String submissionStatus) {
     }
 
     /**

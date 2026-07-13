@@ -182,7 +182,10 @@
                                         <th class="w-[24%] md:w-[18%] text-center">
                                             事由
                                         </th>
-                                        <th class="w-[12%] md:w-[38%] text-center">
+                                        <th class="hidden md:table-cell md:w-[15%] text-center">
+                                            勤務地
+                                        </th>
+                                        <th class="w-[12%] md:w-[23%] text-center">
                                             備考
                                         </th>
                                     </tr>
@@ -215,6 +218,17 @@
                                                 <option th:each="et : ${eventTypes}" th:value="${et.eventTypeId}"
                                                     th:text="${et.displayName}"
                                                     th:selected="${eventTypeIdMap != null and eventTypeIdMap[date.toString()] != null ? eventTypeIdMap[date.toString()] == et.eventTypeId : et.code == '通常'}">
+                                                </option>
+                                            </select>
+                                        </td>
+                                        <td class="hidden md:table-cell text-center">
+                                            <select name="classId"
+                                                class="form-select w-full mx-auto md:p-1 p-0.5 text-xs md:text-sm"
+                                                th:disabled="${(leaveApp != null) or !monthEditable}">
+                                                <option value="">所属クラス</option>
+                                                <option th:each="wsc : ${workScheduleClasses}" th:value="${wsc.classId}"
+                                                    th:text="${wsc.name}"
+                                                    th:selected="${classIdMap != null and classIdMap[date.toString()] != null and classIdMap[date.toString()] == wsc.classId}">
                                                 </option>
                                             </select>
                                         </td>

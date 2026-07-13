@@ -87,9 +87,34 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
+                                    <label for="department" class="form-label">部署</label>
+                                    <select class="form-select h-11" id="department" name="department">
+                                        <option value="">-- 未設定 --</option>
+                                        <option th:each="dept : ${activeDepartments}"
+                                            th:value="${dept.name}"
+                                            th:selected="${user.department != null and user.department == dept.name}"
+                                            th:text="${dept.name}">
+                                        </option>
+                                        <!-- 廃止済み部署が割当済みの場合も表示を維持する -->
+                                        <option th:if="${user.department != null and !#strings.isEmpty(user.department) and !activeDepartments.![name].contains(user.department)}"
+                                            th:value="${user.department}" selected
+                                            th:text="${user.department + '（廃止済み）'}">
+                                        </option>
+                                    </select>
+                                    <div class="text-xs text-txt-secondary opacity-70 block mt-1.5">
+                                        部署は部署マスタの名称と連動します。</div>
+                                </div>
+                                <div>
                                     <label for="hireDate" class="form-label">入社日</label>
                                     <input type="date" class="form-input h-11" id="hireDate" name="hireDate"
                                            th:value="${user.hireDate}">
+                                </div>
+                                <div>
+                                    <label for="scheduledEndDate" class="form-label">利用終了日</label>
+                                    <input type="date" class="form-input h-11" id="scheduledEndDate" name="scheduledEndDate"
+                                           th:value="${user.scheduledEndDate}">
+                                    <div class="text-xs text-txt-secondary opacity-70 block mt-1.5">
+                                        この日を過ぎると自動で無効化されます。復帰（再有効化）時はクリアされます。</div>
                                 </div>
                             </div>
 

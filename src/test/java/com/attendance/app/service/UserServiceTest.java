@@ -216,7 +216,7 @@ class UserServiceTest {
             when(userMapper.existsByEmail("dup@example.com")).thenReturn(true);
 
             assertThatThrownBy(() -> service.updateUser(2L, "dup@example.com", "既存ユーザー", UserRole.USER,
-                    null, null, null, null, null, false, null, true, 1L))
+                    null, null, null, null, null, null, false, null, null, true, 1L))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("既に登録されています");
 
@@ -229,7 +229,7 @@ class UserServiceTest {
             when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(existingUser()));
 
             service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
-                    null, null, null, null, null, false, null, true, 1L);
+                    null, null, null, null, null, null, false, null, null, true, 1L);
 
             verify(userMapper, never()).existsByEmail(any());
             verify(userMapper).update(any(User.class));
@@ -241,7 +241,7 @@ class UserServiceTest {
             when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(existingUser()));
 
             assertThatThrownBy(() -> service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
-                    "役".repeat(101), null, null, null, null, false, null, true, 1L))
+                    "役".repeat(101), null, null, null, null, null, false, null, null, true, 1L))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("役職名は100文字以内");
 
@@ -254,7 +254,7 @@ class UserServiceTest {
             when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(existingUser()));
 
             assertThatThrownBy(() -> service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
-                    null, "0".repeat(31), null, null, null, false, null, true, 1L))
+                    null, "0".repeat(31), null, null, null, null, false, null, null, true, 1L))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("電話番号は30文字以内");
 
@@ -267,7 +267,7 @@ class UserServiceTest {
             when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(existingUser()));
 
             service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
-                    null, null, null, null, null, false, null, false, 1L);
+                    null, null, null, null, null, null, false, null, null, false, 1L);
 
             verify(approverAssignmentMapper).deleteUserApproverByApprover(2L);
             verify(approverAssignmentMapper).deleteDepartmentApproverByApprover(2L);
@@ -279,7 +279,7 @@ class UserServiceTest {
             when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(existingUser()));
 
             service.updateUser(2L, "old@example.com", "既存ユーザー", UserRole.USER,
-                    null, null, null, null, null, false, null, true, 1L);
+                    null, null, null, null, null, null, false, null, null, true, 1L);
 
             verify(approverAssignmentMapper, never()).deleteUserApproverByApprover(any());
             verify(approverAssignmentMapper, never()).deleteDepartmentApproverByApprover(any());

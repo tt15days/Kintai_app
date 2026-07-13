@@ -13,6 +13,7 @@ import com.attendance.app.service.AttendanceRecordService;
 import com.attendance.app.service.AttendanceSubmissionService;
 import com.attendance.app.service.AttendancePeriodSettingService;
 import com.attendance.app.service.BatchSettingService;
+import com.attendance.app.service.WorkScheduleClassService;
 import com.attendance.app.service.CsvFilenamePatternService;
 import com.attendance.app.service.EventTypeService;
 import com.attendance.app.service.HolidayService;
@@ -76,6 +77,7 @@ public class AttendanceRecordController {
     private final ReportService reportService;
     private final CsvFilenamePatternService csvFilenamePatternService;
     private final BatchSettingService batchSettingService;
+    private final WorkScheduleClassService workScheduleClassService;
 
     /**
      * 勤怠画面（通常）を表示します。
@@ -98,6 +100,7 @@ public class AttendanceRecordController {
         Map<String, String> endTimeMap = new HashMap<>();
         Map<String, String> remarksMap = new HashMap<>();
         Map<String, Integer> eventTypeIdMap = new HashMap<>();
+        Map<String, Long> classIdMap = new HashMap<>();
         Set<String> holidayWorkDates = new HashSet<>();
         Set<String> saturdayWorkDates = new HashSet<>();
         Set<LocalDate> holidays = Collections.emptySet();
@@ -167,6 +170,9 @@ public class AttendanceRecordController {
                 if (r.getEventTypeId() != null) {
                     eventTypeIdMap.put(dateKey, r.getEventTypeId());
                 }
+                if (r.getClassId() != null) {
+                    classIdMap.put(dateKey, r.getClassId());
+                }
                 if (r.getHolidayWorkHours() != null && r.getHolidayWorkHours() > 0) {
                     if (recDate.getDayOfWeek().getValue() == 6) { // 土曜日
                         saturdayWorkDates.add(dateKey);
@@ -225,6 +231,8 @@ public class AttendanceRecordController {
         model.addAttribute("endTimeMap", endTimeMap);
         model.addAttribute("remarksMap", remarksMap);
         model.addAttribute("eventTypeIdMap", eventTypeIdMap);
+        model.addAttribute("classIdMap", classIdMap);
+        model.addAttribute("workScheduleClasses", workScheduleClassService.getAllActiveClasses());
         model.addAttribute("eventTypes", eventTypeService.getAllActiveEventTypes());
         model.addAttribute("holidayWorkDates", holidayWorkDates);
         model.addAttribute("saturdayWorkDates", saturdayWorkDates);
@@ -332,6 +340,7 @@ public class AttendanceRecordController {
             @RequestParam(value = "endTime", required = false) List<String> endTimeStrs,
             @RequestParam(value = "remarks", required = false) List<String> remarksList,
             @RequestParam(value = "eventTypeId", required = false) List<Integer> eventTypeIdList,
+            @RequestParam(value = "classId", required = false) List<String> classIdStrs,
             RedirectAttributes redirectAttributes) {
         YearMonth selectedMonth = parseYearMonthOrDefault(yearMonth, resolveDefaultTargetMonth());
         try {
@@ -358,6 +367,7 @@ public class AttendanceRecordController {
             List<LocalTime> ends = new ArrayList<>();
             List<String> filteredRemarks = new ArrayList<>();
             List<Integer> eventTypeIds = new ArrayList<>();
+            List<Long> classIds = new ArrayList<>();
 
             // 休暇日行は disabled のためフォーム送信されない。
             // attendanceDateStrs は全行分だが
@@ -412,12 +422,25 @@ public class AttendanceRecordController {
                     holidayWorkDateSet.add(date);
                 }
 
+                Long cid = null;
+                if (classIdStrs != null && classIdStrs.size() > j) {
+                    String cs = classIdStrs.get(j);
+                    if (cs != null && !cs.isBlank()) {
+                        try {
+                            cid = Long.valueOf(cs.trim());
+                        } catch (NumberFormatException nfe) {
+                            throw new IllegalArgumentException("勤務地（勤務クラス）の指定が不正です: 行=" + (i + 1));
+                        }
+                    }
+                }
+                classIds.add(cid);
+
                 j++;
             }
 
             if (!dates.isEmpty()) {
                 int savedCount = attendanceRecordService.saveRecordsBatch(userId, dates, starts, ends, filteredRemarks,
-                        holidayWorkDateSet, eventTypeIds);
+                        holidayWorkDateSet, eventTypeIds, classIds);
                 if (savedCount > 0) {
                     redirectAttributes.addFlashAttribute("message", "当月分を保存しました。変更保存件数: " + savedCount);
                 } else {
@@ -497,6 +520,7 @@ public class AttendanceRecordController {
             model.addAttribute("userId", userId);
             model.addAttribute("todayRecord", todayRecord.orElse(null));
             model.addAttribute("eventTypes", eventTypeService.getAllActiveEventTypes());
+            model.addAttribute("workScheduleClasses", workScheduleClassService.getAllActiveClasses());
         } catch (Exception e) {
             addViewError(model, e, "ワンクリック勤怠画面表示に失敗", "画面の表示に失敗しました");
         }
@@ -510,12 +534,14 @@ public class AttendanceRecordController {
      * @return ワンクリック勤怠画面へのリダイレクト
      */
     @PostMapping("/quick-start")
-    public String quickStartAttendance(RedirectAttributes redirectAttributes) {
+    public String quickStartAttendance(
+            @RequestParam(required = false) Long classId,
+            RedirectAttributes redirectAttributes) {
         try {
             Long userId = securityUtil.getCurrentUserId();
             attendanceSubmissionService.assertEditableMonth(userId,
                     attendanceSubmissionService.resolvePayrollMonth(DateTimeUtil.todayJapan()));
-            AttendanceRecord record = attendanceRecordService.quickStartAttendance(userId);
+            AttendanceRecord record = attendanceRecordService.quickStartAttendance(userId, classId);
             String startTimeStr = com.attendance.app.util.DateTimeUtil.toLocalTime(record.getStartTime())
                     .format(DateTimeFormatter.ofPattern("HH:mm"));
             redirectAttributes.addFlashAttribute("message", "勤務開始時刻を記録しました: " + startTimeStr);

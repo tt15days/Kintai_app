@@ -116,6 +116,10 @@
                             class="bg-danger text-white px-2 py-0.5 text-[0.7rem] font-bold rounded-full font-mono"
                             th:text="${pendingCorrectionsCount}">2</span>
                     </a>
+                    <a th:href="@{/attendance/approval/today-status}" class="nav-link text-sm font-medium"
+                        th:classappend="${activePage == 'today-status'} ? 'active' : ''">
+                        <i class="fa-solid fa-users-viewfinder"></i> 当日状況一覧
+                    </a>
                 </div>
 
                 <!-- 管理者専用メニュー -->
@@ -134,6 +138,10 @@
                     <a th:href="@{/admin/work-schedules}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'schedules'} ? 'active' : ''">
                         <i class="fa-regular fa-calendar-plus"></i> 勤務クラス設定
+                    </a>
+                    <a th:href="@{/admin/departments}" class="nav-link text-sm font-medium"
+                        th:classappend="${activePage == 'departments'} ? 'active' : ''">
+                        <i class="fa-solid fa-sitemap"></i> 部署管理
                     </a>
                     <a th:href="@{/admin/article36}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'article36'} ? 'active' : ''">

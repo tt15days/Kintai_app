@@ -209,4 +209,12 @@ public interface UserMapper {
      * @return 更新された件数
      */
     int resetLoginAttempt(@Param("userId") Long userId);
+
+    /**
+     * 利用終了日を過ぎた有効ユーザーを取得する（日次自動無効化バッチ用）。
+     *
+     * @param today 当日（JST）。scheduled_end_date がこれより前のユーザーが対象
+     * @return 対象ユーザーのリスト
+     */
+    List<User> selectExpiredActiveUsers(@Param("today") java.time.LocalDate today);
 }

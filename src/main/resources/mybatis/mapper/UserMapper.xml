@@ -29,17 +29,18 @@
         <result column="locked_until" property="lockedUntil" jdbcType="TIMESTAMP" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
         <result column="account_locked" property="accountLocked"/>
         <result column="hire_date" property="hireDate"/>
+        <result column="scheduled_end_date" property="scheduledEndDate"/>
         <result column="deleted_at" property="deletedAt" jdbcType="TIMESTAMP" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
     </resultMap>
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectById" resultMap="userResultMap">
-        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
         FROM users WHERE user_id = #{userId}
     </select>
 
     <select id="selectByIdForUpdate" resultMap="userResultMap">
-        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
         FROM users WHERE user_id = #{userId} FOR UPDATE
     </select>
 
@@ -47,31 +48,41 @@
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectByEmail" resultMap="userResultMap">
-        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
         FROM users WHERE email = #{email}
     </select>
 
     <select id="selectByEmailForUpdate" resultMap="userResultMap">
-        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
         FROM users WHERE email = #{email} FOR UPDATE
     </select>
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectAllActive" resultMap="userResultMap">
-        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
         FROM users WHERE is_active = true ORDER BY user_id ASC
     </select>
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectAll" resultMap="userResultMap">
-        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
         FROM users WHERE deleted_at IS NULL ORDER BY user_id ASC
     </select>
 
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectByRole" resultMap="userResultMap">
-        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
         FROM users WHERE user_role = #{role} AND deleted_at IS NULL ORDER BY created_at DESC
+    </select>
+
+    <!-- 利用終了日を過ぎた有効ユーザー（日次自動無効化バッチ用） -->
+    <select id="selectExpiredActiveUsers" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
+        FROM users
+        WHERE is_active = true
+          AND scheduled_end_date IS NOT NULL
+          AND scheduled_end_date &lt; #{today}
+        ORDER BY user_id ASC
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="userId">
@@ -139,6 +150,7 @@
             deleted_at = #{deletedAt,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler,jdbcType=TIMESTAMP},
             last_login_at = #{lastLoginAt},
             hire_date = #{hireDate},
+            scheduled_end_date = #{scheduledEndDate},
             updated_at = NOW()
         WHERE user_id = #{userId}
     </update>

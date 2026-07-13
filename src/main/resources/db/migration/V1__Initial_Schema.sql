@@ -1,35 +1,20 @@
 -- ============================================================
 -- Attendance Management System - Initial Schema (Consolidated)
--- マイグレーション V1: DDLのみ（テーブル・インデックス・パーミッション）
--- 統合対象: 旧 V1〜V7 + V3(有給残高) + V4(管理者お知らせ・監査ログ) + V5(休憩時間拡張)
---           + 旧V2(attendance_records/leave_applications/overtime_records調整・emp_no_seq) の
---           スキーマ変更をすべて反映済み
---   - leave_type に ABSENCE を追加 (旧 V2)
---   - attendance_submissions.status に WITHDRAWN を追加 (旧 V3)
---   - system_settings テーブルを追加 (旧 V3)
---   - work_schedule_classes テーブルを追加 (旧 V5)
---   - attendance_correction_requests テーブルを追加 (旧 V6)
---   - users に有給設定カラムを追加 (旧 V7)
---   - user_notifications テーブルを追加 (旧 V7)
---   - paid_leave_balance テーブルを追加 (旧 V3マイグレーション)
---   - admin_announcements テーブルを追加 (旧 V4マイグレーション)
---   - audit_logs テーブルを追加 (旧 V4マイグレーション)
---   - work_schedule_classes に休憩時間スロット2〜4を追加 (旧 V5マイグレーション)
---   - users にログイン試行制限カラムを追加 (failed_login_count, locked_until, account_locked)
---   - attendance_records の一意制約を論理削除対応の部分一意インデックスに変更 (旧 V2)
---   - leave_applications.consumed_days（実消化日数の永続化）を追加 (旧 V2)
---   - overtime_records.overtime_start/overtime_end を TIMESTAMP WITH TIME ZONE 化し
---     有効行のみを対象とする部分一意インデックスを追加 (旧 V2)
---   - emp_no_seq シーケンスを追加（emp_no のアトミック採番用） (旧 V2)
--- 追加変更 (2026-07-11 レビュー反映):
---   - uq_attendance_user_date_active をJST暦日の式一意インデックスに変更、idx_attendance_records_user_id を
---     idx_attendance_records_user_date(user_id, attendance_date) に置換 (DB-01)
---   - leave_applications/paid_leave_balance/admin_announcements に日付範囲順序のCHECKを追加 (DB-04)
---   - leave_applications.leave_duration_type/user_notifications.notification_type にCHECKを追加 (DB-05)
---   - work_schedule_class_breaks に idx_wscb_class_id と UNIQUE(class_id, break_start_time) を追加 (DB-06)
---   - idx_user_notifications_user_id を idx_user_notifications_user_created(user_id, created_at DESC) に置換 (DB-09)
---   - attendance_user_approvers/attendance_department_approvers の approver_user_id に索引を追加 (DB-10)
--- サンプルデータは db/sample/V2__Sample_Data.sql に分離
+-- ============================================================
+-- マイグレーション V1: DDLのみ（テーブル・インデックス・シーケンス・制約）。
+-- これまでの段階的マイグレーションを統合した初期スキーマ。個々の変更履歴は
+-- git を参照。サンプルデータは db/sample/V2__Sample_Data.sql に分離。
+--
+-- 定義オブジェクト:
+--   ユーザー/組織    : users, departments, emp_no_seq(シーケンス)
+--   勤務体系マスタ    : work_schedule_classes, work_schedule_class_breaks,
+--                       event_types, holidays
+--   勤怠            : attendance_records, attendance_submissions,
+--                       attendance_correction_requests, overtime_records
+--   休暇            : leave_applications, paid_leave_balance
+--   承認割り当て     : attendance_department_approvers, attendance_user_approvers
+--   通知/お知らせ    : user_notifications, admin_announcements
+--   システム/監査    : system_settings, audit_logs
 -- ============================================================
 
 -- ============================================================
@@ -62,6 +47,7 @@ CREATE TABLE IF NOT EXISTS users (
     department              VARCHAR(100),
     employment_type         VARCHAR(50),
     hire_date               DATE,
+    scheduled_end_date      DATE,
     deleted_at              TIMESTAMP WITH TIME ZONE,
     CONSTRAINT check_user_role CHECK (user_role IN ('ADMIN', 'MANAGER', 'USER', 'OTHER'))
 );
@@ -72,6 +58,20 @@ CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
 -- emp_no のアトミック採番用シーケンス。
 -- UserMapper.selectNextUserId の非アトミックな MAX(user_id)+1 採番を置き換えるため使用する。
 CREATE SEQUENCE IF NOT EXISTS emp_no_seq;
+
+-- ============================================================
+-- departments テーブル（部署マスタ）
+-- users.department / attendance_department_approvers.department_name /
+-- work_schedule_classes.section_name から名前参照される部署のマスタ。
+-- （work_schedule_classes を class_name で参照するのと同じ名前参照方式）
+-- ============================================================
+CREATE TABLE IF NOT EXISTS departments (
+    department_id BIGSERIAL PRIMARY KEY,
+    name          VARCHAR(100) NOT NULL UNIQUE,
+    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
 
 -- ============================================================
 -- work_schedule_classes テーブル（所定時間マスタ）

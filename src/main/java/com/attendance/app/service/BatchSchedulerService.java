@@ -101,6 +101,37 @@ public class BatchSchedulerService {
 
 
     // -------------------------------------------------------
+    // 4. 利用終了日到達ユーザーの自動無効化バッチ
+    //    毎日 00:30（JST）に実行
+    // -------------------------------------------------------
+
+    /**
+     * 利用終了日（scheduled_end_date）を過ぎた有効ユーザーを自動無効化します。
+     */
+    @Scheduled(cron = "0 30 0 * * ?", zone = "Asia/Tokyo")
+    public void runExpiredUserDeactivationCheck() {
+        executeExpiredUserDeactivation();
+    }
+
+    /**
+     * 利用終了日到達ユーザーの無効化を実行します。
+     * 管理者画面からの手動実行でも利用されます。
+     *
+     * @return 無効化したユーザー数
+     */
+    public int executeExpiredUserDeactivation() {
+        log.info(BATCH_LOG_START, "利用終了日自動無効化");
+        try {
+            int count = userService.deactivateExpiredUsers();
+            log.info(BATCH_LOG_DONE, "利用終了日自動無効化: " + count + "名を無効化");
+            return count;
+        } catch (Exception e) {
+            log.error(BATCH_LOG_ERROR, "利用終了日自動無効化", e.getMessage(), e);
+            return 0;
+        }
+    }
+
+    // -------------------------------------------------------
     // 3. 勤怠提出リマインドバッチ
     //    毎時 00分（JST）にポーリング実行
     // -------------------------------------------------------

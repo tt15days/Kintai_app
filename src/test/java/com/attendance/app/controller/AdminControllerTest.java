@@ -151,7 +151,7 @@ class AdminControllerTest {
             RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
 
             String viewName = controller.updateUser(2L, "user@example.com", "氏名", UserRole.USER,
-                    null, null, null, null, null, false, null, true, redirectAttributes);
+                    null, null, null, null, null, null, false, null, null, true, redirectAttributes);
 
             assertThat(viewName).isEqualTo("redirect:/admin/users");
         }
@@ -162,12 +162,12 @@ class AdminControllerTest {
             when(securityUtil.getCurrentUserId()).thenReturn(1L);
             doThrow(new IllegalArgumentException("メールアドレスが重複しています"))
                     .when(userService)
-                    .updateUser(eq(2L), anyString(), anyString(), any(UserRole.class), any(), any(), any(), any(), any(),
-                            anyBoolean(), any(), anyBoolean(), anyLong());
+                    .updateUser(eq(2L), anyString(), anyString(), any(UserRole.class), any(), any(), any(), any(), any(), any(),
+                            anyBoolean(), any(), any(), anyBoolean(), anyLong());
             RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
 
             String viewName = controller.updateUser(2L, "dup@example.com", "氏名", UserRole.USER,
-                    null, null, null, null, null, false, null, true, redirectAttributes);
+                    null, null, null, null, null, null, false, null, null, true, redirectAttributes);
 
             assertThat(viewName).isEqualTo("redirect:/admin/users/2");
             assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))

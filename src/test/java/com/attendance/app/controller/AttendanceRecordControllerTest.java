@@ -16,6 +16,7 @@ import com.attendance.app.service.PaidLeaveBalanceService;
 import com.attendance.app.service.EventTypeService;
 import com.attendance.app.service.UserNotificationService;
 import com.attendance.app.service.UserService;
+import com.attendance.app.service.WorkScheduleClassService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -80,6 +81,9 @@ public class AttendanceRecordControllerTest {
 
     @Mock
     private BatchSettingService batchSettingService;
+
+    @Mock
+    private WorkScheduleClassService workScheduleClassService;
 
     @InjectMocks
     private AttendanceRecordController controller;

@@ -71,6 +71,8 @@ public class AdminController {
     private static final String ADMIN_NOTIFICATIONS_VIEW = "admin/notifications";
     private static final String ADMIN_NOTIFICATIONS_REDIRECT = "redirect:/admin/notifications";
     private static final String ADMIN_ARTICLE36_VIEW = "admin/article36-dashboard";
+    private static final String DEPARTMENTS_VIEW = "admin/departments";
+    private static final String ADMIN_DEPARTMENTS_REDIRECT = "redirect:/admin/departments";
 
     private final UserService userService;
     private final AttendanceRecordService attendanceRecordService;
@@ -84,6 +86,7 @@ public class AdminController {
     private final BatchSchedulerService batchSchedulerService;
     private final AlertBatchService alertBatchService;
     private final UserNotificationService userNotificationService;
+    private final com.attendance.app.service.DepartmentService departmentService;
 
     /**
      * 管理者ダッシュボードを表示します。
@@ -204,6 +207,7 @@ public class AdminController {
             model.addAttribute("user", user);
             model.addAttribute("roles", UserRole.values());
             model.addAttribute("workScheduleClasses", workScheduleClassService.getAllClasses());
+            model.addAttribute("activeDepartments", departmentService.getActiveDepartments());
             List<User> approverCandidates = userService.getAttendanceApproverCandidates();
             Set<Long> assignedUserApproverIds = Set.copyOf(approverAssignmentService.getUserApproverIds(userId));
             Set<Long> assignedDepartmentApproverIds = user.getClassName() == null
@@ -293,10 +297,12 @@ public class AdminController {
             @RequestParam(required = false) String positionTitle,
             @RequestParam(required = false) String phoneNumber,
             @RequestParam(required = false) String className,
+            @RequestParam(required = false) String department,
             @RequestParam(required = false) BigDecimal paidLeaveDays,
             @RequestParam(required = false) String notes,
             @RequestParam(defaultValue = "false") boolean canApproveAttendance,
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM-dd") java.time.LocalDate hireDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM-dd") java.time.LocalDate scheduledEndDate,
             @RequestParam(defaultValue = "false") boolean isActive,
             RedirectAttributes redirectAttributes) {
         try {
@@ -308,10 +314,12 @@ public class AdminController {
                     positionTitle,
                     phoneNumber,
                     className,
+                    department,
                     paidLeaveDays,
                     notes,
                     canApproveAttendance,
                     hireDate,
+                    scheduledEndDate,
                     isActive,
                     securityUtil.getCurrentUserId());
             log.info("ユーザー情報を更新: userId={}", userId);
@@ -522,6 +530,23 @@ public class AdminController {
         } catch (Exception e) {
             logActionError(e, "手動有給一括付与に失敗");
             redirectAttributes.addFlashAttribute("errorMessage", "有給一括付与の実行に失敗しました");
+        }
+        return "redirect:/admin/dashboard";
+    }
+
+    /**
+     * 手動で利用終了日到達ユーザーの自動無効化バッチを実行します。
+     */
+    @PostMapping("/batch/deactivate-expired")
+    public String runManualExpiredUserDeactivation(RedirectAttributes redirectAttributes) {
+        try {
+            int count = batchSchedulerService.executeExpiredUserDeactivation();
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "利用終了日到達ユーザーの無効化を実行しました（無効化: " + count + "名）");
+            log.info("手動利用終了日無効化を実行: count={}", count);
+        } catch (Exception e) {
+            logActionError(e, "手動利用終了日無効化に失敗");
+            redirectAttributes.addFlashAttribute("errorMessage", "利用終了日無効化の実行に失敗しました");
         }
         return "redirect:/admin/dashboard";
     }
@@ -860,6 +885,68 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("errorMessage", "勤務クラスの削除に失敗しました");
         }
         return ADMIN_WORK_SCHEDULES_REDIRECT;
+    }
+
+    // ============================================================
+    // 部署管理（部署マスタ）
+    // ============================================================
+
+    /**
+     * 部署一覧を表示します。
+     */
+    @GetMapping("/departments")
+    public String showDepartments(Model model) {
+        try {
+            model.addAttribute("departments", departmentService.getAllDepartments());
+            log.info("部署一覧を表示");
+        } catch (Exception e) {
+            handleAdminViewError(model, e, "部署一覧表示に失敗", "部署一覧の表示に失敗しました");
+        }
+        return DEPARTMENTS_VIEW;
+    }
+
+    /**
+     * 部署を新規作成します。
+     */
+    @PostMapping("/departments/create")
+    public String createDepartment(
+            @RequestParam String name,
+            RedirectAttributes redirectAttributes) {
+        try {
+            departmentService.createDepartment(name);
+            redirectAttributes.addFlashAttribute("successMessage", "部署を作成しました: " + name);
+            log.info("部署を作成: name={}", name);
+        } catch (IllegalArgumentException e) {
+            log.warn("部署作成に失敗", e);
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (Exception e) {
+            logActionError(e, "部署作成に失敗");
+            redirectAttributes.addFlashAttribute("errorMessage", "部署の作成に失敗しました");
+        }
+        return ADMIN_DEPARTMENTS_REDIRECT;
+    }
+
+    /**
+     * 部署を更新します（改名・廃止/復帰）。
+     */
+    @PostMapping("/departments/{departmentId}/update")
+    public String updateDepartment(
+            @PathVariable Long departmentId,
+            @RequestParam String name,
+            @RequestParam(required = false, defaultValue = "false") Boolean isActive,
+            RedirectAttributes redirectAttributes) {
+        try {
+            departmentService.updateDepartment(departmentId, name, isActive);
+            redirectAttributes.addFlashAttribute("successMessage", "部署を更新しました: " + name);
+            log.info("部署を更新: departmentId={}, name={}", departmentId, name);
+        } catch (IllegalArgumentException e) {
+            log.warn("部署更新に失敗", e);
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        } catch (Exception e) {
+            logActionError(e, "部署更新に失敗");
+            redirectAttributes.addFlashAttribute("errorMessage", "部署の更新に失敗しました");
+        }
+        return ADMIN_DEPARTMENTS_REDIRECT;
     }
 
     // ============================================================
