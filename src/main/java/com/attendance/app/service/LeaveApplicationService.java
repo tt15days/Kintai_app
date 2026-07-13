@@ -77,6 +77,17 @@ public class LeaveApplicationService {
     }
 
     /**
+     * 全ユーザーの指定期間内の休暇申請を取得します（当日状況一覧などの一括参照用）。
+     *
+     * @param startDate 開始日
+     * @param endDate 終了日
+     * @return 休暇申請のリスト
+     */
+    public List<LeaveApplication> getAllApplicationsByDateRange(LocalDate startDate, LocalDate endDate) {
+        return leaveApplicationMapper.selectAllByDateRange(startDate, endDate);
+    }
+
+    /**
      * 指定されたユーザーとステータスに合致する休暇申請を取得します。
      *
      * @param userId 対象ユーザーID

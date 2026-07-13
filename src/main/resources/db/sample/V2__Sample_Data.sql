@@ -3,6 +3,17 @@
 -- ============================================================
 
 -- ============================================================
+-- サンプル部署挿入（サンプルユーザーの department 値に対応）
+-- ============================================================
+INSERT INTO departments (name, is_active)
+VALUES
+    ('総務部', true),
+    ('営業部', true),
+    ('開発部', true),
+    ('警備部', true)
+ON CONFLICT (name) DO NOTHING;
+
+-- ============================================================
 -- サンプル勤務クラス挿入
 -- ============================================================
 INSERT INTO work_schedule_classes (class_code, name, work_location, address, station, telephone, section_name, is_active, start_time, end_time)

@@ -84,6 +84,19 @@ public class AttendanceRecordService {
                 .orElseGet(() -> WorkScheduleDefinition.defaultSchedule());
     }
 
+    /**
+     * 勤務クラスIDからスケジュール定義を解決します（現場移動時のクラス指定用）。
+     *
+     * @param classId 勤務クラスID
+     * @return 勤務スケジュール定義
+     * @throws IllegalArgumentException クラスが存在しない場合
+     */
+    private WorkScheduleDefinition resolveScheduleByClassId(Long classId) {
+        return workScheduleClassMapper.selectById(classId)
+                .map(this::toWorkScheduleDefinition)
+                .orElseThrow(() -> new IllegalArgumentException("指定された勤務クラスが存在しません: classId=" + classId));
+    }
+
     private WorkScheduleDefinition toWorkScheduleDefinition(WorkScheduleClass workScheduleClass) {
         List<BreakWindow> breakWindows = new ArrayList<>();
         if (workScheduleClass.getBreaks() != null) {
@@ -203,8 +216,20 @@ public class AttendanceRecordService {
      * @return 保存された勤怠記録
      */
     public AttendanceRecord saveRecord(Long userId, LocalDate attendanceDate, LocalTime startTime, LocalTime endTime, String remarks, boolean isHolidayWork, Integer eventTypeId) {
+        return saveRecord(userId, attendanceDate, startTime, endTime, remarks, isHolidayWork, eventTypeId, null);
+    }
+
+    /**
+     * 勤怠記録を保存します。classId 指定時はそのクラス（現場）の所定時間で計算し、
+     * レコードに紐付けます（現場移動対応）。未指定時は既存レコードまたは所属クラスに従います。
+     *
+     * @param classId 勤務クラスID（任意。指定時はレコードのクラスを上書き）
+     */
+    public AttendanceRecord saveRecord(Long userId, LocalDate attendanceDate, LocalTime startTime, LocalTime endTime, String remarks, boolean isHolidayWork, Integer eventTypeId, Long classId) {
         Optional<AttendanceRecord> existing = attendanceRecordMapper.selectByUserAndDateForUpdate(userId, attendanceDate);
-        WorkScheduleDefinition schedule = getScheduleForUserAndRecord(userId, existing);
+        WorkScheduleDefinition schedule = classId != null
+                ? resolveScheduleByClassId(classId)
+                : getScheduleForUserAndRecord(userId, existing);
 
         java.time.Instant startInstant = DateTimeUtil.toInstant(attendanceDate, startTime);
         java.time.Instant endInstant = resolveAttendanceEndInstant(attendanceDate, startTime, endTime);
@@ -235,7 +260,7 @@ public class AttendanceRecordService {
             record.setHolidayWorkHours(holidayWorkHours);
             record.setNightShiftHours(nightShiftHours);
             record.setBreakTimeMinutes(breakTimeMinutes);
-            if (record.getClassId() == null) {
+            if (classId != null || record.getClassId() == null) {
                 record.setClassId(schedule.classId());
             }
             record.setRemarks(remarks);
@@ -289,10 +314,24 @@ public class AttendanceRecordService {
      * @throws IllegalArgumentException 既に開始時刻が記録されている場合など
      */
     public AttendanceRecord quickStartAttendance(Long userId) {
+        return quickStartAttendance(userId, null);
+    }
+
+    /**
+     * ワンクリック勤怠入力として、現在時刻で勤務開始（出勤）を記録します。
+     * classId 指定時はそのクラス（現場）で打刻します（現場移動対応）。
+     *
+     * @param userId 対象のユーザーID
+     * @param classId 勤務クラスID（任意）
+     * @return 記録された勤怠情報
+     */
+    public AttendanceRecord quickStartAttendance(Long userId, Long classId) {
         LocalDate today = DateTimeUtil.todayJapan();
         LocalTime currentTime = DateTimeUtil.currentTimeJapan();
         Optional<AttendanceRecord> existing = attendanceRecordMapper.selectByUserAndDateForUpdate(userId, today);
-        WorkScheduleDefinition schedule = getScheduleForUserAndRecord(userId, existing);
+        WorkScheduleDefinition schedule = classId != null
+                ? resolveScheduleByClassId(classId)
+                : getScheduleForUserAndRecord(userId, existing);
 
         if (schedule.isOvernight()) {
             attendanceRecordMapper.selectByUserAndDate(userId, today.minusDays(1))
@@ -316,7 +355,7 @@ public class AttendanceRecordService {
         if (existing.isPresent()) {
             record = existing.get();
             record.setStartTime(DateTimeUtil.toInstant(today, currentTime));
-            if (record.getClassId() == null) {
+            if (classId != null || record.getClassId() == null) {
                 record.setClassId(schedule.classId());
             }
             if (record.getEventTypeId() == null) {
@@ -693,6 +732,18 @@ public class AttendanceRecordService {
     }
 
     /**
+     * 指定日の全ユーザーの勤怠記録を取得します（当日状況一覧用）。
+     *
+     * @param date 対象日（JST）
+     * @return 勤怠記録のリスト
+     */
+    public List<AttendanceRecord> getRecordsForAllUsersByDate(LocalDate date) {
+        Instant startInstant = DateTimeUtil.toInstant(date);
+        Instant endInstant = DateTimeUtil.toInstant(date.plusDays(1));
+        return attendanceRecordMapper.selectAllByDateRange(startInstant, endInstant);
+    }
+
+    /**
      * 指定年月の全ユーザー勤務時間合計をユーザーIDをキーとするMapで返します。
      * N+1対策として全ユーザー分を一括取得して集計します。
      */
@@ -800,6 +851,15 @@ public class AttendanceRecordService {
      */
     @Transactional
     public int saveRecordsBatch(Long userId, List<LocalDate> dates, List<LocalTime> startTimes, List<LocalTime> endTimes, List<String> remarks, Set<LocalDate> holidayWorkDates, List<Integer> eventTypeIds) {
+        return saveRecordsBatch(userId, dates, startTimes, endTimes, remarks, holidayWorkDates, eventTypeIds, null);
+    }
+
+    /**
+     * 勤怠記録を一括保存します。classIds 指定時は行ごとの勤務クラス（現場）で計算・紐付けします。
+     *
+     * @param classIds 行ごとの勤務クラスID（任意。null要素は既存/所属クラスを維持）
+     */
+    public int saveRecordsBatch(Long userId, List<LocalDate> dates, List<LocalTime> startTimes, List<LocalTime> endTimes, List<String> remarks, Set<LocalDate> holidayWorkDates, List<Integer> eventTypeIds, List<Long> classIds) {
         if (dates == null || dates.isEmpty()) {
             throw new IllegalArgumentException("保存対象がありません");
         }
@@ -840,6 +900,7 @@ public class AttendanceRecordService {
             LocalTime e = (endTimes != null && endTimes.size() > i) ? endTimes.get(i) : null;
             String remark = normalizeText((remarks != null && remarks.size() > i) ? remarks.get(i) : null);
             Integer eventTypeId = (eventTypeIds != null && eventTypeIds.size() > i) ? eventTypeIds.get(i) : null;
+            Long classId = (classIds != null && classIds.size() > i) ? classIds.get(i) : null;
 
             Optional<AttendanceRecord> existing = attendanceRecordMapper.selectByUserAndDateForUpdate(userId, date);
             WorkScheduleDefinition schedule = getScheduleForUserAndRecord(userId, existing);
@@ -862,13 +923,15 @@ public class AttendanceRecordService {
             boolean newIsHolidayWork = holidayWorkDates != null && holidayWorkDates.contains(date);
             if (existing.isPresent()) {
                 boolean existingIsHolidayWork = existing.get().getHolidayWorkHours() != null && existing.get().getHolidayWorkHours() > 0;
-                if (!hasChanged(existing.get(), s, e, remark, eventTypeId) && newIsHolidayWork == existingIsHolidayWork) {
+                boolean classChanged = classId != null && !classId.equals(existing.get().getClassId());
+                if (!hasChanged(existing.get(), s, e, remark, eventTypeId) && newIsHolidayWork == existingIsHolidayWork
+                        && !classChanged) {
                     continue;
                 }
             }
 
             // reuse existing saveRecord which contains business logic for overnight, working hours
-            saveRecord(userId, date, s, e, remark, newIsHolidayWork, eventTypeId);
+            saveRecord(userId, date, s, e, remark, newIsHolidayWork, eventTypeId, classId);
             savedCount++;
         }
 

@@ -77,4 +77,6 @@ public class User {
     private Boolean accountLocked;
     /** 入社日 */
     private java.time.LocalDate hireDate;
+    /** 利用終了日（この日を過ぎると日次バッチで自動無効化。NULL=期限なし） */
+    private java.time.LocalDate scheduledEndDate;
 }

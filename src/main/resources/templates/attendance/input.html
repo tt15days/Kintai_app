@@ -29,6 +29,15 @@
                 <span th:if="${todayRecord != null and todayRecord.startTime != null and todayRecord.endTime != null}" class="px-2.5 py-1 rounded-full bg-black/5 text-txt-secondary border border-glass-border">退勤済み</span>
             </div>
 
+            <div class="mb-4 flex items-center justify-center gap-2" th:if="${todayRecord == null or todayRecord.startTime == null}">
+                <label for="quick-class-select" class="text-sm font-semibold text-txt-secondary">本日の勤務地</label>
+                <select id="quick-class-select" name="classId" form="clock-in-form"
+                        class="form-select max-w-60 p-1.5 text-sm">
+                    <option value="">所属クラス</option>
+                    <option th:each="wsc : ${workScheduleClasses}" th:value="${wsc.classId}" th:text="${wsc.name}"></option>
+                </select>
+            </div>
+
             <div class="grid grid-cols-2 gap-4 mb-8">
                 <form th:action="@{/attendance/quick-start}" method="post" class="w-full" id="clock-in-form">
                     <button type="submit" class="btn btn-primary p-6 text-xl rounded-2xl w-full gap-2 cursor-pointer" th:disabled="${todayRecord != null and todayRecord.startTime != null}">

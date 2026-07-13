@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.attendance.app.mapper.DepartmentMapper">
+
+    <resultMap id="departmentResultMap" type="com.attendance.app.entity.Department">
+        <id column="department_id" property="departmentId"/>
+        <result column="name" property="name"/>
+        <result column="is_active" property="isActive"/>
+        <result column="created_at" property="createdAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="columns">
+        department_id, name, is_active, created_at, updated_at
+    </sql>
+
+    <select id="selectAll" resultMap="departmentResultMap">
+        SELECT <include refid="columns"/>
+        FROM departments
+        ORDER BY name ASC
+    </select>
+
+    <select id="selectAllActive" resultMap="departmentResultMap">
+        SELECT <include refid="columns"/>
+        FROM departments
+        WHERE is_active = TRUE
+        ORDER BY name ASC
+    </select>
+
+    <select id="selectById" resultMap="departmentResultMap">
+        SELECT <include refid="columns"/>
+        FROM departments
+        WHERE department_id = #{departmentId}
+    </select>
+
+    <select id="selectByName" resultMap="departmentResultMap">
+        SELECT <include refid="columns"/>
+        FROM departments
+        WHERE name = #{name}
+    </select>
+
+    <select id="existsByName" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM departments WHERE name = #{name})
+    </select>
+
+    <select id="existsByNameAndNotId" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM departments WHERE name = #{name} AND department_id != #{departmentId})
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="departmentId" keyColumn="department_id">
+        INSERT INTO departments (name, is_active, created_at, updated_at)
+        VALUES (#{name}, #{isActive}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE departments
+        SET name = #{name},
+            is_active = #{isActive},
+            updated_at = NOW()
+        WHERE department_id = #{departmentId}
+    </update>
+
+    <select id="countActiveUsersByDepartment" resultType="int">
+        SELECT COUNT(*)
+        FROM users
+        WHERE department = #{name}
+          AND is_active = TRUE
+    </select>
+
+    <update id="renameUsersDepartment">
+        UPDATE users
+        SET department = #{newName},
+            updated_at = NOW()
+        WHERE department = #{oldName}
+    </update>
+
+    <update id="renameDepartmentApprovers">
+        UPDATE attendance_department_approvers
+        SET department_name = #{newName},
+            updated_at = NOW()
+        WHERE department_name = #{oldName}
+    </update>
+
+    <update id="renameWorkScheduleClassSection">
+        UPDATE work_schedule_classes
+        SET section_name = #{newName},
+            updated_at = NOW()
+        WHERE section_name = #{oldName}
+    </update>
+
+</mapper>

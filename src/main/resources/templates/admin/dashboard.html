@@ -95,6 +95,14 @@
                             <i class="fa-solid fa-umbrella-beach"></i> 有給一括付与を実行
                         </button>
                     </form>
+                    <!-- 利用終了日到達ユーザーの無効化 -->
+                    <form method="post" th:action="@{/admin/batch/deactivate-expired}">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+                        <button type="submit" class="btn btn-secondary px-5 py-3 text-sm h-[48px] gap-2"
+                                onclick="return confirm('利用終了日を過ぎたユーザーを無効化します。よろしいですか？')">
+                            <i class="fa-solid fa-user-slash"></i> 利用終了日無効化を実行
+                        </button>
+                    </form>
                     <!-- 36協定・有給消化アラート -->
                     <form method="post" th:action="@{/admin/batch/alert}" class="flex items-end gap-2 flex-wrap">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />

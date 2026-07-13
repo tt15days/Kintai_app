@@ -8,7 +8,9 @@ import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.mapper.WorkScheduleClassMapper;
 import com.attendance.app.mapper.AttendanceApproverAssignmentMapper;
+import com.attendance.app.mapper.DepartmentMapper;
 import com.attendance.app.mapper.PaidLeaveBalanceMapper;
+import com.attendance.app.entity.Department;
 import com.attendance.app.util.DateTimeUtil;
 import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.entity.LeaveApplication;
@@ -67,6 +69,7 @@ public class UserService {
     private final SystemSettingMapper systemSettingMapper;
     private final AttendanceApproverAssignmentMapper approverAssignmentMapper;
     private final PaidLeaveBalanceMapper paidLeaveBalanceMapper;
+    private final DepartmentMapper departmentMapper;
     private final LeaveApplicationService leaveApplicationService;
 
     /**
@@ -191,9 +194,11 @@ public class UserService {
      * @param positionTitle        役職名称（任意）
      * @param phoneNumber          電話番号（任意）
      * @param className            勤務クラス名（任意）
+     * @param department           部署名（任意、部署マスタに存在する有効な部署のみ）
      * @param paidLeaveDays        有給休暨残日数
      * @param notes                備考（任意）
      * @param canApproveAttendance 勤怠承認権限フラグ
+     * @param scheduledEndDate     利用終了日（任意。到達すると日次バッチで自動無効化。復帰時はクリアされる）
      * @param actorUserId          操作を実行したユーザー ID（監査ログ用）
      * @return 更新後のユーザーエンティティ
      */
@@ -205,10 +210,12 @@ public class UserService {
             String positionTitle,
             String phoneNumber,
             String className,
+            String department,
             BigDecimal paidLeaveDays,
             String notes,
             boolean canApproveAttendance,
             java.time.LocalDate hireDate,
+            java.time.LocalDate scheduledEndDate,
             boolean isActive,
             Long actorUserId) {
         User user = findUserForUpdateOrThrow(userId);
@@ -232,12 +239,14 @@ public class UserService {
         user.setPositionTitle(normalizeOptionalText(positionTitle));
         user.setPhoneNumber(normalizeOptionalText(phoneNumber));
         user.setClassName(validateWorkScheduleClassName(className, user.getClassName()));
+        user.setDepartment(validateDepartmentName(department, user.getDepartment()));
         user.setPaidLeaveDays(paidLeaveDays != null ? paidLeaveDays : DEFAULT_PAID_LEAVE_DAYS);
         adjustPaidLeaveBalance(userId, user.getPaidLeaveDays());
 
         user.setNotes(normalizeOptionalText(notes));
         user.setCanApproveAttendance(role != UserRole.ADMIN && canApproveAttendance);
         user.setHireDate(hireDate);
+        boolean wasActive = Boolean.TRUE.equals(user.getIsActive());
         user.setIsActive(isActive);
         if (!isActive) {
             if (user.getDeletedAt() == null) {
@@ -245,6 +254,12 @@ public class UserService {
             }
         } else {
             user.setDeletedAt(null);
+        }
+        // 復帰（無効→有効）時は利用終了日をクリアし、バッチによる即時再無効化を防ぐ
+        if (!wasActive && isActive) {
+            user.setScheduledEndDate(null);
+        } else {
+            user.setScheduledEndDate(scheduledEndDate);
         }
         user.setUpdatedAt(Instant.now());
 
@@ -267,6 +282,37 @@ public class UserService {
                 userId,
                 "ロール: " + role.name());
         return user;
+    }
+
+    /**
+     * 利用終了日を過ぎた有効ユーザーを一括で無効化します（日次バッチ用）。
+     * 無効化時は手動無効化と同様に、ログイン試行のリセット・承認者割り当ての解除・
+     * 未処理休暇申請の削除を行い、システム操作として監査ログを記録します。
+     *
+     * @return 無効化したユーザー数
+     */
+    public int deactivateExpiredUsers() {
+        LocalDate today = DateTimeUtil.todayJapan();
+        List<User> expiredUsers = userMapper.selectExpiredActiveUsers(today);
+        for (User user : expiredUsers) {
+            user.setIsActive(false);
+            if (user.getDeletedAt() == null) {
+                user.setDeletedAt(Instant.now());
+            }
+            user.setUpdatedAt(Instant.now());
+            userMapper.update(user);
+            userMapper.resetLoginAttempt(user.getUserId());
+            cleanupApproverAssignments(user.getUserId());
+            deletePendingLeaveApplications(user.getUserId());
+
+            log.info("利用終了日到達によりユーザーを無効化しました: userId={}", user.getUserId());
+            auditLogService.recordUserEvent(
+                    AuditEventType.USER_UPDATED,
+                    null,
+                    user.getUserId(),
+                    "利用終了日到達による自動無効化: scheduledEndDate=" + user.getScheduledEndDate());
+        }
+        return expiredUsers.size();
     }
 
     private void adjustPaidLeaveBalance(Long userId, BigDecimal targetPaidLeaveDays) {
@@ -568,6 +614,26 @@ public class UserService {
      * 勤務クラス名を検証します。無効化(is_active=false)されたクラスへの新規割当は拒否しますが、
      * 既に割り当て済みのクラス名（currentClassName と一致）はそのまま許容し、既存表示・更新の互換性を保ちます。
      */
+    /**
+     * 部署名を検証します。廃止(is_active=false)された部署への新規割当は拒否しますが、
+     * 既に割り当て済みの部署名（currentDepartment と一致）はそのまま許容します。
+     */
+    private String validateDepartmentName(String department, String currentDepartment) {
+        String normalizedDepartment = normalizeOptionalText(department);
+        if (normalizedDepartment == null) {
+            return null;
+        }
+        if (normalizedDepartment.equals(currentDepartment)) {
+            return normalizedDepartment;
+        }
+        Department master = departmentMapper.selectByName(normalizedDepartment)
+                .orElseThrow(() -> new IllegalArgumentException("指定された部署が存在しません: " + normalizedDepartment));
+        if (!Boolean.TRUE.equals(master.getIsActive())) {
+            throw new IllegalArgumentException("指定された部署は廃止されています: " + normalizedDepartment);
+        }
+        return master.getName();
+    }
+
     private String validateWorkScheduleClassName(String className, String currentClassName) {
         String normalizedClassName = normalizeOptionalText(className);
         if (normalizedClassName == null) {

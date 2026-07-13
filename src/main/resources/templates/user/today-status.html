@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}"
+      th:with="activePage='today-status'">
+<head>
+    <title>当日状況一覧</title>
+</head>
+<body>
+    <h2 layout:fragment="page-title" class="text-2xl font-bold text-txt-primary flex items-center gap-2">
+        <i class="fas fa-users-viewfinder text-primary"></i> 当日状況一覧
+    </h2>
+
+    <div layout:fragment="content">
+        <div th:if="${error}" class="alert alert-danger" role="alert">
+            <span><i class="fas fa-exclamation-circle"></i> <span th:text="${error}"></span></span>
+        </div>
+
+        <div class="card">
+            <div class="pb-4 mb-4 border-b border-glass-border/30 flex flex-wrap items-center justify-between gap-3">
+                <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5">
+                    <i class="fas fa-calendar-day text-primary"></i>
+                    <span th:text="${#temporals.format(today, 'yyyy/MM/dd(E)')}"></span> の勤務状況
+                    <span class="badge bg-black/5 text-txt-secondary border-glass-border ml-2" th:text="${#lists.size(rows)}">0</span>名
+                </h5>
+                <!-- 絞り込み -->
+                <form method="get" th:action="@{/attendance/approval/today-status}" class="flex flex-wrap items-center gap-2">
+                    <select class="form-select h-10 text-sm" name="department">
+                        <option value="">全部署</option>
+                        <option th:each="dept : ${departments}" th:value="${dept.name}" th:text="${dept.name}"
+                                th:selected="${department == dept.name}"></option>
+                    </select>
+                    <select class="form-select h-10 text-sm" name="className">
+                        <option value="">全勤務地</option>
+                        <option th:each="wsc : ${workScheduleClasses}" th:value="${wsc.name}" th:text="${wsc.name}"
+                                th:selected="${className == wsc.name}"></option>
+                    </select>
+                    <button type="submit" class="btn btn-primary px-4 py-2 text-sm gap-1.5">
+                        <i class="fas fa-filter"></i> 絞り込み
+                    </button>
+                </form>
+            </div>
+            <div>
+                <div th:if="${#lists.isEmpty(rows)}" class="py-6 text-txt-secondary opacity-80 text-center">
+                    表示対象のメンバーがいません。
+                </div>
+                <div th:unless="${#lists.isEmpty(rows)}" class="table-container">
+                    <table class="table-custom">
+                        <thead class="bg-black/10 text-txt-primary">
+                            <tr>
+                                <th class="w-28">社員番号</th>
+                                <th>氏名</th>
+                                <th class="w-32">部署</th>
+                                <th class="w-36">勤務地</th>
+                                <th class="w-24">状態</th>
+                                <th class="w-20">出勤</th>
+                                <th class="w-20">退勤</th>
+                                <th class="w-28">事由</th>
+                                <th class="w-28">当月提出</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-glass-border/10">
+                            <tr th:each="row : ${rows}">
+                                <td class="font-mono text-sm" th:text="${row.user.empNo}"></td>
+                                <td class="font-semibold" th:text="${row.user.fullName}"></td>
+                                <td th:text="${row.user.department != null ? row.user.department : '-'}"></td>
+                                <td th:text="${row.user.className != null ? row.user.className : '-'}"></td>
+                                <td>
+                                    <span th:if="${row.status == '勤務中'}" class="badge badge-success">勤務中</span>
+                                    <span th:if="${row.status == '退勤済'}" class="badge bg-black/5 text-txt-secondary border-glass-border">退勤済</span>
+                                    <span th:if="${row.status == '休暇'}" class="badge bg-success/15 text-success border-success/20">休暇</span>
+                                    <span th:if="${row.status == '未出勤'}" class="badge badge-warning">未出勤</span>
+                                </td>
+                                <td class="font-mono" th:text="${row.startTime != null ? row.startTime : '-'}"></td>
+                                <td class="font-mono" th:text="${row.endTime != null ? row.endTime : '-'}"></td>
+                                <td th:text="${row.eventName != null ? row.eventName : '-'}"></td>
+                                <td>
+                                    <span th:if="${row.submissionStatus == null}" class="text-txt-secondary text-sm">未提出</span>
+                                    <span th:if="${row.submissionStatus == submissionStatusPending}" class="badge badge-warning">承認待ち</span>
+                                    <span th:if="${row.submissionStatus == submissionStatusApproved}" class="badge badge-success">承認済</span>
+                                    <span th:if="${row.submissionStatus == submissionStatusReturned}" class="badge badge-danger">差戻し</span>
+                                    <span th:if="${row.submissionStatus != null and row.submissionStatus != submissionStatusPending and row.submissionStatus != submissionStatusApproved and row.submissionStatus != submissionStatusReturned}"
+                                          class="text-txt-secondary text-sm" th:text="${row.submissionStatus}"></span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-txt-secondary mt-3">
+                    ※ 状態は当日の打刻と承認済み休暇から判定しています。最新の状況はページを再読み込みして確認してください。
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
