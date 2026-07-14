@@ -119,6 +119,17 @@ class SettingsControllerTest {
     }
 
     @Test
+    @DisplayName("showSettings: リダイレクト後の入力値をDB値で上書きしない")
+    void showSettings_withSubmittedValue_preservesSubmittedValue() {
+        ExtendedModelMap model = new ExtendedModelMap();
+        model.addAttribute("paidLeaveGrantDate", "02-31");
+
+        controller.showSettings(model);
+
+        assertThat(model.get("paidLeaveGrantDate")).isEqualTo("02-31");
+    }
+
+    @Test
     @DisplayName("showSettings: 例外発生時はerror属性を設定して同一画面を返す")
     void showSettings_exception_setsErrorAttribute() {
         when(systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DATE"))
@@ -167,6 +178,9 @@ class SettingsControllerTest {
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
                 .isEqualTo("有給付与日は実在する月日を入力してください。");
+        assertThat(redirectAttributes.getFlashAttributes().get("paidLeaveGrantDate")).isEqualTo("02-31");
+        assertThat(redirectAttributes.getFlashAttributes().get("paidLeaveGrantDays")).isEqualTo("10");
+        assertThat(redirectAttributes.getFlashAttributes().get("errorField")).isEqualTo("paidLeaveGrantDate");
         verify(systemSettingService, never()).updatePaidLeaveGrantSettings(any(), anyInt());
     }
 
@@ -400,6 +414,9 @@ class SettingsControllerTest {
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("Invalid alert parameter");
+        assertThat(redirectAttributes.getFlashAttributes().get("alertArticle36Limit1")).isEqualTo(45);
+        assertThat(redirectAttributes.getFlashAttributes().get("alertArticle36Limit2")).isEqualTo(80);
+        assertThat(redirectAttributes.getFlashAttributes().get("errorField")).isEqualTo("article36Limit1");
     }
 
     @Test

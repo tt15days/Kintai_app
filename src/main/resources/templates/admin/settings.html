@@ -11,7 +11,7 @@
             <span><i class="fa-solid fa-check-circle"></i> <span th:text="${message}"></span></span>
             <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
-        <div th:if="${errorMessage}" class="alert alert-danger" role="alert" aria-live="assertive">
+        <div th:if="${errorMessage}" id="settings-error" class="alert alert-danger" role="alert" aria-live="assertive" tabindex="-1">
             <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
             <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
@@ -31,7 +31,8 @@
                 <div class="flex flex-col">
                     <label for="startDay" class="form-label">開始日（前月）</label>
                     <input type="number" class="form-input font-mono h-11" id="startDay" name="startDay"
-                           th:value="${attendancePeriodStartDay}" min="1" max="28" required>
+                           th:value="${attendancePeriodStartDay}" min="1" max="28" required
+                           th:attr="aria-invalid=${errorField == 'startDay'} ? 'true' : null,aria-describedby=${errorField == 'startDay'} ? 'settings-error' : null">
                 </div>
                 <div class="flex flex-col">
                     <label for="endDay" class="form-label">終了日（当月）</label>
@@ -57,7 +58,8 @@
                 <div class="flex flex-col">
                     <label for="daysAfterEnd" class="form-label">月次集計期限(終了日後日数)</label>
                     <input type="number" class="form-input font-mono h-11" id="daysAfterEnd" name="daysAfterEnd"
-                           th:value="${batchSettingDaysAfterEnd}" min="1" max="14" required>
+                           th:value="${batchSettingDaysAfterEnd}" min="1" max="14" required
+                           th:attr="aria-invalid=${errorField == 'daysAfterEnd'} ? 'true' : null,aria-describedby=${errorField == 'daysAfterEnd'} ? 'settings-error' : null">
                 </div>
                 <div class="flex flex-col">
                     <label for="reminderDay" class="form-label">リマインド日</label>
@@ -88,7 +90,8 @@
                 <div class="flex flex-col">
                     <label for="article36Limit1" class="form-label">36協定 注意 (時間)</label>
                     <input type="number" class="form-input font-mono h-11" id="article36Limit1" name="article36Limit1"
-                           th:value="${alertArticle36Limit1}" min="0" max="100" required aria-describedby="article36Constraint">
+                           th:value="${alertArticle36Limit1}" min="0" max="100" required
+                           th:attr="aria-invalid=${errorField == 'article36Limit1'} ? 'true' : null,aria-describedby=${errorField == 'article36Limit1'} ? 'article36Constraint settings-error' : 'article36Constraint'">
                 </div>
                 <div class="flex flex-col">
                     <label for="article36Limit2" class="form-label">36協定 超過 (時間)</label>
@@ -130,15 +133,17 @@
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
                 <div>
                     <label class="form-label" for="paidLeaveGrantDate">付与日 (MM-DD)</label>
-                    <input type="text" id="paidLeaveGrantDate" name="paidLeaveGrantDate" class="form-input font-mono h-11" th:value="${paidLeaveGrantDate}" placeholder="例: 04-01" required pattern="^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$">
+                    <input type="text" id="paidLeaveGrantDate" name="paidLeaveGrantDate" class="form-input font-mono h-11" th:value="${paidLeaveGrantDate}" placeholder="例: 04-01" required pattern="^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+                           th:attr="aria-invalid=${errorField == 'paidLeaveGrantDate'} ? 'true' : null,aria-describedby=${errorField == 'paidLeaveGrantDate'} ? 'settings-error' : null">
                     <small class="text-xs text-txt-secondary opacity-70 block mt-2">月と日をハイフン区切りで入力してください。</small>
                 </div>
                 <div>
                     <label class="form-label" for="paidLeaveGrantDays">付与日数</label>
-                    <input type="number" id="paidLeaveGrantDays" name="paidLeaveGrantDays" class="form-input font-mono h-11" th:value="${paidLeaveGrantDays}" min="1" max="40" required>
+                    <input type="number" id="paidLeaveGrantDays" name="paidLeaveGrantDays" class="form-input font-mono h-11" th:value="${paidLeaveGrantDays}" min="1" max="40" required
+                           th:attr="aria-invalid=${errorField == 'paidLeaveGrantDays'} ? 'true' : null,aria-describedby=${errorField == 'paidLeaveGrantDays'} ? 'settings-error' : null">
                 </div>
                 <div class="pt-2">
-                    <button type="submit" class="btn btn-primary w-full gap-2 text-sm">
+                    <button type="submit" class="btn btn-primary w-full min-h-11 gap-2 text-sm">
                         <i class="fa-solid fa-save"></i> 設定を保存する
                     </button>
                 </div>
@@ -156,11 +161,12 @@
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
                 <div>
                     <label class="form-label" for="pattern">ファイル名パターン</label>
-                    <input type="text" id="pattern" name="pattern" class="form-input font-mono h-11" th:value="${csvFilenamePattern}" placeholder="例: {yyyy}-{MM}_{userId}_{name}_{downloadAt}" required>
+                    <input type="text" id="pattern" name="pattern" class="form-input font-mono h-11" th:value="${csvFilenamePattern}" placeholder="例: {yyyy}-{MM}_{userId}_{name}_{downloadAt}" required
+                           th:attr="aria-invalid=${errorField == 'pattern'} ? 'true' : null,aria-describedby=${errorField == 'pattern'} ? 'settings-error' : null">
                     <small class="text-xs text-txt-secondary opacity-70 block mt-2">※ 拡張子（.csv）は自動的に付与されます。すべてのトークンを含める必要があります。</small>
                 </div>
                 <div class="pt-2">
-                    <button type="submit" class="btn btn-primary w-full gap-2 text-sm">
+                    <button type="submit" class="btn btn-primary w-full min-h-11 gap-2 text-sm">
                         <i class="fa-solid fa-save"></i> 設定を保存する
                     </button>
                 </div>
@@ -177,10 +183,11 @@
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
                 <div>
                     <label class="form-label" for="systemName">システム名</label>
-                    <input type="text" id="systemName" name="systemName" class="form-input font-mono h-11" th:value="${systemName}" placeholder="例: 勤怠管理システム" required>
+                    <input type="text" id="systemName" name="systemName" class="form-input font-mono h-11" th:value="${systemName}" placeholder="例: 勤怠管理システム" required
+                           th:attr="aria-invalid=${errorField == 'systemName'} ? 'true' : null,aria-describedby=${errorField == 'systemName'} ? 'settings-error' : null">
                 </div>
                 <div class="pt-2">
-                    <button type="submit" class="btn btn-primary w-full gap-2 text-sm">
+                    <button type="submit" class="btn btn-primary w-full min-h-11 gap-2 text-sm">
                         <i class="fa-solid fa-save"></i> 設定を保存する
                     </button>
                 </div>
@@ -197,10 +204,11 @@
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
                 <div>
                     <label class="form-label" for="copyrightText">表示文言</label>
-                    <input type="text" id="copyrightText" name="copyrightText" class="form-input font-mono h-11" th:value="${copyrightText}" placeholder="例: © 2026 勤怠管理システム" required>
+                    <input type="text" id="copyrightText" name="copyrightText" class="form-input font-mono h-11" th:value="${copyrightText}" placeholder="例: © 2026 勤怠管理システム" required
+                           th:attr="aria-invalid=${errorField == 'copyrightText'} ? 'true' : null,aria-describedby=${errorField == 'copyrightText'} ? 'settings-error' : null">
                 </div>
                 <div class="pt-2">
-                    <button type="submit" class="btn btn-primary w-full gap-2 text-sm">
+                    <button type="submit" class="btn btn-primary w-full min-h-11 gap-2 text-sm">
                         <i class="fa-solid fa-save"></i> 設定を保存する
                     </button>
                 </div>
@@ -217,10 +225,11 @@
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
                 <div>
                     <label class="form-label" for="empNoPrefix">プレフィックス（空欄で数値のみ）</label>
-                    <input type="text" id="empNoPrefix" name="empNoPrefix" class="form-input font-mono h-11" th:value="${empNoPrefix}" placeholder="例: EMP-（空欄可）" maxlength="50">
+                    <input type="text" id="empNoPrefix" name="empNoPrefix" class="form-input font-mono h-11" th:value="${empNoPrefix}" placeholder="例: EMP-（空欄可）" maxlength="50"
+                           th:attr="aria-invalid=${errorField == 'empNoPrefix'} ? 'true' : null,aria-describedby=${errorField == 'empNoPrefix'} ? 'settings-error' : null">
                 </div>
                 <div class="pt-2">
-                    <button type="submit" class="btn btn-primary w-full gap-2 text-sm">
+                    <button type="submit" class="btn btn-primary w-full min-h-11 gap-2 text-sm">
                         <i class="fa-solid fa-save"></i> 設定を保存する
                     </button>
                 </div>
@@ -246,7 +255,7 @@
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
                     <div class="flex flex-col">
                         <label for="csvFile" class="form-label">CSVファイル選択</label>
-                        <input type="file" class="form-input max-w-md file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" id="csvFile" name="file" accept=".csv" required>
+                        <input type="file" class="form-input max-w-md min-h-11 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" id="csvFile" name="file" accept=".csv" required>
                         <small class="text-xs text-txt-secondary opacity-70 block mt-2">
                             形式: 日付(YYYY-MM-DD),祝日名<br>
                             例: 2026-01-01,元日
@@ -374,6 +383,7 @@
     <th:block layout:fragment="js">
         <script>
             document.addEventListener('DOMContentLoaded', function() {
+                document.getElementById('settings-error')?.focus();
                 const addRowBtn = document.getElementById('addRowBtn');
                 const tableBody = document.getElementById('tableBody');
                 const confirmForm = document.getElementById('confirmForm');

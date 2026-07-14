@@ -203,12 +203,14 @@
                                             <input type="time" name="startTime"
                                                 class="form-input w-[6.2em] mx-auto md:p-1 p-0.5 font-mono text-center text-xs md:text-sm"
                                                 th:value="${startTimeMap != null ? startTimeMap[date.toString()] : ''}"
+                                                th:attr="aria-label=|${#temporals.format(date, 'MM/dd')}の出勤時刻|"
                                                 th:disabled="${(leaveApp != null) or !monthEditable}">
                                         </td>
                                         <td class="text-center">
                                             <input type="time" name="endTime"
                                                 class="form-input w-[6.2em] mx-auto md:p-1 p-0.5 font-mono text-center text-xs md:text-sm"
                                                 th:value="${endTimeMap != null ? endTimeMap[date.toString()] : ''}"
+                                                th:attr="aria-label=|${#temporals.format(date, 'MM/dd')}の退勤時刻|"
                                                 th:disabled="${(leaveApp != null) or !monthEditable}">
                                         </td>
                                         <td class="text-center">
@@ -247,6 +249,7 @@
                                                     class="form-input w-full md:p-1 p-0.5 text-xs md:text-sm hidden md:block text-center"
                                                     th:disabled="${!monthEditable}"
                                                     th:value="${remarksMap != null ? remarksMap[date.toString()] : ''}"
+                                                    th:attr="aria-label=|${#temporals.format(date, 'MM/dd')}の備考|"
                                                     placeholder="例) 会議参加">
                                                 <div class="block md:hidden flex flex-col gap-1 items-center">
                                                     <span
@@ -277,7 +280,8 @@
 
                 <!-- 備考入力モーダル -->
                 <div id="remarksModal"
-                    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[2000] hidden items-center justify-center p-4">
+                    class="modal fixed inset-0 bg-black/50 backdrop-blur-sm z-[2000] hidden items-center justify-center p-4"
+                    role="dialog" aria-modal="true" aria-labelledby="remarksModalTitle" aria-hidden="true" tabindex="-1">
                     <div
                         class="bg-white border border-glass-heavy-border shadow-glass-heavy rounded-2xl max-w-md w-full p-6 animate-fade-in">
                         <h3 class="text-base font-bold text-txt-primary mb-4" id="remarksModalTitle">備考の入力</h3>
@@ -315,15 +319,11 @@
                 document.getElementById('remarksModalTitle').textContent = dateStr + ' の備考入力';
                 document.getElementById('remarksModalTextarea').value = currentRemarksInput ? currentRemarksInput.value : '';
 
-                var modal = document.getElementById('remarksModal');
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
+                openModal('remarksModal');
             }
 
             function closeRemarksModal() {
-                var modal = document.getElementById('remarksModal');
-                modal.classList.remove('flex');
-                modal.classList.add('hidden');
+                closeModal('remarksModal');
                 currentRemarksInput = null;
                 currentPreviewSpan = null;
             }

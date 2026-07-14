@@ -95,7 +95,8 @@
         <!-- 編集モーダル（各部署用） -->
         <div th:each="dept : ${departments}">
             <div class="modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300"
-                 th:id="${'editModal' + dept.departmentId}" tabindex="-1" th:onclick="'closeEditModal(' + ${dept.departmentId} + ')'">
+                 th:id="${'editModal' + dept.departmentId}" tabindex="-1" th:onclick="'closeEditModal(' + ${dept.departmentId} + ')'"
+                 role="dialog" aria-modal="true" aria-hidden="true" th:aria-label="|${dept.departmentName}の部署編集|">
                 <div class="flex min-h-full items-center justify-center p-4">
                     <div class="card-heavy w-full max-w-lg" onclick="event.stopPropagation()">
                         <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
