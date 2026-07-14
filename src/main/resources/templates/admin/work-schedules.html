@@ -130,7 +130,8 @@
 
     <th:block layout:fragment="modals">
         <!-- 勤務クラス登録・編集モーダル -->
-        <div id="scheduleModal" class="modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" onclick="cancelEditMode(); closeModal('scheduleModal')">
+        <div id="scheduleModal" class="modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" onclick="cancelEditMode(); closeModal('scheduleModal')"
+             role="dialog" aria-modal="true" aria-labelledby="formTitle" aria-hidden="true" tabindex="-1">
             <div class="flex min-h-full items-center justify-center p-4">
                 <div id="modalContent" class="card-heavy w-full max-w-2xl" onclick="event.stopPropagation()">
                     <div class="flex justify-between items-start mb-6 gap-4">

@@ -142,11 +142,13 @@
                                         <td>
                                             <input type="hidden" name="attendanceDate" th:value="${recDate}">
                                             <input type="time" name="startTime" class="form-input md:max-w-[120px] max-w-[80px] md:p-2 p-1 font-mono text-center text-xs md:text-sm"
-                                                   th:value="${recordStartTimeMap != null ? recordStartTimeMap[record.recordId] : ''}">
+                                                   th:value="${recordStartTimeMap != null ? recordStartTimeMap[record.recordId] : ''}"
+                                                   th:attr="aria-label=|${recDate != null ? #temporals.format(recDate, 'MM/dd') : '対象日'}の出勤時刻|">
                                         </td>
                                         <td>
                                             <input type="time" name="endTime" class="form-input md:max-w-[120px] max-w-[80px] md:p-2 p-1 font-mono text-center text-xs md:text-sm"
-                                                   th:value="${recordEndTimeMap != null ? recordEndTimeMap[record.recordId] : ''}">
+                                                   th:value="${recordEndTimeMap != null ? recordEndTimeMap[record.recordId] : ''}"
+                                                   th:attr="aria-label=|${recDate != null ? #temporals.format(recDate, 'MM/dd') : '対象日'}の退勤時刻|">
                                         </td>
                                         <td>
                                             <select name="eventTypeId" class="form-select md:max-w-[120px] max-w-[85px] md:p-2 p-1 text-xs md:text-sm">
@@ -159,7 +161,8 @@
                                         </td>
                                         <td>
                                             <input type="text" name="remarks" class="form-input md:p-2 p-1 w-full text-xs md:text-sm font-semibold text-txt-primary" 
-                                                   th:value="${record.remarks != null ? record.remarks : ''}" placeholder="例) 会議参加">
+                                                   th:value="${record.remarks != null ? record.remarks : ''}" placeholder="例) 会議参加"
+                                                   th:attr="aria-label=|${recDate != null ? #temporals.format(recDate, 'MM/dd') : '対象日'}の備考|">
                                         </td>
                                     </tr>
                                     <tr th:if="${records == null or records.isEmpty()}">

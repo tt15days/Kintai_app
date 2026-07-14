@@ -125,7 +125,8 @@
         <!-- 編集モーダル（各お知らせ用） -->
         <div th:each="ann : ${announcements}">
             <div class="modal announcement-modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300"
-                 th:id="${'editModal' + ann.announcementId}" tabindex="-1" th:onclick="'closeEditModal(' + ${ann.announcementId} + ')'">
+                 th:id="${'editModal' + ann.announcementId}" tabindex="-1" th:onclick="'closeEditModal(' + ${ann.announcementId} + ')'"
+                 role="dialog" aria-modal="true" aria-hidden="true" th:aria-label="|${ann.title}のお知らせ編集|">
                 <div class="flex min-h-full items-center justify-center p-4">
                     <div th:id="${'editModalContent' + ann.announcementId}" class="card-heavy w-full max-w-2xl" onclick="event.stopPropagation()">
                         <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">

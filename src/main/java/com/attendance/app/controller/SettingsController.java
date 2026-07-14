@@ -69,27 +69,40 @@ public class SettingsController {
             empNoPrefix = "";
         }
 
-        model.addAttribute("paidLeaveGrantDate", grantDate);
-        model.addAttribute("paidLeaveGrantDays", grantDays);
-        model.addAttribute("copyrightText", copyrightText);
-        model.addAttribute("systemName", systemName);
-        model.addAttribute("empNoPrefix", empNoPrefix);
-        model.addAttribute("attendancePeriodStartDay", attendancePeriodSettingService.getStartDay());
-        model.addAttribute("attendancePeriodEndDay", attendancePeriodSettingService.getEndDay());
-        model.addAttribute("batchSettingDaysAfterEnd", batchSettingService.getMonthlySummaryDaysAfterEnd());
-        model.addAttribute("batchSettingReminderDay", batchSettingService.getReminderDay());
-        model.addAttribute("batchSettingReminderHour", batchSettingService.getReminderHour());
-        model.addAttribute("alertArticle36Limit1", batchSettingService.getAlertArticle36Limit1());
-        model.addAttribute("alertArticle36Limit2", batchSettingService.getAlertArticle36Limit2());
-        model.addAttribute("alertPaidLeaveMonths", batchSettingService.getAlertPaidLeaveMonths());
-        model.addAttribute("alertPaidLeaveDays", batchSettingService.getAlertPaidLeaveDays());
-        model.addAttribute("alertMinIntervalHours", batchSettingService.getAlertMinIntervalHours());
-        model.addAttribute("csvFilenamePattern", csvFilenamePatternService.getPattern());
+        addIfAbsent(model, "paidLeaveGrantDate", grantDate);
+        addIfAbsent(model, "paidLeaveGrantDays", grantDays);
+        addIfAbsent(model, "copyrightText", copyrightText);
+        addIfAbsent(model, "systemName", systemName);
+        addIfAbsent(model, "empNoPrefix", empNoPrefix);
+        addIfAbsent(model, "attendancePeriodStartDay", attendancePeriodSettingService.getStartDay());
+        addIfAbsent(model, "attendancePeriodEndDay", attendancePeriodSettingService.getEndDay());
+        addIfAbsent(model, "batchSettingDaysAfterEnd", batchSettingService.getMonthlySummaryDaysAfterEnd());
+        addIfAbsent(model, "batchSettingReminderDay", batchSettingService.getReminderDay());
+        addIfAbsent(model, "batchSettingReminderHour", batchSettingService.getReminderHour());
+        addIfAbsent(model, "alertArticle36Limit1", batchSettingService.getAlertArticle36Limit1());
+        addIfAbsent(model, "alertArticle36Limit2", batchSettingService.getAlertArticle36Limit2());
+        addIfAbsent(model, "alertPaidLeaveMonths", batchSettingService.getAlertPaidLeaveMonths());
+        addIfAbsent(model, "alertPaidLeaveDays", batchSettingService.getAlertPaidLeaveDays());
+        addIfAbsent(model, "alertMinIntervalHours", batchSettingService.getAlertMinIntervalHours());
+        addIfAbsent(model, "csvFilenamePattern", csvFilenamePatternService.getPattern());
 
         // 登録済みの祝日を取得してモデルに設定
         List<Holiday> existingHolidays = holidayService.getAllHolidays();
         model.addAttribute("holidayCount", existingHolidays.size());
         model.addAttribute("existingHolidays", existingHolidays);
+    }
+
+    private void addIfAbsent(Model model, String name, Object value) {
+        if (!model.containsAttribute(name)) {
+            model.addAttribute(name, value);
+        }
+    }
+
+    private void preserveForm(RedirectAttributes redirectAttributes, String errorField, Object... values) {
+        redirectAttributes.addFlashAttribute("errorField", errorField);
+        for (int i = 0; i < values.length; i += 2) {
+            redirectAttributes.addFlashAttribute((String) values[i], values[i + 1]);
+        }
     }
 
     @PostMapping
@@ -99,6 +112,7 @@ public class SettingsController {
             RedirectAttributes redirectAttributes) {
         
         if (paidLeaveGrantDate == null || !paidLeaveGrantDate.matches("^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$")) {
+            preserveForm(redirectAttributes, "paidLeaveGrantDate", "paidLeaveGrantDate", paidLeaveGrantDate, "paidLeaveGrantDays", paidLeaveGrantDays);
             redirectAttributes.addFlashAttribute("errorMessage", "有給付与日はMM-DD形式（例: 04-01）で入力してください。");
             return "redirect:/admin/settings";
         }
@@ -106,6 +120,7 @@ public class SettingsController {
         try {
             MonthDay.parse("--" + paidLeaveGrantDate);
         } catch (DateTimeParseException e) {
+            preserveForm(redirectAttributes, "paidLeaveGrantDate", "paidLeaveGrantDate", paidLeaveGrantDate, "paidLeaveGrantDays", paidLeaveGrantDays);
             redirectAttributes.addFlashAttribute("errorMessage", "有給付与日は実在する月日を入力してください。");
             return "redirect:/admin/settings";
         }
@@ -114,10 +129,12 @@ public class SettingsController {
         try {
             grantDays = Integer.parseInt(paidLeaveGrantDays.trim());
             if (grantDays < 1 || grantDays > 40) {
+                preserveForm(redirectAttributes, "paidLeaveGrantDays", "paidLeaveGrantDate", paidLeaveGrantDate, "paidLeaveGrantDays", paidLeaveGrantDays);
                 redirectAttributes.addFlashAttribute("errorMessage", "有給付与日数は1〜40の範囲で指定してください。");
                 return "redirect:/admin/settings";
             }
         } catch (NumberFormatException e) {
+            preserveForm(redirectAttributes, "paidLeaveGrantDays", "paidLeaveGrantDate", paidLeaveGrantDate, "paidLeaveGrantDays", paidLeaveGrantDays);
             redirectAttributes.addFlashAttribute("errorMessage", "有給付与日数は有効な数値を入力してください。");
             return "redirect:/admin/settings";
         }
@@ -133,10 +150,12 @@ public class SettingsController {
             @RequestParam String copyrightText,
             RedirectAttributes redirectAttributes) {
         if (copyrightText == null || copyrightText.trim().isEmpty()) {
+            preserveForm(redirectAttributes, "copyrightText", "copyrightText", copyrightText);
             redirectAttributes.addFlashAttribute("errorMessage", "コピーライト表示文言を入力してください");
             return "redirect:/admin/settings";
         }
         if (copyrightText.length() > 255) {
+            preserveForm(redirectAttributes, "copyrightText", "copyrightText", copyrightText);
             redirectAttributes.addFlashAttribute("errorMessage", "コピーライト表示文言は255文字以内で入力してください");
             return "redirect:/admin/settings";
         }
@@ -145,6 +164,7 @@ public class SettingsController {
             redirectAttributes.addFlashAttribute("message", "コピーライト表示設定を更新しました");
             log.info("コピーライト表示設定を更新: {}", copyrightText);
         } catch (Exception e) {
+            preserveForm(redirectAttributes, "copyrightText", "copyrightText", copyrightText);
             redirectAttributes.addFlashAttribute("errorMessage", "コピーライト表示設定の更新に失敗しました");
             log.error("コピーライト表示設定の更新に失敗", e);
         }
@@ -156,10 +176,12 @@ public class SettingsController {
             @RequestParam String systemName,
             RedirectAttributes redirectAttributes) {
         if (systemName == null || systemName.trim().isEmpty()) {
+            preserveForm(redirectAttributes, "systemName", "systemName", systemName);
             redirectAttributes.addFlashAttribute("errorMessage", "システム名を入力してください");
             return "redirect:/admin/settings";
         }
         if (systemName.length() > 255) {
+            preserveForm(redirectAttributes, "systemName", "systemName", systemName);
             redirectAttributes.addFlashAttribute("errorMessage", "システム名は255文字以内で入力してください");
             return "redirect:/admin/settings";
         }
@@ -168,6 +190,7 @@ public class SettingsController {
             redirectAttributes.addFlashAttribute("message", "システム名表示設定を更新しました");
             log.info("システム名表示設定を更新: {}", systemName);
         } catch (Exception e) {
+            preserveForm(redirectAttributes, "systemName", "systemName", systemName);
             redirectAttributes.addFlashAttribute("errorMessage", "システム名表示設定の更新に失敗しました");
             log.error("システム名表示設定の更新に失敗", e);
         }
@@ -180,6 +203,7 @@ public class SettingsController {
             RedirectAttributes redirectAttributes) {
         String prefix = (empNoPrefix != null) ? empNoPrefix.trim() : "";
         if (prefix.length() > 50) {
+            preserveForm(redirectAttributes, "empNoPrefix", "empNoPrefix", empNoPrefix);
             redirectAttributes.addFlashAttribute("errorMessage", "社員番号プレフィックスは50文字以内で入力してください");
             return "redirect:/admin/settings";
         }
@@ -188,6 +212,7 @@ public class SettingsController {
             redirectAttributes.addFlashAttribute("message", "社員番号プレフィックス設定を更新しました");
             log.info("社員番号プレフィックス設定を更新: {}", prefix);
         } catch (Exception e) {
+            preserveForm(redirectAttributes, "empNoPrefix", "empNoPrefix", empNoPrefix);
             redirectAttributes.addFlashAttribute("errorMessage", "社員番号プレフィックス設定の更新に失敗しました");
             log.error("社員番号プレフィックス設定の更新に失敗", e);
         }
@@ -205,9 +230,11 @@ public class SettingsController {
                     "勤怠期間設定を更新しました（前月" + startDay + "日〜当月" + endDay + "日）");
             log.info("勤怠期間設定を更新: startDay={}, endDay={}", startDay, endDay);
         } catch (IllegalArgumentException e) {
+            preserveForm(redirectAttributes, "startDay", "attendancePeriodStartDay", startDay, "attendancePeriodEndDay", endDay);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             log.warn("勤怠期間設定の更新に失敗", e);
         } catch (Exception e) {
+            preserveForm(redirectAttributes, "startDay", "attendancePeriodStartDay", startDay, "attendancePeriodEndDay", endDay);
             redirectAttributes.addFlashAttribute("errorMessage", "勤怠期間設定の更新に失敗しました");
             log.error("勤怠期間設定の更新に失敗", e);
         }
@@ -226,9 +253,11 @@ public class SettingsController {
             log.info("バッチ処理設定を更新: daysAfterEnd={}, reminderDay={}, reminderHour={}",
                     daysAfterEnd, reminderDay, reminderHour);
         } catch (IllegalArgumentException e) {
+            preserveForm(redirectAttributes, "daysAfterEnd", "batchSettingDaysAfterEnd", daysAfterEnd, "batchSettingReminderDay", reminderDay, "batchSettingReminderHour", reminderHour);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             log.warn("バッチ処理設定の更新に失敗", e);
         } catch (Exception e) {
+            preserveForm(redirectAttributes, "daysAfterEnd", "batchSettingDaysAfterEnd", daysAfterEnd, "batchSettingReminderDay", reminderDay, "batchSettingReminderHour", reminderHour);
             redirectAttributes.addFlashAttribute("errorMessage", "バッチ処理設定の更新に失敗しました");
             log.error("バッチ処理設定の更新に失敗", e);
         }
@@ -249,9 +278,11 @@ public class SettingsController {
             log.info("アラート閾値設定を更新: article36Limit1={}, article36Limit2={}, paidLeaveMonths={}, paidLeaveDays={}, minIntervalHours={}",
                     article36Limit1, article36Limit2, paidLeaveMonths, paidLeaveDays, minIntervalHours);
         } catch (IllegalArgumentException e) {
+            preserveForm(redirectAttributes, "article36Limit1", "alertArticle36Limit1", article36Limit1, "alertArticle36Limit2", article36Limit2, "alertPaidLeaveMonths", paidLeaveMonths, "alertPaidLeaveDays", paidLeaveDays, "alertMinIntervalHours", minIntervalHours);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             log.warn("アラート閾値設定の更新に失敗", e);
         } catch (Exception e) {
+            preserveForm(redirectAttributes, "article36Limit1", "alertArticle36Limit1", article36Limit1, "alertArticle36Limit2", article36Limit2, "alertPaidLeaveMonths", paidLeaveMonths, "alertPaidLeaveDays", paidLeaveDays, "alertMinIntervalHours", minIntervalHours);
             redirectAttributes.addFlashAttribute("errorMessage", "アラート閾値設定の更新に失敗しました");
             log.error("アラート閾値設定の更新に失敗", e);
         }
@@ -267,9 +298,11 @@ public class SettingsController {
             redirectAttributes.addFlashAttribute("message", "CSVファイル名パターン設定を更新しました");
             log.info("CSVファイル名パターン設定を更新: {}", pattern);
         } catch (IllegalArgumentException e) {
+            preserveForm(redirectAttributes, "pattern", "csvFilenamePattern", pattern);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             log.warn("CSVファイル名パターン設定の更新に失敗", e);
         } catch (Exception e) {
+            preserveForm(redirectAttributes, "pattern", "csvFilenamePattern", pattern);
             redirectAttributes.addFlashAttribute("errorMessage", "CSVファイル名パターン設定の更新に失敗しました");
             log.error("CSVファイル名パターン設定 of 更新に失敗", e);
         }
