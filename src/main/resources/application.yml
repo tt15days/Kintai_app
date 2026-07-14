@@ -2,7 +2,7 @@ spring:
   application:
     name: attendance-app
   profiles:
-    active: local
+    active: @spring.profiles.active@
   datasource:
     driver-class-name: org.postgresql.Driver
     hikari:

@@ -70,13 +70,21 @@ public class AutoGrantPaidLeaveServiceTest {
     }
 
     @Test
-    void testGrantPaidLeaveBatch_SettingsNull() {
-        when(systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DATE")).thenReturn(null);
+    void testGrantPaidLeaveBatch_SettingsNull_UsesDefaults() {
+        LocalDate defaultGrantDate = LocalDate.of(2026, 4, 1);
+        when(systemSettingMapper.selectValueByKey(SystemSettingService.PAID_LEAVE_GRANT_DATE_KEY)).thenReturn(null);
+        when(systemSettingMapper.selectValueByKey(SystemSettingService.PAID_LEAVE_GRANT_DAYS_KEY)).thenReturn(null);
+        User user = new User();
+        user.setUserId(101L);
+        when(userService.getActiveUsers()).thenReturn(List.of(user));
+        when(paidLeaveBalanceService.getByUsersAndYear(anyList(), anyInt())).thenReturn(List.of());
 
-        autoGrantPaidLeaveService.grantPaidLeaveBatch();
+        try (MockedStatic<DateTimeUtil> mockedDateTimeUtil = mockStatic(DateTimeUtil.class, CALLS_REAL_METHODS)) {
+            mockedDateTimeUtil.when(DateTimeUtil::todayJapan).thenReturn(defaultGrantDate);
+            autoGrantPaidLeaveService.grantPaidLeaveBatch();
+        }
 
-        verify(userService, never()).getActiveUsers();
-        verify(userService, never()).grantAnnualPaidLeave(anyLong(), anyInt());
+        verify(userService).grantAnnualPaidLeave(101L, 10);
     }
 
     @Test

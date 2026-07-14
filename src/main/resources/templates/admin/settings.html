@@ -7,15 +7,15 @@
     <h2 layout:fragment="page-title">システム設定</h2>
 
     <div layout:fragment="content" class="w-full py-4 space-y-6 animate-fade-in">
-        <div th:if="${message}" class="alert alert-success">
+        <div th:if="${message}" class="alert alert-success" role="status" aria-live="polite">
             <span><i class="fa-solid fa-check-circle"></i> <span th:text="${message}"></span></span>
             <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
-        <div th:if="${errorMessage}" class="alert alert-danger">
+        <div th:if="${errorMessage}" class="alert alert-danger" role="alert" aria-live="assertive">
             <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
             <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
-        <div th:if="${error}" class="alert alert-danger">
+        <div th:if="${error}" class="alert alert-danger" role="alert" aria-live="assertive">
             <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${error}"></span></span>
             <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
@@ -88,12 +88,13 @@
                 <div class="flex flex-col">
                     <label for="article36Limit1" class="form-label">36協定 注意 (時間)</label>
                     <input type="number" class="form-input font-mono h-11" id="article36Limit1" name="article36Limit1"
-                           th:value="${alertArticle36Limit1}" min="0" max="100" required>
+                           th:value="${alertArticle36Limit1}" min="0" max="100" required aria-describedby="article36Constraint">
                 </div>
                 <div class="flex flex-col">
                     <label for="article36Limit2" class="form-label">36協定 超過 (時間)</label>
                     <input type="number" class="form-input font-mono h-11" id="article36Limit2" name="article36Limit2"
-                           th:value="${alertArticle36Limit2}" min="0" max="150" required>
+                           th:value="${alertArticle36Limit2}" min="0" max="150" required aria-describedby="article36Constraint">
+                    <p id="article36Constraint" class="text-xs text-txt-secondary mt-1">注意時間は超過時間より小さく設定してください。</p>
                 </div>
                 <div class="flex flex-col">
                     <label for="paidLeaveMonths" class="form-label">有休期限 (月数)</label>
@@ -267,15 +268,15 @@
                     <table class="table-custom" id="previewTable">
                         <thead class="bg-black/10 text-txt-primary sticky top-0 backdrop-blur-md z-10">
                             <tr>
-                                <th width="40%">日付 (YYYY-MM-DD)</th>
-                                <th width="45%">祝日名</th>
-                                <th width="15%">操作</th>
+                                <th scope="col" width="40%">日付 (YYYY-MM-DD)</th>
+                                <th scope="col" width="45%">祝日名</th>
+                                <th scope="col" width="15%">操作</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody" class="divide-y divide-glass-border/10">
                             <tr th:each="holiday : ${previewHolidays}" class="data-row">
-                                <td class="p-2"><input type="date" class="form-input text-sm font-mono holiday-date" th:value="${holiday.holidayDate}"></td>
-                                <td class="p-2"><input type="text" class="form-input text-sm holiday-name" th:value="${holiday.name}"></td>
+                                <td class="p-2"><input type="date" class="form-input text-sm font-mono holiday-date" th:value="${holiday.holidayDate}" th:attr="aria-label=|${holiday.holidayDate}の祝日日付|"></td>
+                                <td class="p-2"><input type="text" class="form-input text-sm holiday-name" th:value="${holiday.name}" th:attr="aria-label=|${holiday.holidayDate}の祝日名|"></td>
                                 <td class="p-2 text-center">
                                     <button type="button" class="btn btn-danger p-2 rounded-lg text-xs delete-row" title="この行を削除" aria-label="この行を削除">
                                         <i class="fa-solid fa-trash"></i>
@@ -385,8 +386,8 @@
                         const newRow = document.createElement('tr');
                         newRow.className = 'data-row';
                         newRow.innerHTML = `
-                            <td class="p-2"><input type="date" class="form-input text-sm font-mono holiday-date"></td>
-                            <td class="p-2"><input type="text" class="form-input text-sm holiday-name" placeholder="祝日名を入力"></td>
+                            <td class="p-2"><input type="date" class="form-input text-sm font-mono holiday-date" aria-label="追加行の祝日日付"></td>
+                            <td class="p-2"><input type="text" class="form-input text-sm holiday-name" placeholder="祝日名を入力" aria-label="追加行の祝日名"></td>
                             <td class="p-2 text-center">
                                 <button type="button" class="btn btn-danger p-2 rounded-lg text-xs delete-row" title="この行を削除" aria-label="この行を削除">
                                     <i class="fa-solid fa-trash"></i>

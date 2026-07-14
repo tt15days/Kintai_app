@@ -43,6 +43,8 @@ mvn clean package -DskipTests -P local
 | `local` | ローカル開発用（`application-local.yml` を使用） | ✅（activeByDefault） |
 | `release` | 本番リリース用（`application-release.yml` を使用、テストスキップ） | - |
 
+`application.yml` の有効プロファイルはビルド時にMavenプロファイルから埋め込まれるため、生成したJARを直接起動しても `-P local` / `-P release` と同じ設定ファイルを使用します。`SPRING_PROFILES_ACTIVE` または起動引数を指定した場合は、その値が優先されます。
+
 ### Tailwind CSSの設定とビルドについて
 本プロジェクトでは、リッチでモダンなUIデザイン（グラスモフィズム等）を実現するために Tailwind CSS を採用しています。
 

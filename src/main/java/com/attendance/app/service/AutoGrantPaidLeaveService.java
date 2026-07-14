@@ -36,12 +36,13 @@ public class AutoGrantPaidLeaveService {
         log.info("有給休暇自動付与バッチを開始します。");
 
         try {
-            String grantDateStr = systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DATE");
-            String grantDaysStr = systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DAYS");
-
-            if (grantDateStr == null || grantDaysStr == null) {
-                log.info("自動付与設定が存在しないため、バッチを終了します。");
-                return;
+            String grantDateStr = systemSettingMapper.selectValueByKey(SystemSettingService.PAID_LEAVE_GRANT_DATE_KEY);
+            String grantDaysStr = systemSettingMapper.selectValueByKey(SystemSettingService.PAID_LEAVE_GRANT_DAYS_KEY);
+            if (grantDateStr == null || grantDateStr.isBlank()) {
+                grantDateStr = SystemSettingService.DEFAULT_PAID_LEAVE_GRANT_DATE;
+            }
+            if (grantDaysStr == null || grantDaysStr.isBlank()) {
+                grantDaysStr = SystemSettingService.DEFAULT_PAID_LEAVE_GRANT_DAYS;
             }
 
             LocalDate today = DateTimeUtil.todayJapan();

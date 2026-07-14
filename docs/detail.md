@@ -331,13 +331,13 @@
 - **テンプレート**: `admin/settings.html`
 - **遷移経路**: サイドバー「システム設定」リンク
 - **入力機能**:
-  - **有給休暇付与設定**: デフォルトの有給付与日（MM-DD）および付与日数の更新（POST `/admin/settings`）
+  - **有給休暇付与設定**: デフォルトの有給付与日（MM-DD、既定 `04-01`）および付与日数（既定10日）の更新（POST `/admin/settings`）。DB未登録時も同じ既定値で自動付与を実行する
   - **コピーライト設定**: コピーライト表示文言の更新（POST `/admin/settings/copyright`）
   - **システム名設定**: システム名の表示文言の更新（POST `/admin/settings/system-name`）
   - **社員番号プレフィックス設定**: 自動発番時のプレフィックス更新（POST `/admin/settings/emp-no-prefix`）
   - **勤怠期間設定**: 締め日設定（開始日・終了日）の数値入力（POST `/admin/settings/attendance-period`）
-  - **バッチ処理設定**: 自動締め処理の日数、有休付与の実行日、提出リマインド送信日時などの設定（POST `/admin/settings/batch`）
-  - **アラート閾値設定**: 36協定警告・超過時間、有休消化警告月数・日数の設定（POST `/admin/settings/alert`）
+  - **バッチ処理設定**: 自動締め処理の日数、提出リマインド送信日・時刻の設定（POST `/admin/settings/batch`）
+  - **アラート閾値設定**: 36協定の注意時間（0〜100）・超過時間（0〜150、かつ注意時間より大きい値）、有休消化警告月数・日数の設定（POST `/admin/settings/alert`）
   - **CSVファイル名パターン**: 出力するCSVファイル名の命名パターン設定（POST `/admin/settings/csv-pattern`）
   - **祝日CSVアップロード**: CSVファイルから祝日データを解析しプレビュー表示（POST `/admin/settings/holidays/upload`）
   - **祝日データ確定**: プレビューを確認した祝日データを確定保存（POST `/admin/settings/holidays/confirm`）

@@ -20,6 +20,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.time.MonthDay;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @Slf4j
@@ -49,14 +51,14 @@ public class SettingsController {
     }
 
     private void populateSettingsModel(Model model) {
-        String grantDate = systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DATE");
-        String grantDays = systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DAYS");
+        String grantDate = systemSettingService.getSettingValue(SystemSettingService.PAID_LEAVE_GRANT_DATE_KEY);
+        String grantDays = systemSettingService.getSettingValue(SystemSettingService.PAID_LEAVE_GRANT_DAYS_KEY);
         String copyrightText = systemSettingService.getSettingValue("COPYRIGHT_TEXT");
         String systemName = systemSettingService.getSettingValue("SYSTEM_NAME");
         String empNoPrefix = systemSettingService.getSettingValue("EMP_NO_PREFIX");
 
-        if (grantDate == null) grantDate = "04-01";
-        if (grantDays == null) grantDays = "10";
+        if (grantDate == null) grantDate = SystemSettingService.DEFAULT_PAID_LEAVE_GRANT_DATE;
+        if (grantDays == null) grantDays = SystemSettingService.DEFAULT_PAID_LEAVE_GRANT_DAYS;
         if (copyrightText == null || copyrightText.trim().isEmpty()) {
             copyrightText = "© 2026 勤怠管理システム";
         }
@@ -102,7 +104,15 @@ public class SettingsController {
         }
 
         try {
-            int grantDays = Integer.parseInt(paidLeaveGrantDays.trim());
+            MonthDay.parse("--" + paidLeaveGrantDate);
+        } catch (DateTimeParseException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "有給付与日は実在する月日を入力してください。");
+            return "redirect:/admin/settings";
+        }
+
+        int grantDays;
+        try {
+            grantDays = Integer.parseInt(paidLeaveGrantDays.trim());
             if (grantDays < 1 || grantDays > 40) {
                 redirectAttributes.addFlashAttribute("errorMessage", "有給付与日数は1〜40の範囲で指定してください。");
                 return "redirect:/admin/settings";
@@ -112,8 +122,7 @@ public class SettingsController {
             return "redirect:/admin/settings";
         }
         
-        systemSettingService.updateSettingValue("PAID_LEAVE_GRANT_DATE", paidLeaveGrantDate);
-        systemSettingService.updateSettingValue("PAID_LEAVE_GRANT_DAYS", paidLeaveGrantDays.trim());
+        systemSettingService.updatePaidLeaveGrantSettings(paidLeaveGrantDate, grantDays);
 
         redirectAttributes.addFlashAttribute("message", "システム設定を更新しました。");
         return "redirect:/admin/settings";
