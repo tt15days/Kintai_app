@@ -148,8 +148,12 @@
                         <i class="fa-solid fa-shield-virus"></i> 36協定監視
                     </a>
                     <a th:href="@{/admin/announcements}" class="nav-link text-sm font-medium"
-                        th:classappend="${activePage == 'notifications'} ? 'active' : ''">
+                        th:classappend="${activePage == 'announcements'} ? 'active' : ''">
                         <i class="fa-regular fa-bell"></i> お知らせ管理
+                    </a>
+                    <a th:href="@{/admin/notifications}" class="nav-link text-sm font-medium"
+                        th:classappend="${activePage == 'notifications'} ? 'active' : ''">
+                        <i class="fa-regular fa-paper-plane"></i> 通知管理
                     </a>
                     <a th:href="@{/admin/leave-usage}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'leave-usage'} ? 'active' : ''">

@@ -141,8 +141,7 @@ class SettingsControllerTest {
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("message")).isEqualTo("システム設定を更新しました。");
-        verify(systemSettingService).updateSettingValue("PAID_LEAVE_GRANT_DATE", "04-01");
-        verify(systemSettingService).updateSettingValue("PAID_LEAVE_GRANT_DAYS", "10");
+        verify(systemSettingService).updatePaidLeaveGrantSettings("04-01", 10);
     }
 
     @Test
@@ -156,6 +155,19 @@ class SettingsControllerTest {
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
                 .isEqualTo("有給付与日はMM-DD形式（例: 04-01）で入力してください。");
         verify(systemSettingService, never()).updateSettingValue(any(), any());
+    }
+
+    @Test
+    @DisplayName("saveSettings: 実在しない月日の場合はエラーを返す")
+    void saveSettings_nonexistentDate_returnsError() {
+        RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
+
+        String viewName = controller.saveSettings("02-31", "10", redirectAttributes);
+
+        assertThat(viewName).isEqualTo("redirect:/admin/settings");
+        assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
+                .isEqualTo("有給付与日は実在する月日を入力してください。");
+        verify(systemSettingService, never()).updatePaidLeaveGrantSettings(any(), anyInt());
     }
 
     @Test

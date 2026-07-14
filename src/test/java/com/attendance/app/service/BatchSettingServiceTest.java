@@ -72,6 +72,16 @@ public class BatchSettingServiceTest {
     }
 
     @Test
+    void testUpdateAlertSettings_RejectsUiLimitBypass() {
+        assertThrows(IllegalArgumentException.class,
+                () -> batchSettingService.updateAlertSettings(101, 120, 9, 3, 11));
+        assertThrows(IllegalArgumentException.class,
+                () -> batchSettingService.updateAlertSettings(30, 151, 9, 3, 11));
+
+        verify(systemSettingMapper, never()).upsertValue(anyString(), anyString());
+    }
+
+    @Test
     void testGetLastExecutedAt() {
         when(systemSettingMapper.selectValueByKey(BatchSettingService.KEY_LAST_MONTHLY_SUMMARY_EXECUTED_AT))
                 .thenReturn("2026-05-10T15:30:00");

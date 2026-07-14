@@ -128,8 +128,8 @@ public class BatchSettingService {
      */
     @Transactional
     public void updateAlertSettings(int limit1, int limit2, int months, int days, int minIntervalHours) {
-        if (limit1 < 0 || limit2 < 0 || limit1 >= limit2) {
-            throw new IllegalArgumentException("36協定の警告閾値が不正です（第1警告 < 第2警告となるように設定してください）");
+        if (limit1 < 0 || limit1 > 100 || limit2 < 0 || limit2 > 150 || limit1 >= limit2) {
+            throw new IllegalArgumentException("36協定の警告閾値が不正です（注意は0〜100時間、超過は0〜150時間、注意 < 超過で設定してください）");
         }
         if (months < 1 || months > 24) {
             throw new IllegalArgumentException("有給消化警告月数は1〜24の範囲で設定してください");

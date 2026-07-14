@@ -29,9 +29,9 @@
 ## 2. 開発要件とアーキテクチャ
 *   **アーキテクチャ**: コントローラー、サービス、マッパー(MyBatis)、エンティティの層を持つ標準的なMVCアーキテクチャを採用してください。
 *   **Mavenプロファイル設定**: `pom.xml` に以下の2つのプロファイルを定義してください。
-    *   **`local`プロファイル（デフォルト）**: `<activeByDefault>true</activeByDefault>` を設定し、`mvn spring-boot:run` 実行時に自動的に有効になるようにする。リソースフィルタリングで `application-local.yml` と `application.yml` のみをクラスパスに含め、他の `application-*.yml` は除外する。`spring.profiles.active=local` をプロパティとして設定し、Spring Bootが `application-local.yml` を読み込む。
-    *   **`release`プロファイル**: `mvn package -P release` などで明示的に指定する本番ビルド用。リソースフィルタリングで `application-release.yml` と `application.yml` のみをクラスパスに含める。`maven-surefire-plugin` でテストをスキップ（`<skip>true</skip>`）する設定を含める。`spring.profiles.active=release` をプロパティとして設定する。
-    *   **`spring-boot-maven-plugin`** の `<profiles>` に `${spring.profiles.active}` を渡し、実行プロファイルをMavenプロファイルと連動させること。
+    *   **`local`プロファイル（デフォルト）**: `<activeByDefault>true</activeByDefault>` を設定し、`mvn spring-boot:run` 実行時に自動的に有効になるようにする。`application-local.yml` と、Mavenプロファイル値を埋め込んだ `application.yml` のみをクラスパスに含める。
+    *   **`release`プロファイル**: `mvn package -P release` などで明示的に指定する本番ビルド用。`application-release.yml` と、Mavenプロファイル値を埋め込んだ `application.yml` のみをクラスパスに含める。`maven-surefire-plugin` でテストをスキップ（`<skip>true</skip>`）する設定を含める。
+    *   **`spring-boot-maven-plugin`** の `<profiles>` と `application.yml` の `spring.profiles.active` を `${spring.profiles.active}` から連動させ、JAR直接起動時も選択したMavenプロファイルを使用すること。
 *   **設定ファイル構成**:
     *   `application.yml`: 全プロファイル共通の設定（MyBatis設定、ログレベル、Flyway、graceful shutdown等）
     *   `application-local.yml`: ローカル開発用のDB接続情報（`local`プロファイル専用）
