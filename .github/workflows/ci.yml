@@ -43,3 +43,11 @@ jobs:
 
       - name: Build and Test with Maven
         run: mvn clean verify -Dspring.profiles.active=local
+
+      - name: Package release artifact
+        run: mvn clean package -P release -DskipTests
+
+      - name: Verify release profile resources
+        run: |
+          jar tf target/*.jar | grep -qx 'BOOT-INF/classes/application-release.yml'
+          ! jar tf target/*.jar | grep -q 'BOOT-INF/classes/application-local.yml'
