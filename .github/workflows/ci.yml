@@ -37,10 +37,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'  # Node.js 20 を明示的に指定
+          node-version: '24.x'  # Node.js 24 を明示的に指定
       - run: npm ci
       - run: npm run build
 
