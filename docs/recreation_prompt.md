@@ -30,7 +30,7 @@
 *   **アーキテクチャ**: コントローラー、サービス、マッパー(MyBatis)、エンティティの層を持つ標準的なMVCアーキテクチャを採用してください。
 *   **Mavenプロファイル設定**: `pom.xml` に以下の2つのプロファイルを定義してください。
     *   **`local`プロファイル（デフォルト）**: `<activeByDefault>true</activeByDefault>` を設定し、`mvn spring-boot:run` 実行時に自動的に有効になるようにする。`application-local.yml` と、Mavenプロファイル値を埋め込んだ `application.yml` のみをクラスパスに含める。
-    *   **`release`プロファイル**: `mvn package -P release` などで明示的に指定する本番ビルド用。`application-release.yml` と、Mavenプロファイル値を埋め込んだ `application.yml` のみをクラスパスに含める。`maven-surefire-plugin` でテストをスキップ（`<skip>true</skip>`）する設定を含める。
+    *   **`release`プロファイル**: `mvn package -P release` などで明示的に指定する本番ビルド用。`application-release.yml` と、Mavenプロファイル値を埋め込んだ `application.yml` のみをクラスパスに含める。リリースビルドでもテストを実行し、スキップは必要な場合に限ってCLIから明示する。
     *   **`spring-boot-maven-plugin`** の `<profiles>` と `application.yml` の `spring.profiles.active` を `${spring.profiles.active}` から連動させ、JAR直接起動時も選択したMavenプロファイルを使用すること。
 *   **設定ファイル構成**:
     *   `application.yml`: 全プロファイル共通の設定（MyBatis設定、ログレベル、Flyway、graceful shutdown等）
@@ -38,8 +38,8 @@
     *   `application-release.yml`: 本番環境用の設定（`release`プロファイル専用。環境変数からDB接続情報を注入する形式を推奨）
 *   **タイムゾーン統一**: 業務日時はすべて日本時間（`Asia/Tokyo`）で扱うこと。アプリケーション起動時（`main` メソッド）に `TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo"))` を実行し、「今日」「現在時刻」の取得は `Asia/Tokyo` 固定の日時ユーティリティクラス（`DateTimeUtil`）に集約する。`@Scheduled` の cron には必ず `zone = "Asia/Tokyo"` を指定する。DBの日時カラムは `TIMESTAMP WITH TIME ZONE` を使用する。
 *   **キャッシュ**: `@EnableCaching` を有効化し、マスタ系データ（祝日、システム設定、勤務クラス、勤怠事由、承認待ち件数等）を `ConcurrentMapCacheManager` でキャッシュする。コミット前のEvictによる旧値再キャッシュを防ぐため、CacheManagerは `TransactionAwareCacheManagerProxy` でラップし、Evict/Putをトランザクションコミット後に遅延させること。
-*   **定期バッチ**: `@Scheduled`（すべて `Asia/Tokyo`）による自動実行バッチを実装する（月次集計チェック: 毎日1時、勤怠提出リマインドチェック: 毎時、年次有給の自動付与: 毎日0時、36協定アラート・有給消化アラート: 毎月1日3時）。月次集計・有給付与・リマインドは管理者ダッシュボードからの手動実行も可能にする。
-*   **運用設定**: graceful shutdown（`server.shutdown: graceful`、`timeout-per-shutdown-phase: 30s`）、HikariCPの `connection-init-sql` で `lock_timeout = '3s'`、MyBatisの `default-statement-timeout: 30` / `default-fetch-size: 100` を設定する。
+*   **定期バッチ**: `@Scheduled`（すべて `Asia/Tokyo`）による自動実行バッチを実装する（年次有給の自動付与: 毎日0時、利用終了日到達ユーザーの無効化: 毎日0時30分、月次集計チェック: 毎日1時、勤怠提出リマインドチェック: 毎時、36協定アラート・有給消化アラート: 毎月1日3時）。月次集計・有給付与・リマインド・利用終了日無効化は管理者ダッシュボードからの手動実行も可能にする。
+*   **運用設定**: graceful shutdown（`server.shutdown: graceful`、`timeout-per-shutdown-phase: 30s`）、HikariCPの `connection-init-sql` で `lock_timeout = '3s'`、MyBatisの `default-statement-timeout: 30` / `default-fetch-size: 100` を設定する。Flywayの `baseline-on-migrate` は `false` とし、履歴なしの非空DBはfail-fastさせる。手動baselineはバックアップとスキーマ版の監査後に限る。適用済みV1/V2は編集せず、固定 `postgres` GRANT・プロファイル間のサンプル履歴差・fresh DB用B5以降の設計は Issue #182 の後続とする。
 *   **例外・エラー画面**: `@ControllerAdvice` によるグローバル例外ハンドラを実装し、`400` / `500` / アクセス拒否 / アカウントロック / 楽観ロック競合（データ競合）用のエラーテンプレートを用意する。
 *   **ロールベースのアクセス制御**: 一般ユーザー（`USER`）とシステム管理者（`ADMIN`）の権限を分離し、Thymeleafの画面ディレクトリも `user/` と `admin/` に分けてください。
 *   **Tailwind CSS設定**:
@@ -82,7 +82,7 @@
     *   `attendance_department_approvers` / `attendance_user_approvers`: 部門・ユーザーごとの承認者マッピング。
     *   `user_notifications`: ユーザーダッシュボード向け通知。
     *   `admin_announcements`: 管理者向けダッシュボードからの全体お知らせ配信。
-    *   `audit_logs`: システムの重要操作（勤怠承認、ユーザー変更等）の監査ログ。
+    *   `audit_logs`: システムの重要操作（勤怠承認、ユーザー変更等）を追記保存する監査正本。重要な業務更新と同一トランザクションでINSERTし、監査保存失敗時は業務更新もロールバックする。監査CSVはコミット後に出力する非正本の運用補助で、月次gzipアーカイブを24か月保持する。CSV欠損時は監査DBから再出力し、CSV失敗で業務をロールバックしない。
 4.  **サンプルデータ**:
     *   開発・動作確認用に、初期管理者ユーザー（`admin@example.com` / `admin123`）や一般のダミー従業員（`user@example.com` / `user123` 等）、各種マスタデータを投入するスクリプトを `src/main/resources/db/sample/V2__Sample_Data.sql` として作成してください。
 
@@ -95,6 +95,7 @@
 #### (0) ログイン画面 (`/login`)
 *   **入力機能**: メールアドレス・パスワードの入力と「ログイン」ボタン（Spring SecurityのフォームログインでPOST `/login` を処理）
 *   **出力機能**: ログイン失敗・一時ロック（`?error=templock`: 「30分後に再試行」警告）・本ロック（`?error=locked`: 「管理者に問い合わせ」エラー）・ログアウト完了の各メッセージ表示
+*   **パスワード忘れ**: セルフサービスの再設定は行わない。管理者がユーザー詳細画面から一時パスワードを発行し、対象ユーザーは次回ログイン時に新しいパスワードへ強制変更する
 *   **付随要件**:
     *   ログイン失敗回数の追跡によるアカウントロック機能（連続失敗で30分の一時ロック、さらに失敗が続くと本ロック）
     *   ルートパス `/` は認証済みならダッシュボード、未認証ならログイン画面へリダイレクト
@@ -138,6 +139,7 @@
     *   1ヶ月分の日別勤怠記録（日付・曜日・勤務クラス・出勤/退勤時間・実働/残業/深夜時間・備考・ステータス）の一覧
     *   提出ステータス（未提出・申請中・承認済み・差戻し）の表示
     *   「CSVエクスポート」ボタン（GET `/attendance/export`。月次勤怠データのCSVダウンロード）
+*   **勤怠期間**: 設定された締め日から、対象給与月を「前月締め日の翌日〜当月締め日」として算出する。初回提出時に開始日・終了日をスナップショット保存し、締め日変更後の再申請でも既存スナップショットを保持する
 
 #### (4) 勤怠修正申請フォーム (`/attendance/corrections/new`)
 > 承認済み月度の個別レコードに対する修正申請。申請理由は必須。
@@ -173,9 +175,9 @@
 *   **出力機能**: なし（変更後はダッシュボードへリダイレクト）
 
 #### (10) プロフィール画面 (`/profile`)
-> サイドバーから遷移。ログイン中ユーザーの情報表示と勤務クラス変更。
-*   **入力機能**: 所属勤務クラスのプルダウン選択・更新ボタン（POST `/profile/work-schedule`）
-*   **出力機能**: ログイン中ユーザーの基本情報（社員番号、氏名、部署等）、有給消化日数・残日数
+> サイドバーから遷移。ログイン中ユーザーの情報と所属勤務クラスを表示する。
+*   **入力機能**: なし。所属勤務クラスは読取専用で表示し、変更は管理者のユーザー編集画面から行う
+    *   **出力機能**: ログイン中ユーザーの基本情報（社員番号、氏名、部署等）、有給消化日数・残日数、本人が承認なしで変更できる勤務クラス選択（有効な勤務クラスまたは未設定）
 
 ---
 
@@ -204,6 +206,7 @@
     *   対象年月入力 + 「月次集計を実行」ボタン（POST `/admin/batch/monthly-summary`。手動バッチ）
     *   「年次有給付与を実行」ボタン（POST `/admin/batch/annual-leave-grant`）
     *   「勤怠提出リマインドを送信」ボタン（POST `/admin/batch/reminder`）
+    *   「利用終了日到達ユーザーを無効化」ボタン（POST `/admin/batch/deactivate-expired`）
 *   **出力機能**: バッチ処理完了・成否ログメッセージ、システム全体の勤務統計サマリー
 
 #### (2) ユーザー管理画面 (`/admin/users`)
@@ -212,12 +215,13 @@
 
 #### (3) 新規ユーザー登録フォーム (`/admin/users/create`)
 *   **入力機能**: 社員番号・氏名・メールアドレス・パスワード・部署・雇用区分・職位・電話番号・勤務クラス・権限（ADMIN/USER）の入力と「登録する」ボタン
+*   **初期有給残高**: ユーザー作成と同時に、初期有給残高と次回付与日数をともに10日で作成する
 *   **出力機能**: なし（登録後は一覧画面へリダイレクト）
 
 #### (4) ユーザー詳細・有給設定画面 (`/admin/users/{userId}`)
 *   **入力機能**:
     *   各種登録情報の編集・更新（POST `/admin/users/{userId}/update`）、アカウント有効/無効の切り替え
-    *   「一時パスワードを発行」ボタン（POST `/admin/users/{userId}/reset-password`）
+    *   パスワード忘れ時に使用する「一時パスワードを発行」ボタン（POST `/admin/users/{userId}/reset-password`）。次回ログイン後はパスワード変更画面へ強制遷移する
     *   年次有給付与日数・最大有給保持日数・有給付与増分の設定と更新ボタン（POST `/admin/users/{userId}/leave-settings`）
     *   承認者マッピングの設定（ユーザー承認者: POST `/admin/users/{userId}/approvers/user`、部門承認者: POST `/admin/users/{userId}/approvers/department`）
 *   **出力機能**: 従業員個人の登録情報、現在の有給付与パラメータ設定値、承認者マッピングの現在値
@@ -255,8 +259,8 @@
     *   直近3ヶ月の平均残業時間推移グラフ
 
 #### (8) お知らせ管理（掲示板管理）(`/admin/announcements`)
-*   **入力機能**: タイトル・本文・表示開始日時・表示終了日時の入力フォーム（POST `/admin/announcements/create`）、既存投稿の更新（POST `/admin/announcements/{announcementId}/update`）、アクティブ/非アクティブのトグル、「削除」ボタン（POST `/admin/announcements/{announcementId}/delete`）
-*   **出力機能**: 投稿済みのお知らせ一覧（タイトル・掲載期間・ステータス）
+*   **入力機能**: タイトル（必須・200文字以内）・本文（必須・2000文字以内）・表示開始日時・表示終了日時の入力フォーム（POST `/admin/announcements/create`）、一覧で共用する編集モーダルからの既存投稿更新（POST `/admin/announcements/{announcementId}/update`）、アクティブ/非アクティブのトグル、「削除」ボタン（POST `/admin/announcements/{announcementId}/delete`）。空白のみの投稿と、存在しない・削除済み投稿の更新/削除はサーバー側で拒否する。
+*   **出力機能**: 投稿済みのお知らせ一覧（タイトル・掲載期間・ステータス）。1ページ10件（最大50件）のサーバー側ページングを行う。
 
 #### (9) 有給休暇取得状況画面 (`/admin/leave-usage`)
 *   **入力機能**: 年月・氏名による検索入力ボックス
@@ -264,10 +268,10 @@
 
 #### (10) システム設定画面 (`/admin/settings`)
 *   **入力機能**（設定ごとに個別の「保存」ボタンを持つフォーム群）:
-    *   年次有給付与設定（付与日: MM-DD形式、付与日数: 1〜40の数値。POST `/admin/settings`）
-    *   締め日設定（開始日・終了日）の数値入力 1〜28（POST `/admin/settings/attendance-period`）
-    *   CSVファイル名テンプレート文字列（例: `{yyyy}-{MM}_{userId}_{name}`）の入力（POST `/admin/settings/csv-pattern`）
-    *   アラート対象値の設定（POST `/admin/settings/alert`）
+    *   年次有給付与設定（付与日: MM-DD形式。POST `/admin/settings`）。付与日数は従業員ごとに設定する。2月は28日まで設定可能とする
+    *   締め日の数値入力 1〜28（POST `/admin/settings/attendance-period`）。開始日は前月締め日の翌日として自動算出する。旧 `attendance_period_start_day` は互換用に残すが、業務ロジックでは参照しない
+    *   CSVファイル名テンプレート文字列（例: `{yyyy}-{MM}_{userId}_{name}_{downloadAt}`）の入力（POST `/admin/settings/csv-pattern`）。`{yyyy}`、`{MM}`、`{userId}`、`{name}`、`{downloadAt}` はすべて必須
+    *   アラート対象値の設定（POST `/admin/settings/alert`）。有休消化警告は「付与後の経過月数」と「その時点で消化済みであるべき最低日数」を指定する
     *   リマインド配信日時設定（POST `/admin/settings/batch`）
     *   システム名の設定（POST `/admin/settings/system-name`）
     *   コピーライト表記の設定（POST `/admin/settings/copyright`）

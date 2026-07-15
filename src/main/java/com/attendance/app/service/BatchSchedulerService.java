@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
@@ -21,9 +20,10 @@ import com.attendance.app.util.DateTimeUtil;
  *
  * <ol>
  *   <li><b>月次集計</b>: 毎日 01:00（JST）に、今日が「勤怠期間終了日 + daysAfterEnd」かをチェックして実行</li>
- *   <li><b>年次有給付与</b>: 毎日 02:00（JST）に、今日が設定した付与月日かをチェックして実行</li>
+ *   <li><b>利用終了日到達ユーザーの無効化</b>: 毎日 00:30（JST）に実行</li>
  *   <li><b>勤怠提出リマインド</b>: 毎時 00分（JST）に、今日の日付・時刻が設定と一致するかをチェックして実行</li>
  * </ol>
+ * 年次有給の自動付与は {@link AutoGrantPaidLeaveService} が毎日 00:00（JST）に実行します。
  *
  * タイムゾーン: すべての cron 式は Asia/Tokyo で評価されます。
  */
@@ -32,10 +32,11 @@ import com.attendance.app.util.DateTimeUtil;
 @RequiredArgsConstructor
 public class BatchSchedulerService {
 
+    private static final int BATCH_PAGE_SIZE = 100;
+
     private static final String BATCH_LOG_START = "バッチ開始: {}";
     private static final String BATCH_LOG_DONE  = "バッチ完了: {}";
     private static final String BATCH_LOG_ERROR = "バッチ異常終了: job={}, error={}";
-    private static final int DEFAULT_ANNUAL_LEAVE_GRANT_DAYS = 10;
 
     private final AttendanceRecordService attendanceRecordService;
     private final AttendancePeriodSettingService attendancePeriodSettingService;
@@ -75,24 +76,39 @@ public class BatchSchedulerService {
     public void executeMonthlySummary(YearMonth targetMonth) {
         log.info(BATCH_LOG_START, "月次集計: targetMonth=" + targetMonth);
         try {
-            List<AttendanceRecordService.MonthlyUserSummary> summaries =
-                    attendanceRecordService.getMonthlyAggregateForAllUsers(targetMonth);
-
             int warningHours = batchSettingService.getAlertArticle36Limit1();
             int limitHours = batchSettingService.getAlertArticle36Limit2();
-            for (AttendanceRecordService.MonthlyUserSummary s : summaries) {
+            int alertCount = 0;
+            int warningCount = 0;
+            int processedCount = 0;
+            long afterUserId = 0;
+            while (true) {
+                List<User> users = userService.getUsersAfterId(
+                        null, null, true, false, afterUserId, BATCH_PAGE_SIZE);
+                if (users.isEmpty()) {
+                    break;
+                }
+                List<AttendanceRecordService.MonthlyUserSummary> summaries = attendanceRecordService
+                        .getMonthlyAggregateForUsers(targetMonth, users.stream().map(User::getUserId).toList());
+                for (AttendanceRecordService.MonthlyUserSummary s : summaries) {
                 if (s.overtimeHours() >= limitHours) {
-                    log.warn("36協定超過: userId={}, yearMonth={}, overtimeHours={}",
+                    alertCount++;
+                    log.debug("36協定超過: userId={}, yearMonth={}, overtimeHours={}",
                             s.userId(), targetMonth, s.overtimeHours());
                 } else if (s.overtimeHours() >= warningHours) {
-                    log.warn("36協定注意: userId={}, yearMonth={}, overtimeHours={}",
+                    warningCount++;
+                    log.debug("36協定注意: userId={}, yearMonth={}, overtimeHours={}",
                             s.userId(), targetMonth, s.overtimeHours());
                 } else {
-                    log.info("月次集計: userId={}, yearMonth={}, workingHours={}, overtimeHours={}, recordCount={}",
+                    log.debug("月次集計: userId={}, yearMonth={}, workingHours={}, overtimeHours={}, recordCount={}",
                             s.userId(), targetMonth, s.workingHours(), s.overtimeHours(), s.recordCount());
                 }
+                }
+                processedCount += users.size();
+                afterUserId = users.get(users.size() - 1).getUserId();
             }
-            log.info(BATCH_LOG_DONE, "月次集計: " + summaries.size() + "名処理");
+            log.info(BATCH_LOG_DONE, "月次集計: targetMonth=" + targetMonth + ", processed=" + processedCount
+                    + ", warning=" + warningCount + ", alert=" + alertCount);
             batchSettingService.recordMonthlySummaryExecutedAt(DateTimeUtil.nowJapan());
         } catch (Exception e) {
             log.error(BATCH_LOG_ERROR, "月次集計", e.getMessage(), e);
@@ -101,7 +117,7 @@ public class BatchSchedulerService {
 
 
     // -------------------------------------------------------
-    // 4. 利用終了日到達ユーザーの自動無効化バッチ
+    // 2. 利用終了日到達ユーザーの自動無効化バッチ
     //    毎日 00:30（JST）に実行
     // -------------------------------------------------------
 
@@ -110,7 +126,11 @@ public class BatchSchedulerService {
      */
     @Scheduled(cron = "0 30 0 * * ?", zone = "Asia/Tokyo")
     public void runExpiredUserDeactivationCheck() {
-        executeExpiredUserDeactivation();
+        try {
+            executeExpiredUserDeactivation();
+        } catch (Exception e) {
+            log.error(BATCH_LOG_ERROR, "利用終了日自動無効化", e.getMessage(), e);
+        }
     }
 
     /**
@@ -121,14 +141,9 @@ public class BatchSchedulerService {
      */
     public int executeExpiredUserDeactivation() {
         log.info(BATCH_LOG_START, "利用終了日自動無効化");
-        try {
-            int count = userService.deactivateExpiredUsers();
-            log.info(BATCH_LOG_DONE, "利用終了日自動無効化: " + count + "名を無効化");
-            return count;
-        } catch (Exception e) {
-            log.error(BATCH_LOG_ERROR, "利用終了日自動無効化", e.getMessage(), e);
-            return 0;
-        }
+        int count = userService.deactivateExpiredUsers();
+        log.info(BATCH_LOG_DONE, "利用終了日自動無効化: " + count + "名を無効化");
+        return count;
     }
 
     // -------------------------------------------------------
@@ -169,7 +184,7 @@ public class BatchSchedulerService {
     }
 
     // -------------------------------------------------------
-    // 2. 年次有給付与バッチ
+    // 4. 年次有給付与バッチ
     //    管理者ダッシュボードからの手動実行のみ（自動スケジュール実行は
     //    AutoGrantPaidLeaveService が担当）
     // -------------------------------------------------------
@@ -186,7 +201,7 @@ public class BatchSchedulerService {
     /**
      * 全アクティブユーザーに対して年次有給休暇を一括付与します。
      * ユーザーごとの次回付与日数（{@code annualLeaveGrantDays}）を有給残高として付与し、
-     * {@link UserService#grantAnnualPaidLeave(Long, int)} により残日数・次回付与日数を更新します。
+     * {@link UserService#grantAnnualPaidLeave(Long)} により実効付与日数を解決し、残日数・次回付与日数を更新します。
      * 当年分がすでに付与済みのユーザーはスキップします（{@code paid_leave_balance} の
      * {@code UNIQUE(user_id, grant_year)} 制約により二重付与できないため）。
      * 管理者画面からの手動実行専用です。例外はハンドリングせず呼び出し元に伝播します。
@@ -209,25 +224,22 @@ public class BatchSchedulerService {
         int skippedCount = 0;
         for (User user : users) {
             if (alreadyGrantedUserIds.contains(user.getUserId())) {
-                log.info("年次有給付与: userId={} は{}年分を付与済みのためスキップ", user.getUserId(), today.getYear());
+                log.debug("年次有給付与スキップ: userId={}, grantYear={}", user.getUserId(), today.getYear());
                 skippedCount++;
                 continue;
             }
 
-            BigDecimal grantDays = user.getAnnualLeaveGrantDays() != null
-                    ? BigDecimal.valueOf(user.getAnnualLeaveGrantDays())
-                    : BigDecimal.valueOf(DEFAULT_ANNUAL_LEAVE_GRANT_DAYS);
-
             try {
                 // ユーザーテーブルの有給残日数の加算更新と次回付与日数のインクリメントを同期
                 // （内部で paid_leave_balance テーブルへのインサートも実行されます）
-                userService.grantAnnualPaidLeave(user.getUserId(), grantDays.intValue());
+                userService.grantAnnualPaidLeave(user.getUserId());
                 grantedCount++;
             } catch (Exception e) {
                 log.error("年次有給付与: userId={} への付与に失敗しました。", user.getUserId(), e);
             }
         }
-        log.info(BATCH_LOG_DONE, "年次有給付与: 付与" + grantedCount + "名, スキップ" + skippedCount + "名");
+        log.info(BATCH_LOG_DONE, "年次有給付与: granted=" + grantedCount + ", skipped=" + skippedCount
+                + ", failed=" + (users.size() - grantedCount - skippedCount));
         batchSettingService.recordAnnualLeaveGrantExecutedAt(DateTimeUtil.nowJapan());
         return new AnnualLeaveGrantResult(grantedCount, skippedCount);
     }

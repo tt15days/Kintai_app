@@ -125,6 +125,38 @@ class DashboardControllerTest {
     }
 
     @Test
+    @DisplayName("showDashboard: 最終ログインが過去でも日本時間の本日を表示して当日レコードを選択すること")
+    void showDashboard_pastLastLogin_usesTodayInJapan() {
+        LocalDate today = com.attendance.app.util.DateTimeUtil.todayJapan();
+        User user = new User();
+        user.setUserId(1L);
+        user.setUserRole(UserRole.USER);
+        user.setLastLoginAt(com.attendance.app.util.DateTimeUtil.toInstant(today.minusDays(1)));
+        when(securityUtil.getCurrentUser()).thenReturn(user);
+
+        AttendanceRecord previousRecord = new AttendanceRecord();
+        previousRecord.setAttendanceDate(com.attendance.app.util.DateTimeUtil.toInstant(today.minusDays(1)));
+        AttendanceRecord todayRecord = new AttendanceRecord();
+        todayRecord.setAttendanceDate(com.attendance.app.util.DateTimeUtil.toInstant(today));
+
+        when(attendanceRecordService.getRecordsByUserAndMonth(1L, YearMonth.from(today)))
+                .thenReturn(List.of(previousRecord, todayRecord));
+        when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(BigDecimal.ZERO);
+        when(paidLeaveBalanceService.getActiveBalances(1L)).thenReturn(Collections.emptyList());
+        when(userService.isAttendanceApprover(user)).thenReturn(false);
+        when(userNotificationService.getUnreadByUserId(1L)).thenReturn(Collections.emptyList());
+        when(adminAnnouncementService.getActiveAnnouncements()).thenReturn(Collections.emptyList());
+
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        assertThat(controller.showDashboard(model)).isEqualTo("dashboard");
+        assertThat(model.get("currentMonth")).isEqualTo(YearMonth.from(today));
+        assertThat(model.get("todayRecord")).isSameAs(todayRecord);
+        assertThat(model.get("todayFormatted")).isEqualTo(today.format(
+                java.time.format.DateTimeFormatter.ofPattern("yyyy年M月d日EEEE", java.util.Locale.JAPANESE)));
+    }
+
+    @Test
     @DisplayName("showDashboard: 承認者の場合、承認待ち件数をモデルに設定して表示すること")
     void showDashboard_approverUser_success() {
         // Arrange

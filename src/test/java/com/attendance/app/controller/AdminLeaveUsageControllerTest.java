@@ -52,8 +52,8 @@ class AdminLeaveUsageControllerTest {
     @Test
     @DisplayName("showLeaveUsage - 有給取得状況画面の表示において、ユーザー全員の残高および義務達成状況が正しくモデルに格納されること")
     void testShowLeaveUsage() {
-        // 全ユーザーを返す
-        when(userService.getActiveUsers()).thenReturn(List.of(user1, user2, user3));
+        when(userService.countUsers(null, null, true, false)).thenReturn(3L);
+        when(userService.getUsersPage(null, null, true, false, 0, 20)).thenReturn(List.of(user1, user2, user3));
 
         int currentYear = LocalDate.now().getYear();
 
@@ -123,12 +123,27 @@ class AdminLeaveUsageControllerTest {
     @Test
     @DisplayName("showLeaveUsage - 例外発生時はerror属性を設定して同一画面を返す")
     void testShowLeaveUsage_exception_setsErrorAttribute() {
-        when(userService.getActiveUsers()).thenThrow(new RuntimeException("DB Error"));
+        when(userService.countUsers(null, null, true, false)).thenThrow(new RuntimeException("DB Error"));
 
         ExtendedModelMap model = new ExtendedModelMap();
         String view = controller.showLeaveUsage(null, null, model);
 
         assertEquals("admin/leave-usage", view);
         assertEquals("有給休暇取得状況画面の表示に失敗しました", model.getAttribute("error"));
+    }
+
+    @Test
+    @DisplayName("showLeaveUsage - 上限を超えるページサイズと範囲外ページを補正する")
+    void testShowLeaveUsage_clampsPageAndSize() {
+        when(userService.countUsers("開発", "田中", true, false)).thenReturn(21L);
+        when(userService.getUsersPage("開発", "田中", true, false, 0, 100)).thenReturn(List.of(user1));
+
+        ExtendedModelMap model = new ExtendedModelMap();
+        controller.showLeaveUsage("開発", "田中", "99", "999", model);
+
+        assertEquals(0, model.getAttribute("page"));
+        assertEquals(100, model.getAttribute("pageSize"));
+        assertEquals(1, model.getAttribute("totalPages"));
+        verify(userService).getUsersPage("開発", "田中", true, false, 0, 100);
     }
 }

@@ -25,12 +25,14 @@
                 </h5>
                 <!-- 絞り込み -->
                 <form method="get" th:action="@{/attendance/approval/today-status}" class="flex flex-wrap items-center gap-2">
-                    <select class="form-select h-10 text-sm" name="department">
+                    <label for="todayDepartment" class="sr-only">部署 / クラス</label>
+                    <select id="todayDepartment" class="form-select h-10 text-base md:text-sm" name="department">
                         <option value="">全部署</option>
                         <option th:each="dept : ${departments}" th:value="${dept.name}" th:text="${dept.name}"
                                 th:selected="${department == dept.name}"></option>
                     </select>
-                    <select class="form-select h-10 text-sm" name="className">
+                    <label for="todayClassName" class="sr-only">勤務地</label>
+                    <select id="todayClassName" class="form-select h-10 text-base md:text-sm" name="className">
                         <option value="">全勤務地</option>
                         <option th:each="wsc : ${workScheduleClasses}" th:value="${wsc.name}" th:text="${wsc.name}"
                                 th:selected="${className == wsc.name}"></option>

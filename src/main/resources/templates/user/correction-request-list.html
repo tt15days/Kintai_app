@@ -26,6 +26,12 @@
                         <span th:text="${message}"></span>
                     </div>
                 </div>
+                <div class="mb-4" th:if="${warning != null}">
+                    <div class="alert alert-warning gap-2" role="alert">
+                        <i class="fas fa-exclamation-triangle text-lg"></i>
+                        <span th:text="${warning}"></span>
+                    </div>
+                </div>
                 <div class="mb-4" th:if="${error != null}">
                     <div class="alert alert-danger gap-2" role="alert">
                         <i class="fas fa-exclamation-circle text-lg"></i>
@@ -66,7 +72,7 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="max-w-xs truncate" th:text="${req.reason}" th:title="${req.reason}"></td>
+                            <td class="min-w-[12rem] max-w-sm whitespace-pre-wrap break-words align-top" th:text="${req.reason}"></td>
                             <td>
                                 <span class="badge badge-warning"
                                       th:if="${req.status == correctionStatusPending}"><i class="fas fa-hourglass-half mr-1"></i>申請中</span>
@@ -79,7 +85,7 @@
                                                 or req.status == correctionStatusApproved
                                                 or req.status == correctionStatusRejected}">取り下げ</span>
                             </td>
-                            <td class="max-w-xs truncate" th:text="${req.actionComment != null ? req.actionComment : '-'}" th:title="${req.actionComment}"></td>
+                            <td class="min-w-[12rem] max-w-sm whitespace-pre-wrap break-words align-top" th:text="${req.actionComment != null ? req.actionComment : '-'}"></td>
                             <td>
                                 <form th:if="${req.status == correctionStatusPending}"
                                       th:action="@{/attendance/corrections/{id}/withdraw(id=${req.requestId})}"

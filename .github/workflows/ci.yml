@@ -9,7 +9,10 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
+    env:
+      TZ: Asia/Tokyo
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Tokyo
 
     services:
       postgres:
@@ -18,6 +21,7 @@ jobs:
           POSTGRES_DB: attendance_db
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: test999
+          TZ: Asia/Tokyo
         ports:
           - 5432:5432
         options: >-
@@ -38,4 +42,4 @@ jobs:
           cache: maven
 
       - name: Build and Test with Maven
-        run: mvn clean verify -Dspring.profiles.active=integration
+        run: mvn clean verify -Dspring.profiles.active=local

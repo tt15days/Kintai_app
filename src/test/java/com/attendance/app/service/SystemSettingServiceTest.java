@@ -54,11 +54,10 @@ class SystemSettingServiceTest {
     }
 
     @Test
-    @DisplayName("updatePaidLeaveGrantSettings: 付与日と日数を一括更新する")
-    void updatePaidLeaveGrantSettings_updatesBothValues() {
-        service.updatePaidLeaveGrantSettings("04-01", 10);
+    @DisplayName("updatePaidLeaveGrantDate: 付与日を更新する")
+    void updatePaidLeaveGrantDate_updatesDate() {
+        service.updatePaidLeaveGrantDate("04-01");
 
         verify(systemSettingMapper).upsertValue(SystemSettingService.PAID_LEAVE_GRANT_DATE_KEY, "04-01");
-        verify(systemSettingMapper).upsertValue(SystemSettingService.PAID_LEAVE_GRANT_DAYS_KEY, "10");
     }
 }

@@ -2,6 +2,7 @@ package com.attendance.app.service;
 
 import com.attendance.app.entity.*;
 import com.attendance.app.mapper.AttendanceRecordMapper;
+import com.attendance.app.mapper.AttendanceSubmissionMapper;
 import com.attendance.app.mapper.LeaveApplicationMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,9 @@ public class PayrollExportServiceTest {
     @Mock
     private AttendanceSubmissionService attendanceSubmissionService;
 
+    @Mock
+    private AttendanceSubmissionMapper attendanceSubmissionMapper;
+
     @InjectMocks
     private PayrollExportService payrollExportService;
 
@@ -64,6 +68,16 @@ public class PayrollExportServiceTest {
 
         org.mockito.Mockito.lenient().when(attendanceSubmissionService.getSubmissionsByTargetYearMonth(any()))
                 .thenReturn(Collections.emptyList());
+        org.mockito.Mockito.lenient().when(userService.getUsersAfterId(any(), any(), org.mockito.ArgumentMatchers.anyBoolean(),
+                        org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyInt()))
+                .thenAnswer(invocation -> invocation.getArgument(4, Long.class) == 0L
+                        ? userService.getActiveUsers() : Collections.emptyList());
+        org.mockito.Mockito.lenient().when(attendanceRecordMapper.selectByDateRangeAndUserIds(any(), any(), any()))
+                .thenAnswer(invocation -> attendanceRecordMapper.selectAllByDateRange(invocation.getArgument(0), invocation.getArgument(1)));
+        org.mockito.Mockito.lenient().when(leaveApplicationMapper.selectByDateRangeAndUserIds(any(), any(), any()))
+                .thenAnswer(invocation -> leaveApplicationMapper.selectAllByDateRange(invocation.getArgument(0), invocation.getArgument(1)));
+        org.mockito.Mockito.lenient().when(attendanceSubmissionMapper.selectByTargetYearMonthAndUserIds(any(), any()))
+                .thenAnswer(invocation -> attendanceSubmissionService.getSubmissionsByTargetYearMonth(testYearMonth));
     }
 
     @Test
@@ -302,6 +316,28 @@ public class PayrollExportServiceTest {
         // User2 data row check
         // EMP002,テスト 次郎, 出勤日数:0, 欠勤日数:2 (unpaid + absence), 有休消化日数:1, その他休暇日数:1 (special leave), 総労働:0.00, 残業:0.00, 深夜:0.00, 休日:0.00
         assertThat(lines[2]).isEqualTo("EMP002,テスト 次郎,0,2,1,1,0.00,0.00,0.00,0.00");
+    }
+
+    @Test
+    void testGeneratePayrollCsvGzip_processesUsersInHundredUserPages() throws IOException {
+        List<User> users = java.util.stream.LongStream.rangeClosed(1, 101)
+                .mapToObj(id -> User.builder().userId(id).empNo("EMP" + id).fullName("User" + id).build())
+                .toList();
+        when(attendanceRecordService.getMonthRange(testYearMonth)).thenReturn(monthRange);
+        when(userService.getUsersAfterId(null, null, true, false, 0, 100)).thenReturn(users.subList(0, 100));
+        when(userService.getUsersAfterId(null, null, true, false, 100, 100)).thenReturn(users.subList(100, 101));
+        when(userService.getUsersAfterId(null, null, true, false, 101, 100)).thenReturn(Collections.emptyList());
+
+        byte[] gzipBytes = payrollExportService.generatePayrollCsvGzip(
+                testYearMonth, PayrollExportFormat.MONEYFORWARD, java.nio.charset.StandardCharsets.UTF_8);
+
+        try (GZIPInputStream gzipInputStream = new GZIPInputStream(new ByteArrayInputStream(gzipBytes));
+             java.io.BufferedReader reader = new java.io.BufferedReader(
+                     new InputStreamReader(gzipInputStream, java.nio.charset.StandardCharsets.UTF_8))) {
+            assertThat(reader.lines().count()).isEqualTo(102);
+        }
+        org.mockito.Mockito.verify(attendanceRecordMapper, org.mockito.Mockito.times(2))
+                .selectByDateRangeAndUserIds(any(), any(), any());
     }
 
     @Test

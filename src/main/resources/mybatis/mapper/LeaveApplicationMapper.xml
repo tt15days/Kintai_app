@@ -71,6 +71,17 @@
         ORDER BY user_id ASC, leave_start_date ASC
     </select>
 
+    <select id="selectByDateRangeAndUserIds" resultMap="leaveApplicationResultMap">
+        SELECT application_id, user_id, leave_start_date, leave_end_date, leave_duration_type, consumed_days, leave_type, reason, status, created_at, updated_at, approved_at, approved_by, is_deleted
+        FROM leave_applications
+        WHERE leave_start_date &lt;= #{endDate}
+        AND leave_end_date &gt;= #{startDate}
+        AND is_deleted = false
+        AND user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">#{userId}</foreach>
+        ORDER BY user_id ASC, leave_start_date ASC
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="applicationId">
         INSERT INTO leave_applications (user_id, leave_start_date, leave_end_date, leave_duration_type, consumed_days, leave_type, reason, status, created_at, updated_at, is_deleted)
         VALUES (#{userId}, #{leaveStartDate}, #{leaveEndDate}, #{leaveDurationType}, #{consumedDays}, #{leaveType,typeHandler=com.attendance.app.config.typehandler.LeaveTypeTypeHandler}, #{reason}, #{status,typeHandler=com.attendance.app.config.typehandler.LeaveStatusTypeHandler}, NOW(), NOW(), COALESCE(#{isDeleted}, false))

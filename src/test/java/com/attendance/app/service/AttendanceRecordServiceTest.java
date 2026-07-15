@@ -81,6 +81,13 @@ class AttendanceRecordServiceTest {
                 .thenReturn(BatchSettingService.DEFAULT_ALERT_ARTICLE36_LIMIT1);
         lenient().when(batchSettingService.getAlertArticle36Limit2())
                 .thenReturn(BatchSettingService.DEFAULT_ALERT_ARTICLE36_LIMIT2);
+        lenient().when(attendancePeriodSettingService.resolvePeriod(any(YearMonth.class)))
+                .thenAnswer(invocation -> {
+                    YearMonth month = invocation.getArgument(0);
+                    return new AttendancePeriodSettingService.AttendancePeriod(
+                            month.minusMonths(1).atDay(20).plusDays(1), month.atDay(20));
+                });
+        lenient().when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -164,9 +171,6 @@ class AttendanceRecordServiceTest {
         @Test
         @DisplayName("開始日21日・終了日20日で payroll-style の範囲を返す")
         void withStartDay21EndDay20_returnsPayrollStyleDates() {
-            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
-            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
-
             AttendanceRecordService.MonthRange range = service.getMonthRange(YearMonth.of(2026, 5));
 
             assertThat(range.getStartDate()).isEqualTo(LocalDate.of(2026, 4, 21));
@@ -177,9 +181,6 @@ class AttendanceRecordServiceTest {
         @DisplayName("対象月 null の場合は現在月を基準に範囲を返す")
         void withNullYearMonth_defaultsToCurrentMonth() {
             YearMonth now = YearMonth.now();
-            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
-            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
-
             AttendanceRecordService.MonthRange range = service.getMonthRange(null);
 
             assertThat(range.getYearMonth()).isEqualTo(now);
@@ -1102,9 +1103,6 @@ class AttendanceRecordServiceTest {
         @Test
         @DisplayName("正常系: ユーザーごとに勤務・残業・深夜時間を合算する")
         void aggregatesHoursPerUser() {
-            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
-            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
-
             AttendanceRecord user1Record1 = AttendanceRecord.builder()
                     .userId(1L).workingHours(8.0).overtimeHours(2.0).nightShiftHours(1.0).build();
             AttendanceRecord user1Record2 = AttendanceRecord.builder()
@@ -1137,8 +1135,6 @@ class AttendanceRecordServiceTest {
         @Test
         @DisplayName("月境界: 年をまたぐ場合も前月開始日〜当月終了日の範囲で取得する")
         void yearBoundary_computesCorrectDateRange() {
-            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
-            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
             when(attendanceRecordMapper.selectAllByDateRange(any(Instant.class), any(Instant.class)))
                     .thenReturn(List.of());
 
@@ -1147,6 +1143,34 @@ class AttendanceRecordServiceTest {
             Instant expectedStart = DateTimeUtil.toInstant(LocalDate.of(2025, 12, 21));
             Instant expectedEnd = DateTimeUtil.toInstant(LocalDate.of(2026, 1, 21));
             verify(attendanceRecordMapper).selectAllByDateRange(expectedStart, expectedEnd);
+        }
+
+        @Test
+        @DisplayName("大量データ: 一覧上限100ユーザーだけを取得して集計する")
+        void aggregatesOnlyRequestedHundredUsersForLargeData() {
+            List<Long> userIds = java.util.stream.LongStream.rangeClosed(1, 100).boxed().toList();
+            List<AttendanceRecord> records = new java.util.ArrayList<>();
+            for (Long userId : userIds) {
+                for (int day = 0; day < 31; day++) {
+                    records.add(AttendanceRecord.builder()
+                            .userId(userId).workingHours(8.0).overtimeHours(1.0).nightShiftHours(0.5).build());
+                }
+            }
+            when(attendanceRecordMapper.selectByDateRangeAndUserIds(any(Instant.class), any(Instant.class), eq(userIds)))
+                    .thenReturn(records);
+
+            List<AttendanceRecordService.MonthlyUserSummary> result =
+                    service.getMonthlyAggregateForUsers(YearMonth.of(2026, 6), userIds);
+
+            assertThat(result).hasSize(100);
+            assertThat(result).allSatisfy(summary -> {
+                assertThat(summary.workingHours()).isEqualTo(248.0);
+                assertThat(summary.overtimeHours()).isEqualTo(31.0);
+                assertThat(summary.nightShiftHours()).isEqualTo(15.5);
+                assertThat(summary.recordCount()).isEqualTo(31);
+            });
+            verify(attendanceRecordMapper).selectByDateRangeAndUserIds(any(Instant.class), any(Instant.class), eq(userIds));
+            verify(attendanceRecordMapper, never()).selectAllByDateRange(any(Instant.class), any(Instant.class));
         }
     }
 
@@ -1160,9 +1184,6 @@ class AttendanceRecordServiceTest {
         @Test
         @DisplayName("正常系: 複数月・複数ユーザーの残業時間を年月ごとに集計する")
         void aggregatesOvertimePerMonthAndUser() {
-            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
-            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
-
             AttendanceRecord mayRecord = AttendanceRecord.builder()
                     .userId(1L)
                     .attendanceDate(DateTimeUtil.toInstant(LocalDate.of(2026, 5, 10)))
@@ -1187,9 +1208,6 @@ class AttendanceRecordServiceTest {
         @Test
         @DisplayName("月境界: 前月最終日は前月の集計へ、当月初日は当月の集計へ振り分ける")
         void monthBoundaryDates_areAssignedToCorrectMonth() {
-            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
-            when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
-
             // 2026-05の集計期間は 2026-04-21〜2026-05-20、2026-06の集計期間は 2026-05-21〜2026-06-20
             AttendanceRecord mayLastDay = AttendanceRecord.builder()
                     .userId(1L)

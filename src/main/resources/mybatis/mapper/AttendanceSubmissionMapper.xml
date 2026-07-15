@@ -49,6 +49,14 @@
         ORDER BY submitted_at ASC
     </select>
 
+    <select id="selectByTargetYearMonthAndUserIds" resultMap="attendanceSubmissionResultMap">
+        SELECT * FROM attendance_submissions
+        WHERE target_year_month = #{targetYearMonth}
+        AND user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">#{userId}</foreach>
+        ORDER BY submitted_at ASC
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="submissionId">
         INSERT INTO attendance_submissions (
             user_id,

@@ -54,17 +54,17 @@
                             <div class="form-group">
                                 <span class="form-label">期間種別 <span class="text-danger font-bold">*</span></span>
                                 <div class="flex flex-wrap gap-4 mt-1">
-                                    <label class="inline-flex items-center gap-2 text-sm text-txt-primary cursor-pointer">
+                                    <label class="choice-label gap-2 text-sm text-txt-primary">
                                         <input type="radio" id="durationFullDay" name="leaveDurationType" value="FULL_DAY"
                                                th:checked="${selectedLeaveDurationType == null or selectedLeaveDurationType == 'FULL_DAY'}">
                                         終日
                                     </label>
-                                    <label class="inline-flex items-center gap-2 text-sm text-txt-primary cursor-pointer">
+                                    <label class="choice-label gap-2 text-sm text-txt-primary">
                                         <input type="radio" id="durationAmHalf" name="leaveDurationType" value="AM_HALF"
                                                th:checked="${selectedLeaveDurationType == 'AM_HALF'}">
                                         午前半休
                                     </label>
-                                    <label class="inline-flex items-center gap-2 text-sm text-txt-primary cursor-pointer">
+                                    <label class="choice-label gap-2 text-sm text-txt-primary">
                                         <input type="radio" id="durationPmHalf" name="leaveDurationType" value="PM_HALF"
                                                th:checked="${selectedLeaveDurationType == 'PM_HALF'}">
                                         午後半休

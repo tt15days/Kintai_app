@@ -31,9 +31,6 @@
                 <i class="fa-solid fa-right-to-bracket"></i> 再度ログインする
             </a>
 
-            <div class="text-xs text-txt-secondary/60 mt-4" id="countdown">
-                5秒後に自動的にログインページへ移動します...
-            </div>
         </div>
     </div>
 
@@ -53,23 +50,8 @@
                 document.getElementById('logoutTime').textContent = timeString;
             }
 
-            function startCountdown() {
-                let remaining = 5;
-                const countdownEl = document.getElementById('countdown');
-                const interval = setInterval(() => {
-                    remaining--;
-                    if (remaining > 0) {
-                        countdownEl.textContent = remaining + '秒後に自動的にログインページへ移動します...';
-                    } else {
-                        clearInterval(interval);
-                        window.location.href = /*[[@{/login}]]*/ '/login';
-                    }
-                }, 1000);
-            }
-
             document.addEventListener('DOMContentLoaded', function () {
                 setLogoutTime();
-                startCountdown();
             });
         </script>
     </th:block>

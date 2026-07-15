@@ -11,7 +11,7 @@
     </parent>
     <groupId>com.attendance</groupId>
     <artifactId>attendance-app</artifactId>
-    <version>0.0.10</version>
+    <version>0.0.11</version>
     <name>attendance-app</name>
     <description>Attendance Management System</description>
     <properties>
@@ -244,17 +244,7 @@
                 <spring.profiles.active>release</spring.profiles.active>
             </properties>
             <build>
-                <plugins>
-                    <!-- releaseプロファイルではテストをスキップ -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </plugin>
-                </plugins>
-               <resources>
+                <resources>
                     <resource>
                         <directory>src/main/resources</directory>
                         <excludes>

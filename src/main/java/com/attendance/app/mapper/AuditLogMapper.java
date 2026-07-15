@@ -16,7 +16,7 @@ public interface AuditLogMapper {
      * @param id 監査ログID
      * @return 監査ログ。存在しない場合はnull
      */
-    AuditLog findById(Integer id);
+    AuditLog findById(Long id);
 
     /**
      * 全ての監査ログを取得します。
@@ -33,19 +33,4 @@ public interface AuditLogMapper {
      */
     int insert(AuditLog entity);
 
-    /**
-     * 監査ログを更新します。
-     * 
-     * @param entity 更新する監査ログエンティティ
-     * @return 更新された件数
-     */
-    int update(AuditLog entity);
-
-    /**
-     * IDを指定して監査ログを削除します。
-     * 
-     * @param id 削除対象の監査ログID
-     * @return 削除された件数
-     */
-    int delete(Integer id);
 }

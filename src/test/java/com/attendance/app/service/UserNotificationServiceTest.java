@@ -1,6 +1,5 @@
 package com.attendance.app.service;
 
-import com.attendance.app.dto.UserNotificationKeyDto;
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserNotification;
 import com.attendance.app.entity.UserRole;
@@ -132,11 +131,12 @@ class UserNotificationServiceTest {
                 AttendanceSubmission.builder().userId(3L).status(AttendanceSubmissionService.STATUS_RETURNED).build(),
                 AttendanceSubmission.builder().userId(4L).status(AttendanceSubmissionService.STATUS_WITHDRAWN).build(),
                 AttendanceSubmission.builder().userId(5L).status(AttendanceSubmissionService.STATUS_APPROVED).build()));
+            when(userNotificationMapper.insertBatchIfAbsent(org.mockito.ArgumentMatchers.any())).thenReturn(1);
 
             int count = service.createRemindersForUnsubmittedUsers(target);
 
             ArgumentCaptor<UserNotification> captor = ArgumentCaptor.forClass(UserNotification.class);
-            verify(userNotificationMapper, org.mockito.Mockito.times(3)).insert(captor.capture());
+            verify(userNotificationMapper, org.mockito.Mockito.times(3)).insertBatchIfAbsent(captor.capture());
             assertThat(count).isEqualTo(3);
             assertThat(captor.getAllValues())
                 .extracting(u -> u.getUserId())
@@ -144,10 +144,13 @@ class UserNotificationServiceTest {
             assertThat(captor.getAllValues())
                 .extracting(u -> u.getNotificationType())
                 .containsOnly(UserNotificationService.TYPE_REMINDER);
+            assertThat(captor.getAllValues())
+                .extracting(UserNotification::getIdempotencyKey)
+                .containsOnly("2026-06");
         }
 
         @Test
-        @DisplayName("当月分のREMINDER通知が既に存在するユーザーへは重複作成しない（手動送信と自動ポーリングの重複対策）")
+        @DisplayName("同一対象月のREMINDERは原子的な挿入結果だけを件数へ加算する")
         void skipsUsersWithExistingReminderThisMonth() {
             YearMonth target = YearMonth.of(2026, 6);
             User alreadyReminded = User.builder().userId(2L).userRole(UserRole.USER).build();
@@ -155,19 +158,15 @@ class UserNotificationServiceTest {
 
             when(userService.getActiveUsers()).thenReturn(List.of(alreadyReminded, notYetReminded));
             when(attendanceSubmissionService.getSubmissionsByTargetYearMonth(target)).thenReturn(List.of());
-            UserNotificationKeyDto existingKey = new UserNotificationKeyDto();
-            existingKey.setUserId(2L);
-            existingKey.setNotificationType(UserNotificationService.TYPE_REMINDER);
-            when(userNotificationMapper.selectExistingNotificationKeys(
-                    org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any()))
-                    .thenReturn(List.of(existingKey));
+            when(userNotificationMapper.insertBatchIfAbsent(org.mockito.ArgumentMatchers.any()))
+                    .thenReturn(0, 1);
 
             int count = service.createRemindersForUnsubmittedUsers(target);
 
             assertThat(count).isEqualTo(1);
             ArgumentCaptor<UserNotification> captor = ArgumentCaptor.forClass(UserNotification.class);
-            verify(userNotificationMapper, org.mockito.Mockito.times(1)).insert(captor.capture());
-            assertThat(captor.getValue().getUserId()).isEqualTo(3L);
+            verify(userNotificationMapper, org.mockito.Mockito.times(2)).insertBatchIfAbsent(captor.capture());
+            assertThat(captor.getAllValues()).extracting(UserNotification::getUserId).containsExactly(2L, 3L);
         }
         }
 
@@ -180,9 +179,9 @@ class UserNotificationServiceTest {
         User admin = User.builder().userId(13L).userRole(UserRole.ADMIN).isActive(true).build();
 
         when(userService.getActiveUsers()).thenReturn(List.of(applicant, approver, nonApprover, admin));
-        when(attendanceSubmissionService.canApprove(approver, 10L)).thenReturn(true);
-        when(attendanceSubmissionService.canApprove(nonApprover, 10L)).thenReturn(false);
-        when(attendanceSubmissionService.canApprove(admin, 10L)).thenReturn(true);
+        when(attendanceSubmissionService.canApproveAllForApplicant(10L,
+                List.of(applicant, approver, nonApprover, admin)))
+                .thenReturn(java.util.Map.of(10L, false, 11L, true, 12L, false, 13L, true));
 
         service.notifyApproversNewSubmission(10L, "申請者A", "2026-06");
 

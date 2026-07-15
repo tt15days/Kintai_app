@@ -14,18 +14,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AlertBatchService {
+
+    private static final int BATCH_PAGE_SIZE = 100;
 
     private static final String BATCH_LOG_START = "バッチ開始: {}";
     private static final String BATCH_LOG_DONE  = "バッチ完了: {}";
@@ -50,10 +50,10 @@ public class AlertBatchService {
         LocalDate currentDate = DateTimeUtil.todayJapan();
         // 36協定は直近で締まった勤怠期間（設定された締め日基準）を対象とする
         YearMonth lastMonth = YearMonth.from(currentDate).minusMonths(1);
-        int startDay = attendancePeriodSettingService.getStartDay();
-        int endDay = attendancePeriodSettingService.getEndDay();
-        LocalDate startDate = lastMonth.minusMonths(1).atDay(startDay);
-        LocalDate endDate = lastMonth.atDay(endDay);
+        AttendancePeriodSettingService.AttendancePeriod period =
+                attendancePeriodSettingService.resolvePeriod(lastMonth);
+        LocalDate startDate = period.startDate();
+        LocalDate endDate = period.endDate();
 
         log.info(BATCH_LOG_START, "36協定アラートバッチ");
         try {
@@ -81,10 +81,10 @@ public class AlertBatchService {
     public void runAlertBatchManually(YearMonth targetMonth) {
         log.info("手動アラートバッチ処理を開始します。対象年月: {}", targetMonth);
 
-        int startDay = attendancePeriodSettingService.getStartDay();
-        int endDay = attendancePeriodSettingService.getEndDay();
-        LocalDate startDate = targetMonth.minusMonths(1).atDay(startDay);
-        LocalDate endDate = targetMonth.atDay(endDay);
+        AttendancePeriodSettingService.AttendancePeriod period =
+                attendancePeriodSettingService.resolvePeriod(targetMonth);
+        LocalDate startDate = period.startDate();
+        LocalDate endDate = period.endDate();
         LocalDate currentDate = DateTimeUtil.todayJapan();
 
         checkArticle36Alerts(startDate, endDate);
@@ -100,17 +100,17 @@ public class AlertBatchService {
 
         log.info("36協定アラートチェック開始 (期間: {} - {}, 第1閾値: {}, 第2閾値: {})", startDate, endDate, limit1, limit2);
 
-        // 第1閾値を超過しているユーザーを取得（第2閾値超過者も含まれる）
-        List<Article36AlertDto> alertUsers = alertBatchMapper.findUsersExceedingOvertimeLimit(startDate, endDate, limit1);
-        Instant periodSince = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-
-        // N+1対策として対象ユーザー分の重複チェックを1クエリで一括取得する
-        List<Long> userIds = alertUsers.stream().map(Article36AlertDto::getUserId).toList();
-        Set<String> existingKeys = fetchExistingNotificationKeys(
-                userIds, List.of("ALERT_ARTICLE_36_LIMIT1", "ALERT_ARTICLE_36_LIMIT2"), periodSince);
+        String idempotencyKey = startDate + "/" + endDate;
 
         int count = 0;
-        for (Article36AlertDto dto : alertUsers) {
+        long afterUserId = 0;
+        while (true) {
+            List<Article36AlertDto> alertUsers = alertBatchMapper.findUsersExceedingOvertimeLimit(
+                    startDate, endDate, limit1, afterUserId, BATCH_PAGE_SIZE);
+            if (alertUsers.isEmpty()) {
+                break;
+            }
+            for (Article36AlertDto dto : alertUsers) {
             int hours = dto.getTotalOvertimeHours().intValue();
             BigDecimal displayHours = dto.getTotalOvertimeHours().setScale(1, RoundingMode.HALF_UP);
             String message;
@@ -128,17 +128,13 @@ public class AlertBatchService {
                         startDate, endDate, displayHours, limit1);
             }
 
-            if (existingKeys.contains(notificationKey(dto.getUserId(), type))) {
-                // 同一対象期間について既に同種の通知が送信済みのためスキップ
-                continue;
-            }
-
             try {
-                createNotification(dto.getUserId(), message, type);
-                count++;
+                count += createBatchNotification(dto.getUserId(), message, type, idempotencyKey);
             } catch (Exception e) {
                 log.error("ユーザー {} への36協定アラート通知作成に失敗しました。", dto.getUserId(), e);
             }
+            }
+            afterUserId = alertUsers.get(alertUsers.size() - 1).getUserId();
         }
         log.info("36協定アラート: {} 件の通知を作成しました。", count);
     }
@@ -149,58 +145,40 @@ public class AlertBatchService {
 
         log.info("有給消化アラートチェック開始 (基準日: {}, 経過月数: {}, 基準日数: {})", currentDate, months, days);
 
-        List<PaidLeaveAlertDto> alertUsers = alertBatchMapper.findUsersWithInsufficientPaidLeave(months, days, currentDate);
         String type = "ALERT_PAID_LEAVE";
-        Instant monthSince = YearMonth.from(currentDate).atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
-
-        // N+1対策として対象ユーザー分の重複チェックを1クエリで一括取得する
-        List<Long> userIds = alertUsers.stream().map(PaidLeaveAlertDto::getUserId).toList();
-        Set<String> existingKeys = fetchExistingNotificationKeys(userIds, List.of(type), monthSince);
+        String idempotencyKey = YearMonth.from(currentDate).toString();
 
         int count = 0;
-        for (PaidLeaveAlertDto dto : alertUsers) {
-            if (existingKeys.contains(notificationKey(dto.getUserId(), type))) {
-                // 当月分の有給消化アラートを既に通知済みのためスキップ
-                continue;
+        long afterUserId = 0;
+        while (true) {
+            List<PaidLeaveAlertDto> alertUsers = alertBatchMapper.findUsersWithInsufficientPaidLeave(
+                    months, days, currentDate, afterUserId, BATCH_PAGE_SIZE);
+            if (alertUsers.isEmpty()) {
+                break;
             }
-
+            for (PaidLeaveAlertDto dto : alertUsers) {
             String message = String.format("【重要: 有給消化】有給休暇が付与された日（%s）から %d ヶ月が経過しましたが、消化日数が %s 日となっており、基準である %d 日を下回っています。計画的な有給取得をお願いします。",
                     dto.getGrantDate(), months, dto.getUsedDays().toString(), days);
 
             try {
-                createNotification(dto.getUserId(), message, type);
-                count++;
+                count += createBatchNotification(dto.getUserId(), message, type, idempotencyKey);
             } catch (Exception e) {
                 log.error("ユーザー {} への有給消化アラート通知作成に失敗しました。", dto.getUserId(), e);
             }
+            }
+            afterUserId = alertUsers.get(alertUsers.size() - 1).getUserId();
         }
         log.info("有給消化アラート: {} 件の通知を作成しました。", count);
     }
 
-    /**
-     * 指定ユーザー・通知種別について、指定日時以降に既に通知済みの (userId, notificationType) の
-     * 組み合わせをまとめて取得します（IN句バルク取得によるN+1対策）。
-     */
-    private Set<String> fetchExistingNotificationKeys(List<Long> userIds, List<String> types, Instant since) {
-        if (userIds.isEmpty()) {
-            return Set.of();
-        }
-        return userNotificationMapper.selectExistingNotificationKeys(userIds, types, since).stream()
-                .map(k -> notificationKey(k.getUserId(), k.getNotificationType()))
-                .collect(Collectors.toSet());
-    }
-
-    private String notificationKey(Long userId, String type) {
-        return userId + "_" + type;
-    }
-
-    private void createNotification(Long userId, String message, String type) {
+    private int createBatchNotification(Long userId, String message, String type, String idempotencyKey) {
         UserNotification notification = new UserNotification();
         notification.setUserId(userId);
         notification.setMessage(message);
         notification.setIsRead(false);
         notification.setNotificationType(type);
+        notification.setIdempotencyKey(idempotencyKey);
 
-        userNotificationMapper.insert(notification);
+        return userNotificationMapper.insertBatchIfAbsent(notification);
     }
 }

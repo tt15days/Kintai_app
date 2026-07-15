@@ -12,6 +12,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -30,7 +31,7 @@ public class AdminAttendanceExportController {
     private final PayrollExportService payrollExportService;
 
     @GetMapping("/export-payroll-csv")
-    public ResponseEntity<byte[]> exportPayrollCsv(
+    public ResponseEntity<StreamingResponseBody> exportPayrollCsv(
             @RequestParam String yearMonth,
             @RequestParam PayrollExportFormat format,
             @RequestParam(defaultValue = "Shift_JIS") String encoding) {
@@ -48,19 +49,18 @@ public class AdminAttendanceExportController {
             } else {
                 charset = Charset.forName("Shift_JIS");
             }
+            final YearMonth exportMonth = targetMonth;
+            final Charset exportCharset = charset;
 
-            byte[] gzipData = payrollExportService.generatePayrollCsvGzip(targetMonth, format, charset);
-
-            String filename = "payroll_" + format.name().toLowerCase() + "_" + targetMonth.toString() + ".csv.gz";
+            String filename = "payroll_" + format.name().toLowerCase() + "_" + exportMonth.toString() + ".csv.gz";
             String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename)
                     .contentType(MediaType.parseMediaType("application/gzip"))
-                    .contentLength(gzipData.length)
-                    .body(gzipData);
+                    .body(outputStream -> payrollExportService.writePayrollCsvGzip(exportMonth, format, exportCharset, outputStream));
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("給与CSV(GZIP)の生成に失敗しました: yearMonth={}, format={}", yearMonth, format, e);
             return ResponseEntity.internalServerError().build();
         }

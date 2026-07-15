@@ -69,10 +69,60 @@
         FROM users WHERE deleted_at IS NULL ORDER BY user_id ASC
     </select>
 
+    <select id="selectByIds" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
+        FROM users WHERE user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">#{userId}</foreach>
+    </select>
+
+    <sql id="userFilter">
+        <where>
+            <choose>
+                <when test="activeOnly">is_active = true AND deleted_at IS NULL</when>
+                <otherwise>deleted_at IS NULL</otherwise>
+            </choose>
+            <if test="excludeAdmin">AND user_role != 'ADMIN'</if>
+            <if test="department != null and department != '' and department != 'All Departments'">AND class_name = #{department}</if>
+            <if test="keyword != null and keyword.trim() != ''">
+                AND (LOWER(full_name) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                     OR LOWER(emp_no) LIKE CONCAT('%', LOWER(#{keyword}), '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectPage" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
+        FROM users
+        <include refid="userFilter"/>
+        ORDER BY user_id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectAfterId" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
+        FROM users
+        <include refid="userFilter"/>
+        AND user_id &gt; #{afterUserId}
+        ORDER BY user_id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByFilter" resultType="long">
+        SELECT COUNT(*) FROM users
+        <include refid="userFilter"/>
+    </select>
+
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectByRole" resultMap="userResultMap">
         SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
         FROM users WHERE user_role = #{role} AND deleted_at IS NULL ORDER BY created_at DESC
+    </select>
+
+    <select id="selectActiveAdmins" resultMap="userResultMap">
+        SELECT user_id, emp_no, department, employment_type, email, password, password_reset_required, full_name, position_title, phone_number, class_name, paid_leave_days, notes, user_role, can_approve_attendance, is_active, deleted_at, created_at, updated_at, last_login_at, annual_leave_grant_days, annual_leave_increment, max_paid_leave_days, failed_login_count, locked_until, account_locked, hire_date, scheduled_end_date
+        FROM users
+        WHERE user_role = 'ADMIN' AND is_active = true AND deleted_at IS NULL
+        ORDER BY user_id ASC
     </select>
 
     <!-- 利用終了日を過ぎた有効ユーザー（日次自動無効化バッチ用） -->

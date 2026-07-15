@@ -59,11 +59,9 @@ class SettingsControllerTest {
     void showSettings_withNullSettings_setsDefaultValues() {
         // Arrange
         when(systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DATE")).thenReturn(null);
-        when(systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DAYS")).thenReturn(null);
         when(systemSettingService.getSettingValue("COPYRIGHT_TEXT")).thenReturn(null);
         when(systemSettingService.getSettingValue("SYSTEM_NAME")).thenReturn(null);
 
-        when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
         when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
         when(batchSettingService.getMonthlySummaryDaysAfterEnd()).thenReturn(5);
         when(batchSettingService.getReminderDay()).thenReturn(25);
@@ -83,10 +81,10 @@ class SettingsControllerTest {
         // Assert
         assertThat(viewName).isEqualTo("admin/settings");
         assertThat(model.get("paidLeaveGrantDate")).isEqualTo("04-01");
-        assertThat(model.get("paidLeaveGrantDays")).isEqualTo("10");
         assertThat(model.get("copyrightText")).isEqualTo("© 2026 勤怠管理システム");
         assertThat(model.get("systemName")).isEqualTo("勤怠管理システム");
-        assertThat(model.get("attendancePeriodStartDay")).isEqualTo(21);
+        assertThat(model.get("attendancePeriodEndDay")).isEqualTo(20);
+        assertThat(model).doesNotContainKey("attendancePeriodStartDay");
         assertThat(model.get("existingHolidays")).isEqualTo(Collections.emptyList());
         assertThat(model.get("holidayCount")).isEqualTo(0);
     }
@@ -96,11 +94,9 @@ class SettingsControllerTest {
     void showSettings_withExistingSettings_setsExistingValues() {
         // Arrange
         when(systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DATE")).thenReturn("10-01");
-        when(systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DAYS")).thenReturn("20");
         when(systemSettingService.getSettingValue("COPYRIGHT_TEXT")).thenReturn("© Custom Copyright");
         when(systemSettingService.getSettingValue("SYSTEM_NAME")).thenReturn("Custom System");
 
-        when(attendancePeriodSettingService.getStartDay()).thenReturn(1);
         when(attendancePeriodSettingService.getEndDay()).thenReturn(31);
         when(holidayService.getAllHolidays()).thenReturn(List.of(new Holiday()));
 
@@ -112,10 +108,22 @@ class SettingsControllerTest {
         // Assert
         assertThat(viewName).isEqualTo("admin/settings");
         assertThat(model.get("paidLeaveGrantDate")).isEqualTo("10-01");
-        assertThat(model.get("paidLeaveGrantDays")).isEqualTo("20");
         assertThat(model.get("copyrightText")).isEqualTo("© Custom Copyright");
         assertThat(model.get("systemName")).isEqualTo("Custom System");
         assertThat(model.get("holidayCount")).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("showSettings: 保存済みの02-29は02-28として表示する")
+    void showSettings_withLegacyLeapDay_normalizesToFeb28() {
+        when(systemSettingService.getSettingValue("PAID_LEAVE_GRANT_DATE")).thenReturn("02-29");
+        when(holidayService.getAllHolidays()).thenReturn(Collections.emptyList());
+
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        controller.showSettings(model);
+
+        assertThat(model.get("paidLeaveGrantDate")).isEqualTo("02-28");
     }
 
     @Test
@@ -148,11 +156,11 @@ class SettingsControllerTest {
     void saveSettings_validParameters_success() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
 
-        String viewName = controller.saveSettings("04-01", "10", redirectAttributes);
+        String viewName = controller.saveSettings("04-01", redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("message")).isEqualTo("システム設定を更新しました。");
-        verify(systemSettingService).updatePaidLeaveGrantSettings("04-01", 10);
+        verify(systemSettingService).updatePaidLeaveGrantDate("04-01");
     }
 
     @Test
@@ -160,7 +168,7 @@ class SettingsControllerTest {
     void saveSettings_invalidDatePattern_returnsError() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
 
-        String viewName = controller.saveSettings("04/01", "10", redirectAttributes);
+        String viewName = controller.saveSettings("04/01", redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
@@ -173,55 +181,29 @@ class SettingsControllerTest {
     void saveSettings_nonexistentDate_returnsError() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
 
-        String viewName = controller.saveSettings("02-31", "10", redirectAttributes);
+        String viewName = controller.saveSettings("02-31", redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
                 .isEqualTo("有給付与日は実在する月日を入力してください。");
         assertThat(redirectAttributes.getFlashAttributes().get("paidLeaveGrantDate")).isEqualTo("02-31");
-        assertThat(redirectAttributes.getFlashAttributes().get("paidLeaveGrantDays")).isEqualTo("10");
         assertThat(redirectAttributes.getFlashAttributes().get("errorField")).isEqualTo("paidLeaveGrantDate");
-        verify(systemSettingService, never()).updatePaidLeaveGrantSettings(any(), anyInt());
+        verify(systemSettingService, never()).updatePaidLeaveGrantDate(any());
     }
 
     @Test
-    @DisplayName("saveSettings: 有給付与日数が範囲外（下限）の場合はエラーを返す")
-    void saveSettings_outOfBoundsDaysLow_returnsError() {
+    @DisplayName("saveSettings: 02-29は02-28への入力を促して拒否する")
+    void saveSettings_leapDay_returnsError() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
 
-        String viewName = controller.saveSettings("04-01", "0", redirectAttributes);
+        String viewName = controller.saveSettings("02-29", redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
-                .isEqualTo("有給付与日数は1〜40の範囲で指定してください。");
-        verify(systemSettingService, never()).updateSettingValue(any(), any());
+                .isEqualTo("有給付与日に02-29は設定できません。02-28を入力してください。");
+        verify(systemSettingService, never()).updatePaidLeaveGrantDate(any());
     }
 
-    @Test
-    @DisplayName("saveSettings: 有給付与日数が範囲外（上限）の場合はエラーを返す")
-    void saveSettings_outOfBoundsDaysHigh_returnsError() {
-        RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-
-        String viewName = controller.saveSettings("04-01", "41", redirectAttributes);
-
-        assertThat(viewName).isEqualTo("redirect:/admin/settings");
-        assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
-                .isEqualTo("有給付与日数は1〜40の範囲で指定してください。");
-        verify(systemSettingService, never()).updateSettingValue(any(), any());
-    }
-
-    @Test
-    @DisplayName("saveSettings: 有給付与日数が数値以外の場合はエラーを返す")
-    void saveSettings_nonNumericDays_returnsError() {
-        RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-
-        String viewName = controller.saveSettings("04-01", "abc", redirectAttributes);
-
-        assertThat(viewName).isEqualTo("redirect:/admin/settings");
-        assertThat(redirectAttributes.getFlashAttributes().get("errorMessage"))
-                .isEqualTo("有給付与日数は有効な数値を入力してください。");
-        verify(systemSettingService, never()).updateSettingValue(any(), any());
-    }
 
     @Test
     @DisplayName("updateCopyrightSetting: 正常値の更新")
@@ -273,11 +255,11 @@ class SettingsControllerTest {
     }
 
     @Test
-    @DisplayName("updateSystemNameSetting: 正常値の更新")
+    @DisplayName("updateSystemNameSetting: 前後の空白を除去して正常値を更新")
     void updateSystemNameSetting_success() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
 
-        String viewName = controller.updateSystemNameSetting("New System Name", redirectAttributes);
+        String viewName = controller.updateSystemNameSetting("  New System Name  ", redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
         assertThat(redirectAttributes.getFlashAttributes().get("message")).isEqualTo("システム名表示設定を更新しました");
@@ -325,35 +307,36 @@ class SettingsControllerTest {
     void updateAttendancePeriod_success() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
 
-        String viewName = controller.updateAttendancePeriod(21, 20, redirectAttributes);
+        String viewName = controller.updateAttendancePeriod(20, redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
-        assertThat((String) redirectAttributes.getFlashAttributes().get("message")).contains("勤怠期間設定を更新しました");
-        verify(attendancePeriodSettingService).updatePeriod(21, 20);
+        assertThat((String) redirectAttributes.getFlashAttributes().get("message")).contains("勤怠締め日を更新しました");
+        verify(attendancePeriodSettingService).updateEndDay(20);
     }
 
     @Test
     @DisplayName("updateAttendancePeriod: IllegalArgumentException 発生時のハンドリング")
     void updateAttendancePeriod_invalidArgs_returnsError() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-        doThrow(new IllegalArgumentException("開始日は1から28の間で指定してください。")).when(attendancePeriodSettingService).updatePeriod(anyInt(), anyInt());
+        doThrow(new IllegalArgumentException("締め日は1から28の間で指定してください。"))
+                .when(attendancePeriodSettingService).updateEndDay(anyInt());
 
-        String viewName = controller.updateAttendancePeriod(30, 29, redirectAttributes);
+        String viewName = controller.updateAttendancePeriod(29, redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
-        assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("開始日は1から28の間で指定してください。");
+        assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("締め日は1から28の間で指定してください。");
     }
 
     @Test
     @DisplayName("updateAttendancePeriod: その他例外発生時のハンドリング")
     void updateAttendancePeriod_exception_returnsError() {
         RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-        doThrow(new RuntimeException("Other error")).when(attendancePeriodSettingService).updatePeriod(anyInt(), anyInt());
+        doThrow(new RuntimeException("Other error")).when(attendancePeriodSettingService).updateEndDay(anyInt());
 
-        String viewName = controller.updateAttendancePeriod(21, 20, redirectAttributes);
+        String viewName = controller.updateAttendancePeriod(20, redirectAttributes);
 
         assertThat(viewName).isEqualTo("redirect:/admin/settings");
-        assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("勤怠期間設定の更新に失敗しました");
+        assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("勤怠締め日の更新に失敗しました");
     }
 
     @Test

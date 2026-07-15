@@ -52,13 +52,12 @@ public class SettingsController {
 
     private void populateSettingsModel(Model model) {
         String grantDate = systemSettingService.getSettingValue(SystemSettingService.PAID_LEAVE_GRANT_DATE_KEY);
-        String grantDays = systemSettingService.getSettingValue(SystemSettingService.PAID_LEAVE_GRANT_DAYS_KEY);
         String copyrightText = systemSettingService.getSettingValue("COPYRIGHT_TEXT");
         String systemName = systemSettingService.getSettingValue("SYSTEM_NAME");
         String empNoPrefix = systemSettingService.getSettingValue("EMP_NO_PREFIX");
 
         if (grantDate == null) grantDate = SystemSettingService.DEFAULT_PAID_LEAVE_GRANT_DATE;
-        if (grantDays == null) grantDays = SystemSettingService.DEFAULT_PAID_LEAVE_GRANT_DAYS;
+        if ("02-29".equals(grantDate)) grantDate = "02-28";
         if (copyrightText == null || copyrightText.trim().isEmpty()) {
             copyrightText = "© 2026 勤怠管理システム";
         }
@@ -70,11 +69,9 @@ public class SettingsController {
         }
 
         addIfAbsent(model, "paidLeaveGrantDate", grantDate);
-        addIfAbsent(model, "paidLeaveGrantDays", grantDays);
         addIfAbsent(model, "copyrightText", copyrightText);
         addIfAbsent(model, "systemName", systemName);
         addIfAbsent(model, "empNoPrefix", empNoPrefix);
-        addIfAbsent(model, "attendancePeriodStartDay", attendancePeriodSettingService.getStartDay());
         addIfAbsent(model, "attendancePeriodEndDay", attendancePeriodSettingService.getEndDay());
         addIfAbsent(model, "batchSettingDaysAfterEnd", batchSettingService.getMonthlySummaryDaysAfterEnd());
         addIfAbsent(model, "batchSettingReminderDay", batchSettingService.getReminderDay());
@@ -108,11 +105,10 @@ public class SettingsController {
     @PostMapping
     public String saveSettings(
             @RequestParam String paidLeaveGrantDate,
-            @RequestParam String paidLeaveGrantDays,
             RedirectAttributes redirectAttributes) {
         
         if (paidLeaveGrantDate == null || !paidLeaveGrantDate.matches("^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$")) {
-            preserveForm(redirectAttributes, "paidLeaveGrantDate", "paidLeaveGrantDate", paidLeaveGrantDate, "paidLeaveGrantDays", paidLeaveGrantDays);
+            preserveForm(redirectAttributes, "paidLeaveGrantDate", "paidLeaveGrantDate", paidLeaveGrantDate);
             redirectAttributes.addFlashAttribute("errorMessage", "有給付与日はMM-DD形式（例: 04-01）で入力してください。");
             return "redirect:/admin/settings";
         }
@@ -120,26 +116,18 @@ public class SettingsController {
         try {
             MonthDay.parse("--" + paidLeaveGrantDate);
         } catch (DateTimeParseException e) {
-            preserveForm(redirectAttributes, "paidLeaveGrantDate", "paidLeaveGrantDate", paidLeaveGrantDate, "paidLeaveGrantDays", paidLeaveGrantDays);
+            preserveForm(redirectAttributes, "paidLeaveGrantDate", "paidLeaveGrantDate", paidLeaveGrantDate);
             redirectAttributes.addFlashAttribute("errorMessage", "有給付与日は実在する月日を入力してください。");
             return "redirect:/admin/settings";
         }
 
-        int grantDays;
-        try {
-            grantDays = Integer.parseInt(paidLeaveGrantDays.trim());
-            if (grantDays < 1 || grantDays > 40) {
-                preserveForm(redirectAttributes, "paidLeaveGrantDays", "paidLeaveGrantDate", paidLeaveGrantDate, "paidLeaveGrantDays", paidLeaveGrantDays);
-                redirectAttributes.addFlashAttribute("errorMessage", "有給付与日数は1〜40の範囲で指定してください。");
-                return "redirect:/admin/settings";
-            }
-        } catch (NumberFormatException e) {
-            preserveForm(redirectAttributes, "paidLeaveGrantDays", "paidLeaveGrantDate", paidLeaveGrantDate, "paidLeaveGrantDays", paidLeaveGrantDays);
-            redirectAttributes.addFlashAttribute("errorMessage", "有給付与日数は有効な数値を入力してください。");
+        if ("02-29".equals(paidLeaveGrantDate)) {
+            preserveForm(redirectAttributes, "paidLeaveGrantDate", "paidLeaveGrantDate", paidLeaveGrantDate);
+            redirectAttributes.addFlashAttribute("errorMessage", "有給付与日に02-29は設定できません。02-28を入力してください。");
             return "redirect:/admin/settings";
         }
-        
-        systemSettingService.updatePaidLeaveGrantSettings(paidLeaveGrantDate, grantDays);
+
+        systemSettingService.updatePaidLeaveGrantDate(paidLeaveGrantDate);
 
         redirectAttributes.addFlashAttribute("message", "システム設定を更新しました。");
         return "redirect:/admin/settings";
@@ -175,22 +163,23 @@ public class SettingsController {
     public String updateSystemNameSetting(
             @RequestParam String systemName,
             RedirectAttributes redirectAttributes) {
-        if (systemName == null || systemName.trim().isEmpty()) {
+        String normalizedSystemName = systemName == null ? "" : systemName.trim();
+        if (normalizedSystemName.isEmpty()) {
             preserveForm(redirectAttributes, "systemName", "systemName", systemName);
             redirectAttributes.addFlashAttribute("errorMessage", "システム名を入力してください");
             return "redirect:/admin/settings";
         }
-        if (systemName.length() > 255) {
+        if (normalizedSystemName.length() > 255) {
             preserveForm(redirectAttributes, "systemName", "systemName", systemName);
             redirectAttributes.addFlashAttribute("errorMessage", "システム名は255文字以内で入力してください");
             return "redirect:/admin/settings";
         }
         try {
-            systemSettingService.updateSettingValue("SYSTEM_NAME", systemName);
+            systemSettingService.updateSettingValue("SYSTEM_NAME", normalizedSystemName);
             redirectAttributes.addFlashAttribute("message", "システム名表示設定を更新しました");
-            log.info("システム名表示設定を更新: {}", systemName);
+            log.info("システム名表示設定を更新: length={}", normalizedSystemName.length());
         } catch (Exception e) {
-            preserveForm(redirectAttributes, "systemName", "systemName", systemName);
+            preserveForm(redirectAttributes, "systemName", "systemName", normalizedSystemName);
             redirectAttributes.addFlashAttribute("errorMessage", "システム名表示設定の更新に失敗しました");
             log.error("システム名表示設定の更新に失敗", e);
         }
@@ -221,22 +210,21 @@ public class SettingsController {
 
     @PostMapping("/attendance-period")
     public String updateAttendancePeriod(
-            @RequestParam int startDay,
             @RequestParam int endDay,
             RedirectAttributes redirectAttributes) {
         try {
-            attendancePeriodSettingService.updatePeriod(startDay, endDay);
+            attendancePeriodSettingService.updateEndDay(endDay);
             redirectAttributes.addFlashAttribute("message",
-                    "勤怠期間設定を更新しました（前月" + startDay + "日〜当月" + endDay + "日）");
-            log.info("勤怠期間設定を更新: startDay={}, endDay={}", startDay, endDay);
+                    "勤怠締め日を更新しました（毎月" + endDay + "日締め）");
+            log.info("勤怠締め日を更新: endDay={}", endDay);
         } catch (IllegalArgumentException e) {
-            preserveForm(redirectAttributes, "startDay", "attendancePeriodStartDay", startDay, "attendancePeriodEndDay", endDay);
+            preserveForm(redirectAttributes, "endDay", "attendancePeriodEndDay", endDay);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            log.warn("勤怠期間設定の更新に失敗", e);
+            log.warn("勤怠締め日の更新に失敗", e);
         } catch (Exception e) {
-            preserveForm(redirectAttributes, "startDay", "attendancePeriodStartDay", startDay, "attendancePeriodEndDay", endDay);
-            redirectAttributes.addFlashAttribute("errorMessage", "勤怠期間設定の更新に失敗しました");
-            log.error("勤怠期間設定の更新に失敗", e);
+            preserveForm(redirectAttributes, "endDay", "attendancePeriodEndDay", endDay);
+            redirectAttributes.addFlashAttribute("errorMessage", "勤怠締め日の更新に失敗しました");
+            log.error("勤怠締め日の更新に失敗", e);
         }
         return "redirect:/admin/settings";
     }

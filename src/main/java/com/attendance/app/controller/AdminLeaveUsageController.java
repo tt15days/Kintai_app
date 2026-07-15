@@ -28,6 +28,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AdminLeaveUsageController {
 
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final UserService userService;
     private final PaidLeaveBalanceService paidLeaveBalanceService;
     private final WorkScheduleClassService workScheduleClassService;
@@ -36,11 +39,22 @@ public class AdminLeaveUsageController {
     public String showLeaveUsage(
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String page,
+            @RequestParam(required = false) String size,
             Model model) {
         try {
-            List<User> users = filterUsersByDepartmentAndKeyword(userService.getActiveUsers(), department, keyword);
+            int pageSize = parsePageSize(size);
+            long totalCount = userService.countUsers(department, keyword, true, false);
+            int totalPages = Math.max(1, (int) Math.ceil((double) totalCount / pageSize));
+            int currentPage = Math.min(parsePage(page), totalPages - 1);
+            List<User> users = userService.getUsersPage(department, keyword, true, false,
+                    (long) currentPage * pageSize, pageSize);
             model.addAttribute("department", department);
             model.addAttribute("keyword", keyword);
+            model.addAttribute("page", currentPage);
+            model.addAttribute("pageSize", pageSize);
+            model.addAttribute("totalPages", totalPages);
+            model.addAttribute("totalCount", totalCount);
             List<String> departments = workScheduleClassService.getAllActiveClasses().stream()
                     .map(c -> c.getName())
                     .collect(Collectors.toList());
@@ -92,20 +106,23 @@ public class AdminLeaveUsageController {
         return "admin/leave-usage";
     }
 
-    private List<User> filterUsersByDepartmentAndKeyword(List<User> users, String department, String keyword) {
-        if (department != null && !department.isEmpty() && !"All Departments".equals(department)) {
-            users = users.stream()
-                    .filter(u -> department.equals(u.getClassName()))
-                    .collect(Collectors.toList());
+    public String showLeaveUsage(String department, String keyword, Model model) {
+        return showLeaveUsage(department, keyword, null, null, model);
+    }
+
+    private int parsePage(String page) {
+        try {
+            return Math.max(0, Integer.parseInt(page));
+        } catch (NumberFormatException e) {
+            return 0;
         }
-        if (keyword != null && !keyword.isEmpty()) {
-            String lowerKeyword = keyword.toLowerCase();
-            users = users.stream()
-                    .filter(u -> (u.getFullName() != null && u.getFullName().toLowerCase().contains(lowerKeyword))
-                            ||
-                            (u.getEmpNo() != null && u.getEmpNo().toLowerCase().contains(lowerKeyword)))
-                    .collect(Collectors.toList());
+    }
+
+    private int parsePageSize(String size) {
+        try {
+            return Math.min(MAX_PAGE_SIZE, Math.max(1, Integer.parseInt(size)));
+        } catch (NumberFormatException e) {
+            return DEFAULT_PAGE_SIZE;
         }
-        return users;
     }
 }

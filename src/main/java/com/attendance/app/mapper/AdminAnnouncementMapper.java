@@ -20,11 +20,20 @@ public interface AdminAnnouncementMapper {
     List<AdminAnnouncement> selectActive();
 
     /**
-     * 全お知らせ一覧を作成日時の降順で取得します（管理者用）。
+     * お知らせ一覧を作成日時の降順でページ取得します（管理者用）。
      *
+     * @param offset 取得開始位置
+     * @param limit 最大取得件数
      * @return お知らせ情報のリスト
      */
-    List<AdminAnnouncement> selectAll();
+    List<AdminAnnouncement> selectPage(@Param("offset") long offset, @Param("limit") int limit);
+
+    /**
+     * 未削除のお知らせ件数を取得します。
+     *
+     * @return お知らせ件数
+     */
+    long countAll();
 
     /**
      * IDでお知らせを1件取得します。

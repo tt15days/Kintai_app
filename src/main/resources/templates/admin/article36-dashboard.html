@@ -44,8 +44,9 @@
                 <div>
                     <form method="get" th:action="@{/admin/article36}" class="flex flex-wrap items-center gap-3">
                         <label for="yearMonth" class="text-sm font-semibold text-txt-secondary">対象月:</label>
-                        <input type="month" name="yearMonth" id="yearMonth" class="form-input w-auto text-sm font-mono h-10"
+                        <input type="month" name="yearMonth" id="yearMonth" class="form-input w-auto text-base md:text-sm font-mono h-10"
                                th:value="${baseMonthKey}">
+                        <select name="size" class="form-select h-10"><option value="20" th:selected="${pageSize == 20}">20件</option><option value="50" th:selected="${pageSize == 50}">50件</option><option value="100" th:selected="${pageSize == 100}">100件</option></select>
                         <button type="submit" class="btn btn-primary gap-2 text-sm h-10 px-4 py-2">
                             <i class="fas fa-search"></i> 表示
                         </button>
@@ -93,8 +94,16 @@
                                 </form>
                             </td>
                         </tr>
+                        <tr th:if="${users == null or #lists.isEmpty(users)}">
+                            <td colspan="6" class="py-10 text-center text-txt-secondary">表示対象の従業員がいません。</td>
+                        </tr>
                     </tbody>
                 </table>
+            </div>
+            <div class="flex justify-between items-center mt-4" th:if="${totalPages > 1}">
+                <a class="btn btn-flat text-sm" th:if="${page > 0}" th:href="@{/admin/article36(yearMonth=${baseMonthKey},page=${page - 1},size=${pageSize})}">前へ</a>
+                <span class="text-sm text-txt-secondary" th:text="${page + 1} + ' / ' + ${totalPages} + ' ページ'">1 / 1 ページ</span>
+                <a class="btn btn-flat text-sm" th:if="${page + 1 < totalPages}" th:href="@{/admin/article36(yearMonth=${baseMonthKey},page=${page + 1},size=${pageSize})}">次へ</a>
             </div>
         </div>
 

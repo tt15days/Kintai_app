@@ -61,20 +61,6 @@
         ORDER BY attendance_date ASC
     </select>
 
-    <!-- クエリ最適化: EXTRACT関数によるフルスキャンを回避するため、日付関数を使った範囲検索(>=, <)に修正 -->
-    <select id="selectByUserAndMonth" resultMap="attendanceRecordResultMap">
-        SELECT record_id, user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted
-        FROM attendance_records 
-        WHERE user_id = #{userId}
-        AND attendance_date >= (MAKE_DATE(
-                CASE WHEN #{month} = 1 THEN #{year} - 1 ELSE #{year} END,
-                CASE WHEN #{month} = 1 THEN 12 ELSE #{month} - 1 END,
-                21) AT TIME ZONE 'Asia/Tokyo')
-        AND attendance_date &lt; (MAKE_DATE(#{year}, #{month}, 21) AT TIME ZONE 'Asia/Tokyo')
-        AND is_deleted = false
-        ORDER BY attendance_date ASC
-    </select>
-
     <!-- クエリ最適化: SELECT * をやめ、カラムを明示的に指定 -->
     <select id="selectByUserId" resultMap="attendanceRecordResultMap">
         SELECT record_id, user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted
@@ -119,6 +105,15 @@
         FROM attendance_records
         WHERE attendance_date BETWEEN #{startDate} AND #{endDate}
         AND is_deleted = false
+        ORDER BY user_id ASC, attendance_date ASC
+    </select>
+
+    <select id="selectByDateRangeAndUserIds" resultMap="attendanceRecordResultMap">
+        SELECT record_id, user_id, class_id, attendance_date, start_time, end_time, event_type_id, working_hours, break_time_minutes, overtime_hours, night_shift_hours, holiday_work_hours, remarks, created_at, updated_at, is_deleted
+        FROM attendance_records
+        WHERE attendance_date BETWEEN #{startDate} AND #{endDate}
+          AND is_deleted = false
+          AND user_id IN <foreach collection="userIds" item="userId" open="(" separator="," close=")">#{userId}</foreach>
         ORDER BY user_id ASC, attendance_date ASC
     </select>
 

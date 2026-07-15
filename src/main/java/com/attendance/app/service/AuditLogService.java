@@ -1,10 +1,16 @@
 package com.attendance.app.service;
 
 import com.attendance.app.entity.AuditEventType;
+import com.attendance.app.entity.AuditLog;
+import com.attendance.app.mapper.AuditLogMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
@@ -12,7 +18,7 @@ import java.time.Instant;
  * 操作監査ログサービス。
  *
  * <p>勤怠申請の承認・差戻し・取下げ、ユーザーの作成・更新・削除・パスワード初期化など
- * 業務上重要な更新操作を監査ログファイルへ記録する共通サービス。
+ * 業務上重要な更新操作を監査DBへ追記保存し、コミット後にCSVへ補助出力する共通サービス。
  *
  * <p>設計上の注意:
  * <ul>
@@ -24,6 +30,8 @@ import java.time.Instant;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
+@Transactional
 public class AuditLogService {
 
     /** audit_logs.target_type: 月次勤怠申請 */
@@ -39,6 +47,8 @@ public class AuditLogService {
     public static final String TARGET_TYPE_USER = "USER";
 
     private static final Logger AUDIT_LOGGER = LoggerFactory.getLogger("com.attendance.app.audit");
+
+    private final AuditLogMapper auditLogMapper;
 
     /**
      * 月次勤怠申請に関する監査イベントを記録する。
@@ -113,7 +123,7 @@ public class AuditLogService {
     // ── 内部ヘルパー ──────────────────────────────────────────────────────────
 
     /**
-    * 監査ログの共通記録処理。監査専用ロガーへ CSV 形式で出力する。
+    * 監査ログの共通記録処理。監査DBへ追記し、コミット成功後にCSV形式で補助出力する。
      *
      * @param eventType    イベント種別
      * @param actorUserId  操作者 ID
@@ -130,24 +140,64 @@ public class AuditLogService {
             Long targetId,
             String description) {
 
-        String createdAt = Instant.now().toString();
+        Instant createdAt = Instant.now();
+        String normalizedDescription = normalizeSingleLine(description);
+        AuditLog auditLog = AuditLog.builder()
+                .eventType(eventType)
+                .actorUserId(actorUserId)
+                .targetUserId(targetUserId)
+                .targetType(targetType)
+                .targetId(targetId)
+                .description(normalizedDescription)
+                .createdAt(createdAt)
+                .build();
+        if (auditLogMapper.insert(auditLog) != 1) {
+            throw new IllegalStateException("監査ログを保存できませんでした");
+        }
+
         String message = String.join(",",
                 quoteCsv(eventType == null ? null : eventType.name()),
                 quoteCsv(String.valueOf(actorUserId)),
                 quoteCsv(String.valueOf(targetUserId)),
                 quoteCsv(targetType),
                 quoteCsv(String.valueOf(targetId)),
-                quoteCsv(description),
-                quoteCsv(createdAt));
+                quoteCsv(normalizedDescription),
+                quoteCsv(createdAt.toString()));
 
-        AUDIT_LOGGER.info(message);
+        writeCsvAfterCommit(message);
 
         log.info("監査ログを記録しました: eventType={}, actor={}, targetType={}, targetId={}",
             eventType, actorUserId, targetType, targetId);
     }
 
+    /** CSV は監査DBのコミット成功後に補助出力する。CSV出力の失敗で正本をロールバックしない。 */
+    private void writeCsvAfterCommit(String message) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            writeCsvSafely(message);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                writeCsvSafely(message);
+            }
+        });
+    }
+
+    private void writeCsvSafely(String message) {
+        try {
+            AUDIT_LOGGER.info(message);
+        } catch (RuntimeException e) {
+            log.error("監査CSVの出力に失敗しました。監査DBを正本として再出力対象を確認してください", e);
+        }
+    }
+
     private String quoteCsv(String value) {
-        String normalized = value == null ? "" : value;
+        String normalized = normalizeSingleLine(value);
         return "\"" + normalized.replace("\"", "\"\"") + "\"";
+    }
+
+    private String normalizeSingleLine(String value) {
+        return value == null ? "" : value.replace('\r', ' ').replace('\n', ' ');
     }
 }

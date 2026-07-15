@@ -39,8 +39,8 @@
          ORDER BY created_at DESC
     </select>
 
-    <!-- 全お知らせ一覧（管理者用） -->
-    <select id="selectAll" resultMap="announcementResultMap">
+    <!-- お知らせ一覧（管理者用・ページング） -->
+    <select id="selectPage" resultMap="announcementResultMap">
         SELECT announcement_id,
                title,
                message,
@@ -51,9 +51,17 @@
                created_at,
                updated_at,
                is_deleted
+         FROM admin_announcements
+         WHERE is_deleted = false
+         ORDER BY created_at DESC, announcement_id DESC
+         LIMIT #{limit}
+        OFFSET #{offset}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*)
           FROM admin_announcements
          WHERE is_deleted = false
-         ORDER BY created_at DESC
     </select>
 
     <!-- IDで1件取得 -->
@@ -106,9 +114,9 @@
                is_active          = #{isActive},
                display_start_date = #{displayStartDate,jdbcType=TIMESTAMP,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler},
                display_end_date   = #{displayEndDate,jdbcType=TIMESTAMP,typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler},
-               is_deleted         = #{isDeleted},
                updated_at         = NOW()
          WHERE announcement_id = #{announcementId}
+           AND is_deleted = false
     </update>
 
     <!-- 削除 -->
@@ -117,6 +125,7 @@
            SET is_deleted = true,
                updated_at = NOW()
          WHERE announcement_id = #{announcementId}
+           AND is_deleted = false
     </update>
 
 </mapper>

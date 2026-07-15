@@ -84,7 +84,7 @@
                         <i class="fa-solid fa-bell text-[1.15rem] text-primary"></i>
                         <h3 class="m-0 text-[1.1rem] font-bold text-txt-primary">通知</h3>
                         <span id="dashboard-notification-badge"
-                            class="text-[0.75rem] bg-danger text-white px-2 py-0.5 rounded-full font-semibold"
+                            class="text-[0.75rem] bg-danger-action text-white px-2 py-0.5 rounded-full font-semibold"
                             th:if="${notifications != null and !notifications.isEmpty()}"
                             th:text="${notifications.size()}">
                             0
@@ -107,7 +107,7 @@
                         th:onclick="'markDashboardNotificationAsRead(' + ${note.notificationId} + ', this)'"
                         th:onkeydown="'if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();markDashboardNotificationAsRead(' + ${note.notificationId} + ', this);}'"
                         role="button" tabindex="0"
-                        class="mb-2 py-2 px-3 rounded-lg bg-black/5 border border-glass-border hover:bg-black/10 cursor-pointer transition-colors duration-200 text-left">
+                        class="notification-item mb-2 py-2 px-3 rounded-lg bg-black/5 border border-glass-border hover:bg-black/10 cursor-pointer transition-colors duration-200 text-left">
                         <div class="text-[0.75rem] text-accent mb-0.5" th:if="${note.senderName != null}" th:text="'送信元: ' + ${note.senderName}">
                             送信元: 管理者名</div>
                         <div class="text-[0.8rem] text-txt-primary leading-normal mb-0.5" th:text="${note.message}">

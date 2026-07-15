@@ -1,7 +1,6 @@
 package com.attendance.app.controller;
 
 import com.attendance.app.entity.User;
-import com.attendance.app.entity.WorkScheduleClass;
 import com.attendance.app.security.SecurityUtil;
 import com.attendance.app.service.LeaveApplicationService;
 import com.attendance.app.service.PaidLeaveBalanceService;
@@ -14,24 +13,19 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ui.ExtendedModelMap;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import java.math.BigDecimal;
 import java.util.Collections;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ProfileController Unit Tests")
 class ProfileControllerTest {
-
-    @Mock
-    private UserService userService;
 
     @Mock
     private WorkScheduleClassService workScheduleClassService;
@@ -45,8 +39,38 @@ class ProfileControllerTest {
     @Mock
     private PaidLeaveBalanceService paidLeaveBalanceService;
 
+    @Mock
+    private UserService userService;
+
     @InjectMocks
     private ProfileController controller;
+
+    @Test
+    @DisplayName("プロフィールに勤務クラス自己更新POSTを公開する")
+    void profile_exposesWorkScheduleUpdatePost() {
+        boolean exposed = java.util.Arrays.stream(ProfileController.class.getDeclaredMethods())
+                .map(method -> method.getAnnotation(PostMapping.class))
+                .filter(java.util.Objects::nonNull)
+                .flatMap(mapping -> java.util.Arrays.stream(mapping.value()))
+                .anyMatch("/work-schedule"::equals);
+
+        assertThat(exposed).isTrue();
+    }
+
+    @Test
+    @DisplayName("本人は承認なしで勤務クラスを変更できる")
+    void updateWorkSchedule_updatesCurrentUserClass() {
+        User user = User.builder().userId(1L).build();
+        when(securityUtil.getCurrentUser()).thenReturn(user);
+        RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
+
+        String view = controller.updateWorkSchedule("標準勤務", redirectAttributes);
+
+        assertThat(view).isEqualTo("redirect:/profile");
+        verify(userService).updateWorkScheduleClass(1L, "標準勤務");
+        assertThat(redirectAttributes.getFlashAttributes().get("successMessage"))
+                .isEqualTo("勤務クラスを変更しました");
+    }
 
     @Test
     @DisplayName("showProfile: 有給付与日数がnullの場合、正常にプロフィール画面を表示し、残日数を0として計算すること")
@@ -57,7 +81,6 @@ class ProfileControllerTest {
         user.setPaidLeaveDays(null);
 
         when(securityUtil.getCurrentUser()).thenReturn(user);
-        when(workScheduleClassService.getAllActiveClasses()).thenReturn(Collections.emptyList());
         when(leaveApplicationService.calculateYearlyUsedPaidLeaveDays(eq(1L), anyInt())).thenReturn(new BigDecimal("2"));
         when(paidLeaveBalanceService.getBalancesByUserId(1L)).thenReturn(Collections.emptyList());
         when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(BigDecimal.ZERO);
@@ -73,7 +96,6 @@ class ProfileControllerTest {
         assertThat(model.get("yearlyUsedPaidLeaveDays")).isEqualTo(new BigDecimal("2"));
         // 残日数は paid_leave_balance ベース（getTotalRemainingDays）に統一
         assertThat((BigDecimal) model.get("remainingPaidLeaveDays")).isEqualByComparingTo(BigDecimal.ZERO);
-        assertThat(model.get("workScheduleClasses")).isEqualTo(Collections.emptyList());
         assertThat(model.get("totalRemainingPaidLeaveDays")).isEqualTo(BigDecimal.ZERO);
     }
 
@@ -86,7 +108,6 @@ class ProfileControllerTest {
         user.setPaidLeaveDays(new BigDecimal("10.5"));
 
         when(securityUtil.getCurrentUser()).thenReturn(user);
-        when(workScheduleClassService.getAllActiveClasses()).thenReturn(List.of(new WorkScheduleClass()));
         when(leaveApplicationService.calculateYearlyUsedPaidLeaveDays(eq(1L), anyInt())).thenReturn(new BigDecimal("3"));
         when(paidLeaveBalanceService.getBalancesByUserId(1L)).thenReturn(Collections.emptyList());
         when(paidLeaveBalanceService.getTotalRemainingDays(1L)).thenReturn(new BigDecimal("7.5"));
@@ -121,51 +142,4 @@ class ProfileControllerTest {
         assertThat(model.get("error")).isEqualTo("プロフィール画面の表示に失敗しました");
     }
 
-    @Test
-    @DisplayName("updateWorkScheduleClass: 所属クラスを正常に更新できること")
-    void updateWorkScheduleClass_success() {
-        // Arrange
-        when(securityUtil.getCurrentUserId()).thenReturn(1L);
-        RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-
-        // Act
-        String view = controller.updateWorkScheduleClass("A_CLASS", redirectAttributes);
-
-        // Assert
-        assertThat(view).isEqualTo("redirect:/profile");
-        assertThat(redirectAttributes.getFlashAttributes().get("successMessage")).isEqualTo("所属クラスを更新しました");
-        verify(userService).updateWorkScheduleClass(1L, "A_CLASS");
-    }
-
-    @Test
-    @DisplayName("updateWorkScheduleClass: IllegalArgumentException 発生時のハンドリング")
-    void updateWorkScheduleClass_invalidArg_returnsError() {
-        // Arrange
-        when(securityUtil.getCurrentUserId()).thenReturn(1L);
-        doThrow(new IllegalArgumentException("無効なクラス名です")).when(userService).updateWorkScheduleClass(anyLong(), any());
-        RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-
-        // Act
-        String view = controller.updateWorkScheduleClass("INVALID", redirectAttributes);
-
-        // Assert
-        assertThat(view).isEqualTo("redirect:/profile");
-        assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("無効なクラス名です");
-    }
-
-    @Test
-    @DisplayName("updateWorkScheduleClass: その他例外発生時のハンドリング")
-    void updateWorkScheduleClass_exception_returnsGeneralError() {
-        // Arrange
-        when(securityUtil.getCurrentUserId()).thenReturn(1L);
-        doThrow(new RuntimeException("DB error")).when(userService).updateWorkScheduleClass(anyLong(), any());
-        RedirectAttributesModelMap redirectAttributes = new RedirectAttributesModelMap();
-
-        // Act
-        String view = controller.updateWorkScheduleClass("A_CLASS", redirectAttributes);
-
-        // Assert
-        assertThat(view).isEqualTo("redirect:/profile");
-        assertThat(redirectAttributes.getFlashAttributes().get("errorMessage")).isEqualTo("所属クラスの更新に失敗しました");
-    }
 }
