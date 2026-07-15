@@ -18,6 +18,7 @@ jobs:
           POSTGRES_DB: attendance_db
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: test999
+          TZ: Asia/Tokyo
         ports:
           - 5432:5432
         options: >-
