@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL データベース
+  postgres:
+    image: postgres:18
+    restart: always
+    environment:
+      POSTGRES_DB: attendance_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test999
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d attendance_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql
+    # 外部（インターネット）には公開せず、内部ネットワークだけで接続させるため ports は記述しない（安全対策）
+
+  # 2. Java アプリケーション
+  java-app:
+    image: eclipse-temurin:25-jre
+    restart: always
+    volumes:
+      - ./app.jar:/app/app.jar # 転送したJARファイルをコンテナ内にマウント
+    working_dir: /app
+    command: java -jar app.jar --spring.profiles.active=release
+    ports:
+      - "80:8080" # ブラウザからHTTP(80ポート)でアクセスできるようにマッピング
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/attendance_db
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=test999
+      - SPRING_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/sample # テスト環境用のサンプルデータ投入
+    depends_on:
+      postgres:
+        condition: service_healthy # 修正：正常起動を待つ
+
+volumes:
+  pgdata:
