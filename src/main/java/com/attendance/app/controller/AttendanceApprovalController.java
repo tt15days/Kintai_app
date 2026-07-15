@@ -407,7 +407,7 @@ public class AttendanceApprovalController {
 
     /**
      * ユーザーの勤怠記録詳細を表示します。
-     * 承認待ちのリスト等から遷移します。一般承認者は同一勤務クラスのユーザーのみ閲覧可能です。
+     * 承認待ちのリスト等から遷移します。一般承認者は承認可能なユーザーのみ閲覧可能です。
      */
     @GetMapping("/{userId}/detail")
     public String showUserAttendanceRecords(
@@ -771,27 +771,14 @@ public class AttendanceApprovalController {
         return leaveDateSet;
     }
 
-    private void checkViewPermission(Long targetUserId) {
+    void checkViewPermission(Long targetUserId) {
         User currentUser = securityUtil.getCurrentUser();
         if (currentUser.getUserRole() == UserRole.ADMIN) {
             return;
         }
 
-        if (!userService.isAttendanceApprover(currentUser)) {
+        if (!attendanceSubmissionService.canApprove(currentUser, targetUserId)) {
             throw new org.springframework.security.access.AccessDeniedException("勤怠の閲覧権限がありません");
-        }
-
-        // 一般承認者は同じ勤務クラスのユーザーのみ閲覧可能
-        String approverClass = currentUser.getClassName();
-        if (approverClass == null || approverClass.trim().isEmpty()) {
-            throw new org.springframework.security.access.AccessDeniedException("所属勤務クラスが未設定のため、他ユーザーの勤怠を閲覧できません");
-        }
-
-        User targetUser = userService.getUserById(targetUserId)
-                .orElseThrow(() -> new IllegalArgumentException("ユーザーが見つかりません"));
-        String targetClass = targetUser.getClassName();
-        if (!approverClass.trim().equals(targetClass != null ? targetClass.trim() : null)) {
-            throw new org.springframework.security.access.AccessDeniedException("異なる勤務クラスのユーザーの勤怠は閲覧できません");
         }
     }
 
@@ -832,4 +819,3 @@ public class AttendanceApprovalController {
         }
     }
 }
-

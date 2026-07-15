@@ -7,8 +7,8 @@
     <title>ログイン</title>
 </head>
 <body>
-    <div layout:fragment="content" class="flex min-h-[80vh] items-center justify-center">
-        <div class="card-heavy w-full max-w-md p-8 text-center animate-fade-in">
+    <div layout:fragment="content" class="flex min-h-full w-full items-start sm:items-center justify-center py-4 px-3">
+        <div class="card-heavy w-full max-w-md p-5 sm:p-8 text-center animate-fade-in">
             <i class="fa-solid fa-fingerprint text-5xl text-primary mb-4"></i>
             <h1 class="text-xl font-bold text-txt-primary mb-8" th:text="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</h1>
 
@@ -35,7 +35,7 @@
                     <label class="flex items-center gap-2 min-h-11 text-txt-secondary select-none">
                         <input type="checkbox" name="remember-me" class="w-5 h-5 rounded border-glass-border text-primary focus:ring-primary/20"> ログイン状態を保持する
                     </label>
-                    <a href="#" class="inline-flex items-center min-h-11 text-primary hover:underline font-semibold">パスワードをお忘れですか？</a>
+                    <p class="text-xs leading-relaxed text-txt-secondary sm:max-w-56 sm:text-right">パスワードを忘れた場合は、システム管理者へ初期化を依頼してください。</p>
                 </div>
                 <button type="submit" class="btn btn-primary w-full py-3 text-sm font-bold gap-2">
                     ログイン <i class="fa-solid fa-arrow-right"></i>

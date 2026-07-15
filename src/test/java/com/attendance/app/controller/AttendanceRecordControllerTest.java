@@ -39,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -99,7 +100,13 @@ public class AttendanceRecordControllerTest {
 
         lenient().when(securityUtil.getCurrentUser()).thenReturn(testUser);
         lenient().when(securityUtil.getCurrentUserId()).thenReturn(1L);
-        lenient().when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
+        lenient().when(attendancePeriodSettingService.resolvePayrollMonth(any(LocalDate.class)))
+                .thenAnswer(invocation -> {
+                    LocalDate date = invocation.getArgument(0);
+                    return date.getDayOfMonth() > 20
+                            ? YearMonth.from(date).plusMonths(1)
+                            : YearMonth.from(date);
+                });
         lenient().when(attendanceRecordService.getMonthRange(any(YearMonth.class)))
                 .thenAnswer(invocation -> new AttendanceRecordService.MonthRange(invocation.getArgument(0), 21, 20));
         lenient().when(attendanceSubmissionService.getSubmission(anyLong(), any(YearMonth.class))).thenReturn(Optional.empty());
@@ -154,6 +161,24 @@ public class AttendanceRecordControllerTest {
 
         assertEquals("user/attendance", view);
         assertEquals("画面の表示に失敗しました", model.getAttribute("error"));
+    }
+
+    @Test
+    void testSubmitMonth_NotificationFailureKeepsSubmissionSuccess() {
+        YearMonth targetMonth = YearMonth.of(2026, 5);
+        doThrow(new RuntimeException("notification failed"))
+                .when(userNotificationService)
+                .notifyApproversNewSubmission(1L, testUser.getFullName(), targetMonth.toString());
+
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+        String view = controller.submitMonth("2026-05", redirect);
+
+        assertEquals("redirect:/attendance?yearMonth=2026-05", view);
+        verify(attendanceSubmissionService).submitMonth(1L, targetMonth);
+        assertThat(redirect.getFlashAttributes().get("message")).isEqualTo("今月分の勤怠を申請しました");
+        assertThat(redirect.getFlashAttributes().get("warning"))
+                .isEqualTo("勤怠申請は完了しましたが、承認者への通知に失敗しました");
+        assertThat(redirect.getFlashAttributes()).doesNotContainKey("error");
     }
 
     // -------------------------------------------------------
@@ -226,6 +251,26 @@ public class AttendanceRecordControllerTest {
         assertEquals("redirect:/attendance/corrections", view);
         verify(correctionRequestService).submitRequest(eq(1L), eq(date), any(), any(), eq("残業対応"), eq("打刻漏れ"));
         assertThat(redirect.getFlashAttributes().get("message")).isEqualTo("2026-05-10 の勤怠修正申請を提出しました。承認者の確認をお待ちください。");
+    }
+
+    @Test
+    void testSubmitCorrectionRequest_NotificationFailureKeepsSubmissionSuccess() {
+        LocalDate date = LocalDate.of(2026, 5, 10);
+        doThrow(new RuntimeException("notification failed"))
+                .when(userNotificationService)
+                .notifyApproversNewCorrectionRequest(1L, testUser.getFullName(), date.toString());
+
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+        String view = controller.submitCorrectionRequest(
+                "2026-05-10", "09:00", "18:00", "残業対応", "打刻漏れ", redirect);
+
+        assertEquals("redirect:/attendance/corrections", view);
+        verify(correctionRequestService).submitRequest(eq(1L), eq(date), any(), any(), eq("残業対応"), eq("打刻漏れ"));
+        assertThat(redirect.getFlashAttributes().get("message"))
+                .isEqualTo("2026-05-10 の勤怠修正申請を提出しました。承認者の確認をお待ちください。");
+        assertThat(redirect.getFlashAttributes().get("warning"))
+                .isEqualTo("勤怠修正申請は完了しましたが、承認者への通知に失敗しました");
+        assertThat(redirect.getFlashAttributes()).doesNotContainKey("error");
     }
 
     @Test

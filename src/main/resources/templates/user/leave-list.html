@@ -26,7 +26,7 @@
             <!-- ステータスフィルタ -->
             <form method="get" th:action="@{/leave}" class="flex items-center flex-wrap gap-2 mb-4">
                 <label for="status" class="text-xs text-txt-secondary font-medium whitespace-nowrap">ステータスで絞り込み</label>
-                <select id="status" name="status" class="form-select w-auto p-2 text-sm" onchange="this.form.submit()">
+                <select id="status" name="status" class="form-select w-auto p-2 text-base md:text-sm" onchange="this.form.submit()">
                     <option value="" th:selected="${param.status == null}">すべて</option>
                     <option th:each="s : ${statuses}" th:value="${s}" th:text="${s.displayName}"
                             th:selected="${param.status != null and param.status[0] == s.name()}"></option>

@@ -26,13 +26,13 @@
     <div class="mb-4" th:if="${message != null}">
         <div class="bg-success/15 border border-success/30 text-success p-4 rounded-xl flex justify-between items-center mb-6 text-sm font-semibold transition-all duration-200" role="alert">
             <span><span th:text="${message}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()" aria-label="閉じる">×</button>
+            <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()" aria-label="閉じる">×</button>
         </div>
     </div>
     <div class="mb-4" th:if="${error != null}">
         <div class="bg-danger/12 border border-danger/30 text-danger p-4 rounded-xl flex justify-between items-center mb-6 text-sm font-semibold transition-all duration-200" role="alert">
             <span><span th:text="${error}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()" aria-label="閉じる">×</button>
+            <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert]').remove()" aria-label="閉じる">×</button>
         </div>
     </div>
 
@@ -88,14 +88,14 @@
                         <!-- 操作ボタン -->
                         <div class="flex gap-2 flex-wrap justify-end items-center"
                              th:if="${submission.status == submissionStatusPending}">
-                            <button type="button" class="bg-success text-white hover:bg-success/90 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 active:scale-95 text-xs cursor-pointer"
+                            <button type="button" class="bg-success-action text-white hover:bg-success-action-hover inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 active:scale-95 text-xs cursor-pointer"
                                     th:data-submission-id="${submission.submissionId}"
                                     th:data-applicant-name="${applicantUsers[submission.userId] != null ? applicantUsers[submission.userId].fullName : '不明'}"
                                     th:data-year-month="${submission.targetYearMonth}"
                                     onclick="openApproveModal(this)">
                                 <i class="fas fa-check"></i> 承認
                             </button>
-                            <button type="button" class="bg-danger text-white hover:bg-danger/90 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 active:scale-95 text-xs cursor-pointer"
+                            <button type="button" class="bg-danger-action text-white hover:bg-danger-action-hover inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 active:scale-95 text-xs cursor-pointer"
                                     th:data-submission-id="${submission.submissionId}"
                                     th:data-applicant-name="${applicantUsers[submission.userId] != null ? applicantUsers[submission.userId].fullName : '不明'}"
                                     th:data-year-month="${submission.targetYearMonth}"
@@ -112,7 +112,7 @@
 
 <th:block layout:fragment="modals">
     <!-- 承認確認モーダル -->
-    <div class="modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" id="approveModal" onclick="closeApproveModal()"
+    <div class="modal fixed inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" id="approveModal" onclick="closeApproveModal()"
          role="dialog" aria-modal="true" aria-labelledby="approveModalLabel" aria-hidden="true" tabindex="-1">
         <div class="flex min-h-full items-center justify-center p-4">
             <div id="approveModalContent" class="card-heavy w-full max-w-[500px]" onclick="event.stopPropagation()">
@@ -120,7 +120,7 @@
                     <h5 class="m-0 text-base font-bold text-txt-primary" id="approveModalLabel">
                         承認確認
                     </h5>
-                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold p-2" onclick="closeApproveModal()" aria-label="閉じる">
+                    <button type="button" class="icon-button text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold" onclick="closeApproveModal()" aria-label="閉じる">
                         ×
                     </button>
                 </div>
@@ -151,7 +151,7 @@
     </div>
 
     <!-- 差し戻し確認モーダル -->
-    <div class="modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" id="returnModal" onclick="closeReturnModal()"
+    <div class="modal fixed inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" id="returnModal" onclick="closeReturnModal()"
          role="dialog" aria-modal="true" aria-labelledby="returnModalLabel" aria-hidden="true" tabindex="-1">
         <div class="flex min-h-full items-center justify-center p-4">
             <div id="returnModalContent" class="card-heavy w-full max-w-[500px]" onclick="event.stopPropagation()">
@@ -159,7 +159,7 @@
                     <h5 class="m-0 text-base font-bold text-txt-primary" id="returnModalLabel">
                         差し戻し確認
                     </h5>
-                    <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold p-2" onclick="closeReturnModal()" aria-label="閉じる">
+                    <button type="button" class="icon-button text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold" onclick="closeReturnModal()" aria-label="閉じる">
                         ×
                     </button>
                 </div>

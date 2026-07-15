@@ -20,6 +20,7 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -259,8 +260,10 @@ public class AttendanceCorrectionRequestService {
         if (approver.getUserRole() == UserRole.ADMIN) {
             return pendingRequests;
         }
+        Map<Long, Boolean> approvalByApplicant = attendanceSubmissionService.canApproveAll(approver,
+                pendingRequests.stream().map(AttendanceCorrectionRequest::getUserId).toList());
         return pendingRequests.stream()
-                .filter(req -> canApproveRequest(approver, req.getUserId()))
+                .filter(req -> approvalByApplicant.getOrDefault(req.getUserId(), false))
                 .toList();
     }
 
@@ -368,20 +371,9 @@ public class AttendanceCorrectionRequestService {
             return false;
         }
 
-        // 管理者が個人・部署アサインを1件でも設定している場合は、アサイン済み承認者のみ許可する
         List<Long> assignedApproverIds = approverAssignmentService.resolveAssignedApproverIds(
-                applicantUserId, applicant.getClassName());
-        if (!assignedApproverIds.isEmpty()) {
-            return assignedApproverIds.contains(approver.getUserId());
-        }
-
-        // アサインが一件も無い場合は、同じ勤務クラスの申請のみ承認可能というフォールバックルールを適用
-        String approverClass = approver.getClassName();
-        if (approverClass == null || approverClass.trim().isEmpty()) {
-            return false;
-        }
-        String applicantClass = applicant.getClassName();
-        return approverClass.trim().equals(applicantClass != null ? applicantClass.trim() : null);
+                applicantUserId, applicant.getDepartment());
+        return assignedApproverIds.contains(approver.getUserId());
     }
 
     /**

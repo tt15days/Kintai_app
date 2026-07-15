@@ -13,14 +13,20 @@
     --color-accent:          #7c3aed;
     --color-accent-light:    rgba(124, 58, 237, 0.1);
 
-    --color-success:         #10b981;
+    --color-success:         #047857;
     --color-success-light:   rgba(16, 185, 129, 0.2);
+    --color-success-action:  #047857;
+    --color-success-action-hover: #065f46;
 
-    --color-danger:          #ef4444;
+    --color-danger:          #b91c1c;
     --color-danger-light:    rgba(239, 68, 68, 0.2);
+    --color-danger-action:   #b91c1c;
+    --color-danger-action-hover: #991b1b;
 
-    --color-warning:         #f59e0b;
+    --color-warning:         #92400e;
     --color-warning-light:   rgba(245, 158, 11, 0.2);
+    --color-warning-action:  #b45309;
+    --color-warning-action-hover: #92400e;
 
     --color-glass:           rgba(255, 255, 255, 0.7);
     --color-glass-bg:        rgba(255, 255, 255, 0.7);
@@ -46,6 +52,17 @@
 
     --radius-panel:          16px;
     --radius-panel-heavy:    24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 /* ============================================================
@@ -136,7 +153,19 @@
 
     /* --- ボタン基本 --- */
     .btn {
-        @apply inline-flex items-center justify-center px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+        @apply inline-flex min-h-11 items-center justify-center px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+    }
+
+    .icon-button {
+        @apply inline-flex min-h-11 min-w-11 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+    }
+
+    button[aria-label="閉じる"] {
+        @apply min-h-11 min-w-11;
+    }
+
+    .choice-label {
+        @apply inline-flex min-h-11 items-center cursor-pointer;
     }
 
     .btn-primary {
@@ -148,15 +177,15 @@
     }
 
     .btn-danger {
-        @apply bg-danger text-white hover:bg-danger/90;
+        @apply bg-danger-action text-white hover:bg-danger-action-hover;
     }
 
     .btn-success {
-        @apply bg-success text-white hover:bg-success/90;
+        @apply bg-success-action text-white hover:bg-success-action-hover;
     }
 
     .btn-warning {
-        @apply bg-warning text-white hover:bg-warning/90;
+        @apply bg-warning-action text-white hover:bg-warning-action-hover;
     }
 
     .btn-flat {
@@ -179,13 +208,13 @@
         @apply block text-sm font-semibold text-txt-secondary mb-1.5;
     }
     .form-input {
-        @apply w-full md:px-4 md:py-2.5 px-2.5 py-1.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
+        @apply min-h-11 w-full md:px-4 md:py-2.5 px-2.5 py-1.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
     }
     .form-select {
-        @apply w-full md:px-4 md:py-2.5 px-2.5 py-1.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 cursor-pointer;
+        @apply min-h-11 w-full md:px-4 md:py-2.5 px-2.5 py-1.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 cursor-pointer;
     }
     .form-textarea {
-        @apply w-full md:px-4 md:py-2.5 px-2.5 py-1.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
+        @apply w-full md:px-4 md:py-2.5 px-2.5 py-1.5 rounded-xl border border-glass-border bg-glass-input/90 text-txt-primary text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
     }
 
     /* --- アラート --- */
@@ -283,7 +312,7 @@
     .mobile-overlay.open { display: block; }
 
     /* --- レスポンシブサイドバー --- */
-    @media (max-width: 768px) {
+    @media (max-width: 767px) {
         .sidebar {
             position: fixed;
             left: -260px;

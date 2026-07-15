@@ -11,8 +11,10 @@ import org.springframework.stereotype.Service;
 
 import com.attendance.app.util.DateTimeUtil;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.MonthDay;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,6 +23,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AutoGrantPaidLeaveService {
+
+    private static final DateTimeFormatter GRANT_DATE_FORMATTER = DateTimeFormatter.ofPattern("MM-dd");
 
     private final SystemSettingMapper systemSettingMapper;
 
@@ -33,27 +37,22 @@ public class AutoGrantPaidLeaveService {
      */
     @Scheduled(cron = "0 0 0 * * ?", zone = "Asia/Tokyo")
     public void grantPaidLeaveBatch() {
-        log.info("有給休暇自動付与バッチを開始します。");
+        log.info("有給休暇自動付与バッチを開始します");
 
         try {
             String grantDateStr = systemSettingMapper.selectValueByKey(SystemSettingService.PAID_LEAVE_GRANT_DATE_KEY);
-            String grantDaysStr = systemSettingMapper.selectValueByKey(SystemSettingService.PAID_LEAVE_GRANT_DAYS_KEY);
             if (grantDateStr == null || grantDateStr.isBlank()) {
                 grantDateStr = SystemSettingService.DEFAULT_PAID_LEAVE_GRANT_DATE;
             }
-            if (grantDaysStr == null || grantDaysStr.isBlank()) {
-                grantDaysStr = SystemSettingService.DEFAULT_PAID_LEAVE_GRANT_DAYS;
-            }
 
             LocalDate today = DateTimeUtil.todayJapan();
-            String todayStr = String.format("%02d-%02d", today.getMonthValue(), today.getDayOfMonth());
+            LocalDate grantDate = resolveGrantDate(grantDateStr, today.getYear());
 
-            if (!grantDateStr.equals(todayStr)) {
-                log.info("本日は有給休暇付与日 ({}) ではありません。本日: {}", grantDateStr, todayStr);
+            if (!grantDate.equals(today)) {
+                log.debug("有給休暇自動付与対象外: grantDate={}, today={}", grantDate, today);
                 return;
             }
 
-            BigDecimal defaultGrantDays = new BigDecimal(grantDaysStr);
             List<User> users = userService.getActiveUsers();
 
             // N+1対策として当年付与済みユーザーIDを一括取得してからループでフィルタする
@@ -62,31 +61,46 @@ public class AutoGrantPaidLeaveService {
                     .map(PaidLeaveBalance::getUserId)
                     .collect(Collectors.toSet());
 
+            int grantedCount = 0;
+            int skippedCount = 0;
+            int failedCount = 0;
             for (User user : users) {
                 if (alreadyGrantedUserIds.contains(user.getUserId())) {
-                    log.info("ユーザー {} は{}年分を付与済みのためスキップします。", user.getUserId(), today.getYear());
+                    skippedCount++;
+                    log.debug("有給休暇自動付与スキップ: userId={}, grantYear={}", user.getUserId(), today.getYear());
                     continue;
                 }
-
-                BigDecimal grantDays = user.getAnnualLeaveGrantDays() != null
-                        ? BigDecimal.valueOf(user.getAnnualLeaveGrantDays())
-                        : defaultGrantDays;
 
                 try {
                     // ユーザーテーブルの有給残日数の加算更新と次回付与日数のインクリメントを同期
                     // （内部で paid_leave_balance テーブルへのインサートおよび同期処理も実行されます）
-                    userService.grantAnnualPaidLeave(user.getUserId(), grantDays.intValue());
+                    userService.grantAnnualPaidLeave(user.getUserId());
 
-                    log.info("ユーザー {} に有給休暇 {} 日を付与しました。", user.getUserId(), grantDays);
+                    grantedCount++;
                 } catch (Exception e) {
+                    failedCount++;
                     log.error("ユーザー {} への有給休暇付与に失敗しました。", user.getUserId(), e);
                 }
             }
 
-            log.info("有給休暇自動付与バッチが正常に終了しました。");
+            log.info("有給休暇自動付与バッチ完了: granted={}, skipped={}, failed={}",
+                    grantedCount, skippedCount, failedCount);
             batchSettingService.recordAnnualLeaveGrantExecutedAt(DateTimeUtil.nowJapan());
         } catch (Exception e) {
             log.error("有給休暇自動付与バッチ中にエラーが発生しました。", e);
+        }
+    }
+
+    private LocalDate resolveGrantDate(String grantDate, int year) {
+        if ("02-29".equals(grantDate)) {
+            return LocalDate.of(year, 2, 28);
+        }
+        try {
+            return MonthDay.parse(grantDate, GRANT_DATE_FORMATTER).atYear(year);
+        } catch (DateTimeParseException e) {
+            log.warn("有給付与日の設定が不正なため既定値を使用: value={}", grantDate);
+            return MonthDay.parse(SystemSettingService.DEFAULT_PAID_LEAVE_GRANT_DATE, GRANT_DATE_FORMATTER)
+                    .atYear(year);
         }
     }
 }

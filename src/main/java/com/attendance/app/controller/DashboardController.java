@@ -70,7 +70,8 @@ public class DashboardController {
             }
 
             Long userId = currentUser.getUserId();
-            YearMonth currentMonth = YearMonth.now();
+            LocalDate today = com.attendance.app.util.DateTimeUtil.todayJapan();
+            YearMonth currentMonth = YearMonth.from(today);
 
             // 勤怠記録取得
             List<AttendanceRecord> records = attendanceRecordService.getRecordsByUserAndMonth(userId, currentMonth);
@@ -119,11 +120,6 @@ public class DashboardController {
             model.addAttribute("grantedPaidLeave", String.format("%.0f", totalGranted));
             model.addAttribute("usedPaidLeave", String.format("%.0f", totalUsed));
 
-            // ログイン時の日付を取得
-            LocalDate today = currentUser.getLastLoginAt() != null
-                    ? com.attendance.app.util.DateTimeUtil.toLocalDate(currentUser.getLastLoginAt())
-                    : com.attendance.app.util.DateTimeUtil.todayJapan();
-
             // 本日の打刻レコードを取得
             AttendanceRecord todayRecord = records.stream()
                     .filter(r -> r.getAttendanceDate() != null && com.attendance.app.util.DateTimeUtil.toLocalDate(r.getAttendanceDate()).equals(today))
@@ -131,7 +127,7 @@ public class DashboardController {
                     .orElse(null);
             model.addAttribute("todayRecord", todayRecord);
 
-            // ログイン時の日付をフォーマット（曜日込み）
+            // 本日の日付をフォーマット（曜日込み）
             String todayFormatted = today
                     .format(java.time.format.DateTimeFormatter.ofPattern("yyyy年M月d日EEEE", java.util.Locale.JAPANESE));
             model.addAttribute("todayFormatted", todayFormatted);

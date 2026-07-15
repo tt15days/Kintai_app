@@ -26,6 +26,7 @@ import org.springframework.ui.ExtendedModelMap;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import java.time.YearMonth;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -85,6 +86,53 @@ class AdminControllerTest {
             assertThat(viewName).isEqualTo("admin/dashboard");
             assertThat(model.getAttribute("users")).isEqualTo(List.of(user));
             assertThat(model.getAttribute("userCount")).isEqualTo(1);
+        }
+    }
+
+    @Nested
+    @DisplayName("showApproverAssignments")
+    class ShowApproverAssignments {
+
+        @Test
+        @DisplayName("個人別・部署別の承認者割当を表示する")
+        void showsAssignments() {
+            User admin = User.builder().userId(3L).fullName("管理者").userRole(UserRole.ADMIN).isActive(true).build();
+            com.attendance.app.dto.ApproverAssignmentRowDto userAssignment = new com.attendance.app.dto.ApproverAssignmentRowDto();
+            userAssignment.setApplicantUserId(1L);
+            userAssignment.setApproverUserId(2L);
+            com.attendance.app.dto.ApproverAssignmentRowDto departmentAssignment = new com.attendance.app.dto.ApproverAssignmentRowDto();
+            departmentAssignment.setDepartmentName("総務部");
+            departmentAssignment.setApproverUserId(2L);
+            when(userService.getActiveAdmins()).thenReturn(List.of(admin));
+            when(approverAssignmentService.countUserApproverAssignments()).thenReturn(1L);
+            when(approverAssignmentService.countDepartmentApproverAssignments()).thenReturn(1L);
+            when(approverAssignmentService.getUserApproverAssignmentsPage(0, 20)).thenReturn(List.of(userAssignment));
+            when(approverAssignmentService.getDepartmentApproverAssignmentsPage(0, 20)).thenReturn(List.of(departmentAssignment));
+
+            ExtendedModelMap model = new ExtendedModelMap();
+            String viewName = controller.showApproverAssignments("0", "0", "20", model);
+
+            assertThat(viewName).isEqualTo("admin/approver-assignments");
+            assertThat(model.getAttribute("userApproverAssignments")).isEqualTo(List.of(userAssignment));
+            assertThat(model.getAttribute("departmentApproverAssignments")).isEqualTo(List.of(departmentAssignment));
+            assertThat(model.getAttribute("adminApprovers")).isEqualTo(List.of(admin));
+            assertThat(model.getAttribute("userTotalPages")).isEqualTo(1);
+            assertThat(model.getAttribute("departmentTotalPages")).isEqualTo(1);
+        }
+    }
+
+    @Nested
+    @DisplayName("updateLeaveSettings")
+    class UpdateLeaveSettings {
+
+        @Test
+        void savesSubmittedGrantDays() {
+            RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+
+            String view = controller.updateLeaveSettings(2L, 15, BigDecimal.ONE, 40, redirect);
+
+            assertThat(view).isEqualTo("redirect:/admin/users/2");
+            verify(userService).updatePaidLeaveSettings(2L, 15, BigDecimal.ONE, 40);
         }
     }
 
@@ -214,10 +262,11 @@ class AdminControllerTest {
         void showArticle36Dashboard_populatesCellMaps() {
             User user = User.builder().userId(2L).fullName("一般ユーザー").userRole(UserRole.USER).build();
             User tester = User.builder().userId(3L).fullName("テストユーザー").userRole(UserRole.USER).build();
-            when(userService.getActiveUsers()).thenReturn(List.of(user, tester));
+            when(userService.countUsers(null, null, true, true)).thenReturn(2L);
+            when(userService.getUsersPage(null, null, true, true, 0, 20)).thenReturn(List.of(user, tester));
 
             when(attendanceRecordService.getOvertimeSumByUserForMonthRange(
-                    List.of(YearMonth.of(2026, 4), YearMonth.of(2026, 5), YearMonth.of(2026, 6))))
+                    List.of(YearMonth.of(2026, 4), YearMonth.of(2026, 5), YearMonth.of(2026, 6)), List.of(2L, 3L)))
                     .thenReturn(Map.of(
                             YearMonth.of(2026, 4), Map.of(2L, 0.0, 3L, 1.5),
                             YearMonth.of(2026, 5), Map.of(2L, 2.0, 3L, 0.0),

@@ -64,6 +64,11 @@ public interface AttendanceSubmissionMapper {
      */
     List<AttendanceSubmission> selectByTargetYearMonth(@Param("targetYearMonth") String targetYearMonth);
 
+    List<AttendanceSubmission> selectByTargetYearMonthAndUserIds(
+            @Param("targetYearMonth") String targetYearMonth,
+            @Param("userIds") java.util.Collection<Long> userIds
+    );
+
     /**
      * 勤怠申請を登録します。
      *

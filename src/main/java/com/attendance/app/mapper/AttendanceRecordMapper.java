@@ -65,20 +65,6 @@ public interface AttendanceRecordMapper {
     );
     
     /**
-     * ユーザーIDと月で勤怠記録を取得（前月21日から当月20日まで）
-     *
-     * @param userId ユーザーID
-     * @param year 年
-     * @param month 月
-     * @return 勤怠記録のリスト
-     */
-    List<AttendanceRecord> selectByUserAndMonth(
-            @Param("userId") Long userId,
-            @Param("year") int year,
-            @Param("month") int month
-    );
-    
-    /**
      * ユーザーの全勤怠記録を取得
      *
      * @param userId ユーザーID
@@ -129,6 +115,12 @@ public interface AttendanceRecordMapper {
     List<AttendanceRecord> selectAllByDateRange(
             @Param("startDate") Instant startDate,
             @Param("endDate") Instant endDate
+    );
+
+    List<AttendanceRecord> selectByDateRangeAndUserIds(
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate,
+            @Param("userIds") java.util.Collection<Long> userIds
     );
 
 

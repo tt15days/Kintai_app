@@ -12,13 +12,24 @@ function setModalBackgroundInert(modal, inert) {
     if (!state) return;
 
     if (inert) {
-        state.backgroundElements = Array.from(modal.parentElement.children)
-            .filter((element) => element !== modal)
-            .map((element) => ({
-                element,
-                inert: element.hasAttribute('inert'),
-                ariaHidden: element.getAttribute('aria-hidden')
-            }));
+        const backgroundElements = [];
+        let branch = modal;
+
+        while (branch.parentElement) {
+            const parent = branch.parentElement;
+            Array.from(parent.children)
+                .filter((element) => element !== branch)
+                .forEach((element) => backgroundElements.push({
+                    element,
+                    inert: element.hasAttribute('inert'),
+                    ariaHidden: element.getAttribute('aria-hidden')
+                }));
+
+            if (parent === document.body) break;
+            branch = parent;
+        }
+
+        state.backgroundElements = backgroundElements;
         state.backgroundElements.forEach(({ element }) => {
             element.setAttribute('inert', '');
             element.setAttribute('aria-hidden', 'true');
@@ -26,7 +37,7 @@ function setModalBackgroundInert(modal, inert) {
         return;
     }
 
-    state.backgroundElements.forEach(({ element, inert: previousInert, ariaHidden }) => {
+    [...state.backgroundElements].reverse().forEach(({ element, inert: previousInert, ariaHidden }) => {
         element.toggleAttribute('inert', previousInert);
         if (ariaHidden === null) {
             element.removeAttribute('aria-hidden');
@@ -106,6 +117,10 @@ document.addEventListener('keydown', function (e) {
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Nexus Time initialized.');
+
+    document.querySelectorAll('[data-history-back]').forEach((button) => {
+        button.addEventListener('click', () => window.history.back());
+    });
 
     let contextPath = document.querySelector('meta[name="context-path"]')?.getAttribute('content') || '';
     if (contextPath === '/') contextPath = '';

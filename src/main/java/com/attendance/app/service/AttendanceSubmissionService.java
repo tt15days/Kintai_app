@@ -17,7 +17,9 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 月次勤怠申請の状態遷移と承認可否を扱うサービスです。
@@ -110,16 +112,10 @@ public class AttendanceSubmissionService {
         Optional<AttendanceSubmission> existing = getSubmission(userId, yearMonth);
         String key = toYearMonthKey(yearMonth);
 
-        int startDay = attendancePeriodSettingService.getStartDay();
-        int endDay = attendancePeriodSettingService.getEndDay();
-        if (startDay < 1 || startDay > 28) {
-            startDay = 21;
-        }
-        if (endDay < 1 || endDay > 28) {
-            endDay = 20;
-        }
-        LocalDate startDate = yearMonth.minusMonths(1).atDay(startDay);
-        LocalDate endDate = yearMonth.atDay(endDay);
+        AttendancePeriodSettingService.AttendancePeriod period =
+                attendancePeriodSettingService.resolvePeriod(yearMonth);
+        LocalDate startDate = period.startDate();
+        LocalDate endDate = period.endDate();
 
         if (existing.isPresent()) {
             AttendanceSubmission submission = existing.get();
@@ -135,8 +131,10 @@ public class AttendanceSubmissionService {
             submission.setActionBy(null);
             submission.setActionComment(null);
             submission.setActionAt(null);
-            submission.setStartDate(startDate);
-            submission.setEndDate(endDate);
+            if (submission.getStartDate() == null || submission.getEndDate() == null) {
+                submission.setStartDate(startDate);
+                submission.setEndDate(endDate);
+            }
             attendanceSubmissionMapper.update(submission);
 
             auditLogService.recordSubmissionEvent(
@@ -184,8 +182,10 @@ public class AttendanceSubmissionService {
             return submissions;
         }
 
+        Map<Long, Boolean> approvalByApplicant = canApproveAll(currentUser,
+                submissions.stream().map(AttendanceSubmission::getUserId).toList());
         return submissions.stream()
-                .filter(submission -> canApproveSubmission(currentUser, submission.getUserId()))
+                .filter(submission -> approvalByApplicant.getOrDefault(submission.getUserId(), false))
                 .toList();
     }
 
@@ -319,11 +319,7 @@ public class AttendanceSubmissionService {
      * 勤怠日から、その日付が属する給与月を解決します。
      */
     public YearMonth resolvePayrollMonth(LocalDate attendanceDate) {
-        int startDay = attendancePeriodSettingService.getStartDay();
-        if (attendanceDate.getDayOfMonth() >= startDay) {
-            return YearMonth.from(attendanceDate).plusMonths(1);
-        }
-        return YearMonth.from(attendanceDate);
+        return attendancePeriodSettingService.resolvePayrollMonth(attendanceDate);
     }
 
     private String toYearMonthKey(YearMonth yearMonth) {
@@ -350,6 +346,45 @@ public class AttendanceSubmissionService {
         return canApproveSubmission(approver, applicantUserId);
     }
 
+    /** 対象申請者群に対する承認可否を、申請者・アサイン設定を一括取得して返します。 */
+    @Transactional(readOnly = true)
+    public Map<Long, Boolean> canApproveAll(User approver, java.util.Collection<Long> applicantUserIds) {
+        if (applicantUserIds == null || applicantUserIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> ids = applicantUserIds.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        if (ids.isEmpty() || approver == null || !userService.isAttendanceApprover(approver)) {
+            return Map.of();
+        }
+        if (approver.getUserRole() == com.attendance.app.entity.UserRole.ADMIN) {
+            return ids.stream().collect(Collectors.toMap(id -> id, id -> true));
+        }
+        java.util.Set<Long> allowedApplicants = new java.util.HashSet<>(
+                approverAssignmentService.getApplicantsAssignedToApprover(ids, approver.getUserId()));
+        return ids.stream().collect(Collectors.toMap(id -> id, allowedApplicants::contains));
+    }
+
+    /** 1人の申請者に対し、候補承認者群の承認可否をまとめて判定します。 */
+    @Transactional(readOnly = true)
+    public Map<Long, Boolean> canApproveAllForApplicant(Long applicantUserId, java.util.Collection<User> approvers) {
+        if (applicantUserId == null || approvers == null || approvers.isEmpty()) {
+            return Map.of();
+        }
+        User applicant = userService.getUserById(applicantUserId).orElse(null);
+        if (applicant == null) {
+            return Map.of();
+        }
+        List<Long> assignedApproverIds = approverAssignmentService.resolveAssignedApproverIds(
+                applicantUserId, applicant.getDepartment());
+        java.util.Set<Long> assigned = new java.util.HashSet<>(assignedApproverIds);
+        return approvers.stream().filter(java.util.Objects::nonNull)
+                .collect(Collectors.toMap(User::getUserId, approver -> {
+                    if (!userService.isAttendanceApprover(approver)) return false;
+                    if (approver.getUserRole() == com.attendance.app.entity.UserRole.ADMIN) return true;
+                    return assigned.contains(approver.getUserId());
+                }, (left, right) -> left));
+    }
+
     private boolean canApproveSubmission(User approver, Long applicantUserId) {
         if (approver == null || applicantUserId == null) {
             return false;
@@ -368,21 +403,9 @@ public class AttendanceSubmissionService {
             return false;
         }
 
-        // 管理者が個人・部署アサインを1件でも設定している場合は、アサイン済み承認者のみ許可する
         List<Long> assignedApproverIds = approverAssignmentService.resolveAssignedApproverIds(
-                applicantUserId, applicant.getClassName());
-        if (!assignedApproverIds.isEmpty()) {
-            return assignedApproverIds.contains(approver.getUserId());
-        }
-
-        // アサインが一件も無い場合は、同じ勤務クラスの申請のみ承認可能というフォールバックルールを適用
-        String approverClass = approver.getClassName();
-        if (approverClass == null || approverClass.trim().isEmpty()) {
-            return false;
-        }
-
-        String applicantClass = applicant.getClassName();
-        return approverClass.trim().equals(applicantClass != null ? applicantClass.trim() : null);
+                applicantUserId, applicant.getDepartment());
+        return assignedApproverIds.contains(approver.getUserId());
     }
 
     private String normalizeComment(String comment) {

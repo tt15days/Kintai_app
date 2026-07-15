@@ -10,20 +10,21 @@
         <div class="card mb-6">
             <form class="flex flex-wrap items-end gap-4" method="get" th:action="@{/admin/attendance}">
                 <div class="flex flex-col min-w-[150px]">
-                    <label class="form-label">対象月</label>
-                    <input type="month" class="form-input text-sm font-mono h-11" name="yearMonth" th:value="${yearMonth}">
+                    <label for="attendanceYearMonth" class="form-label">対象月</label>
+                    <input id="attendanceYearMonth" type="month" class="form-input text-base md:text-sm font-mono h-11" name="yearMonth" th:value="${yearMonth}">
                 </div>
                 <div class="flex flex-col min-w-[180px]">
-                    <label class="form-label">部署 / クラス</label>
-                    <select class="form-select h-11" name="department">
+                    <label for="attendanceDepartment" class="form-label">部署 / クラス</label>
+                    <select id="attendanceDepartment" class="form-select h-11" name="department">
                         <option value="All Departments" th:selected="${department == 'All Departments' or department == null}">全部署</option>
                         <option th:each="dept : ${departments}" th:value="${dept}" th:text="${dept}" th:selected="${department == dept}"></option>
                     </select>
                 </div>
                 <div class="flex flex-col flex-1 min-w-[200px]">
-                    <label class="form-label">社員検索</label>
-                    <input type="text" class="form-input h-11" name="keyword" placeholder="名前またはID" th:value="${keyword}">
+                    <label for="attendanceKeyword" class="form-label">社員検索</label>
+                    <input id="attendanceKeyword" type="text" class="form-input h-11" name="keyword" placeholder="名前またはID" th:value="${keyword}">
                 </div>
+                <div class="flex flex-col min-w-[100px]"><label for="attendancePageSize" class="form-label">表示件数</label><select id="attendancePageSize" class="form-select h-11" name="size"><option value="20" th:selected="${pageSize == 20}">20件</option><option value="50" th:selected="${pageSize == 50}">50件</option><option value="100" th:selected="${pageSize == 100}">100件</option></select></div>
                 <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
                     <i class="fa-solid fa-filter"></i> 表示
                 </button>
@@ -66,8 +67,20 @@
                                 <span th:if="${submissionByUserMap[user.userId] != null and submissionByUserMap[user.userId].status == submissionStatusReturned}" class="badge badge-danger">差戻し</span>
                             </td>
                         </tr>
+                        <tr th:if="${users == null or #lists.isEmpty(users)}">
+                            <td colspan="6" class="py-10 text-center text-txt-secondary">
+                                <p th:if="${(keyword != null and !#strings.isEmpty(#strings.trim(keyword))) or (department != null and department != 'All Departments')}" class="mb-3">条件に一致する従業員がいません。絞り込み条件を変更してください。</p>
+                                <p th:unless="${(keyword != null and !#strings.isEmpty(#strings.trim(keyword))) or (department != null and department != 'All Departments')}" class="mb-3">表示対象の従業員がいません。</p>
+                                <a th:if="${(keyword != null and !#strings.isEmpty(#strings.trim(keyword))) or (department != null and department != 'All Departments')}" th:href="@{/admin/attendance(yearMonth=${yearMonth})}" class="btn btn-flat text-sm">条件を解除</a>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
+            </div>
+            <div class="flex justify-between items-center mt-4" th:if="${totalPages > 1}">
+                <a class="btn btn-flat text-sm" th:if="${page > 0}" th:href="@{/admin/attendance(yearMonth=${yearMonth},department=${department},keyword=${keyword},page=${page - 1},size=${pageSize})}">前へ</a>
+                <span class="text-sm text-txt-secondary" th:text="${page + 1} + ' / ' + ${totalPages} + ' ページ'">1 / 1 ページ</span>
+                <a class="btn btn-flat text-sm" th:if="${page + 1 < totalPages}" th:href="@{/admin/attendance(yearMonth=${yearMonth},department=${department},keyword=${keyword},page=${page + 1},size=${pageSize})}">次へ</a>
             </div>
         </div>
     </div>

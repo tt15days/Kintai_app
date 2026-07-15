@@ -5,14 +5,22 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.attendance.app.entity.AuditEventType;
+import com.attendance.app.entity.AuditLog;
+import com.attendance.app.mapper.AuditLogMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * {@link AuditLogService} の単体テスト。
@@ -24,13 +32,15 @@ class AuditLogServiceTest {
 
     private static final String AUDIT_LOGGER_NAME = "com.attendance.app.audit";
 
-    private final AuditLogService auditLogService = new AuditLogService();
+    private final AuditLogMapper auditLogMapper = mock(AuditLogMapper.class);
+    private final AuditLogService auditLogService = new AuditLogService(auditLogMapper);
 
     private Logger auditLogger;
     private ListAppender<ILoggingEvent> listAppender;
 
     @BeforeEach
     void setUp() {
+        when(auditLogMapper.insert(any(AuditLog.class))).thenReturn(1);
         auditLogger = (Logger) LoggerFactory.getLogger(AUDIT_LOGGER_NAME);
         auditLogger.setLevel(Level.INFO);
 
@@ -41,9 +51,25 @@ class AuditLogServiceTest {
 
     @AfterEach
     void tearDown() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
         if (auditLogger != null && listAppender != null) {
             auditLogger.detachAppender(listAppender);
         }
+    }
+
+    @Test
+    @DisplayName("CSVはDBコミット後に出力する")
+    void csvIsWrittenOnlyAfterCommit() {
+        TransactionSynchronizationManager.initSynchronization();
+
+        auditLogService.recordUserEvent(AuditEventType.USER_UPDATED, 1L, 2L, "ロール変更");
+        assertThat(listAppender.list).isEmpty();
+
+        TransactionSynchronizationManager.getSynchronizations().forEach(
+                synchronization -> synchronization.afterCommit());
+        assertThat(listAppender.list).hasSize(1);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -97,6 +123,7 @@ class AuditLogServiceTest {
             assertThat(listAppender.list.get(0).getFormattedMessage())
                     .startsWith("\"USER_CREATED\",\"1\",\"42\",\"USER\",\"42\",\"ロール: USER\",\"")
                     .endsWith("\"");
+            verify(auditLogMapper).insert(any(AuditLog.class));
         }
 
         @Test
@@ -109,6 +136,29 @@ class AuditLogServiceTest {
             assertThat(listAppender.list.get(0).getFormattedMessage())
                     .startsWith("\"USER_DELETED\",\"1\",\"99\",\"USER\",\"99\",\"\",\"")
                     .endsWith("\"");
+        }
+
+        @Test
+        @DisplayName("descriptionの改行を単一行に正規化する")
+        void descriptionWithNewline_isNormalizedToSingleLine() {
+            auditLogService.recordUserEvent(
+                    AuditEventType.LOGIN_FAILED, null, null, "ログイン失敗\r\n偽イベント");
+
+            assertThat(listAppender.list).hasSize(1);
+            assertThat(listAppender.list.get(0).getFormattedMessage())
+                    .contains("ログイン失敗  偽イベント")
+                    .doesNotContain("\r", "\n");
+        }
+
+        @Test
+        @DisplayName("DBへの追記が失敗した場合は監査CSVを出力しない")
+        void databaseInsertFailure_isFailClosed() {
+            when(auditLogMapper.insert(any(AuditLog.class))).thenReturn(0);
+
+            assertThatThrownBy(() -> auditLogService.recordUserEvent(
+                    AuditEventType.USER_UPDATED, 1L, 2L, "ロール変更"))
+                    .isInstanceOf(IllegalStateException.class);
+            assertThat(listAppender.list).isEmpty();
         }
     }
 }

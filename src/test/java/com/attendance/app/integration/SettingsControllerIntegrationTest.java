@@ -69,10 +69,9 @@ class SettingsControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("admin/settings"))
                 .andExpect(model().attributeExists("paidLeaveGrantDate"))
-                .andExpect(model().attributeExists("paidLeaveGrantDays"))
                 .andExpect(model().attributeExists("copyrightText"))
                 .andExpect(model().attributeExists("systemName"))
-                .andExpect(model().attributeExists("attendancePeriodStartDay"))
+                .andExpect(model().attributeDoesNotExist("attendancePeriodStartDay"))
                 .andExpect(model().attributeExists("attendancePeriodEndDay"))
                 .andExpect(model().attributeExists("existingHolidays"))
                 .andExpect(model().attributeExists("holidayCount"));
@@ -85,17 +84,14 @@ class SettingsControllerIntegrationTest {
         // 設定更新前の値を退避（ロールバックされるが、検証用に初期状態を考慮）
         mockMvc.perform(post("/admin/settings")
                         .with(csrf())
-                        .param("paidLeaveGrantDate", "08-15")
-                        .param("paidLeaveGrantDays", "15"))
+                        .param("paidLeaveGrantDate", "08-15"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(view().name("redirect:/admin/settings"))
                 .andExpect(flash().attribute("message", "システム設定を更新しました。"));
 
         // 更新した設定値がDBに反映されているか検証
         String date = systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DATE");
-        String days = systemSettingMapper.selectValueByKey("PAID_LEAVE_GRANT_DAYS");
 
         assertThat(date).isEqualTo("08-15");
-        assertThat(days).isEqualTo("15");
     }
 }

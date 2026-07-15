@@ -95,14 +95,14 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="max-w-xs truncate" th:text="${req.reason}" th:title="${req.reason}"></td>
+                            <td class="min-w-[12rem] max-w-sm whitespace-pre-wrap break-words align-top" th:text="${req.reason}"></td>
                             <td>
                                 <div class="flex flex-col gap-2 min-w-[150px]">
                                     <!-- 承認フォーム -->
                                     <form th:action="@{/attendance/approval/corrections/{id}/approve(id=${req.requestId})}"
                                           method="post" onsubmit="return confirm('この修正申請を承認しますか？');">
                                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                        <input type="text" class="form-input px-2.5 py-1 text-xs mb-1.5"
+                                        <input type="text" class="form-input px-2.5 py-1 text-base md:text-xs mb-1.5"
                                                name="comment" placeholder="承認コメント（任意）" maxlength="500">
                                         <button type="submit" class="btn btn-success w-full py-1.5 text-xs gap-1.5 cursor-pointer">
                                             <i class="fas fa-check"></i> 承認
@@ -112,7 +112,7 @@
                                     <form th:action="@{/attendance/approval/corrections/{id}/reject(id=${req.requestId})}"
                                           method="post" onsubmit="return confirm('この修正申請を却下しますか？');">
                                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                                        <input type="text" class="form-input px-2.5 py-1 text-xs mb-1.5"
+                                        <input type="text" class="form-input px-2.5 py-1 text-base md:text-xs mb-1.5"
                                                name="comment" placeholder="却下理由（任意）" maxlength="500">
                                         <button type="submit" class="btn btn-danger w-full py-1.5 text-xs gap-1.5 cursor-pointer">
                                             <i class="fas fa-times"></i> 却下

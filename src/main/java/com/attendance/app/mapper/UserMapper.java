@@ -60,6 +60,27 @@ public interface UserMapper {
      * @return ユーザー情報のリスト
      */
     List<User> selectAll();
+
+    List<User> selectByIds(@Param("userIds") java.util.Collection<Long> userIds);
+
+    List<User> selectPage(@Param("department") String department,
+                          @Param("keyword") String keyword,
+                          @Param("activeOnly") boolean activeOnly,
+                          @Param("excludeAdmin") boolean excludeAdmin,
+                          @Param("offset") long offset,
+                          @Param("limit") int limit);
+
+    List<User> selectAfterId(@Param("department") String department,
+                             @Param("keyword") String keyword,
+                             @Param("activeOnly") boolean activeOnly,
+                             @Param("excludeAdmin") boolean excludeAdmin,
+                             @Param("afterUserId") long afterUserId,
+                             @Param("limit") int limit);
+
+    long countByFilter(@Param("department") String department,
+                       @Param("keyword") String keyword,
+                       @Param("activeOnly") boolean activeOnly,
+                       @Param("excludeAdmin") boolean excludeAdmin);
     
     /**
      * ユーザーロール別にユーザーを取得
@@ -68,6 +89,8 @@ public interface UserMapper {
      * @return ユーザー情報のリスト
      */
     List<User> selectByRole(@Param("role") String role);
+
+    List<User> selectActiveAdmins();
     
     /**
      * ユーザー情報を新規作成
@@ -183,7 +206,7 @@ public interface UserMapper {
      */
     int updatePaidLeaveSettings(
             @Param("userId") Long userId,
-            @Param("annualLeaveGrantDays") int annualLeaveGrantDays,
+            @Param("annualLeaveGrantDays") Integer annualLeaveGrantDays,
             @Param("annualLeaveIncrement") java.math.BigDecimal annualLeaveIncrement,
             @Param("maxPaidLeaveDays") int maxPaidLeaveDays);
 

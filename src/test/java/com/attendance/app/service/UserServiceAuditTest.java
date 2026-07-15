@@ -61,6 +61,7 @@ class UserServiceAuditTest {
     @Mock
     private AttendanceApproverAssignmentMapper approverAssignmentMapper;
 
+
     @InjectMocks
     private UserService userService;
 

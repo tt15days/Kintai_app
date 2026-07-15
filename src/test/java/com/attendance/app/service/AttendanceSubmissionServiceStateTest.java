@@ -78,6 +78,19 @@ class AttendanceSubmissionServiceStateTest {
                 .status(AttendanceSubmissionService.STATUS_APPROVED)
                 .submittedAt(Instant.now())
                 .build();
+        org.mockito.Mockito.lenient().when(attendancePeriodSettingService.resolvePeriod(any(YearMonth.class)))
+                .thenAnswer(invocation -> {
+                    YearMonth month = invocation.getArgument(0);
+                    return new AttendancePeriodSettingService.AttendancePeriod(
+                            month.minusMonths(1).atDay(21), month.atDay(20));
+                });
+        org.mockito.Mockito.lenient().when(attendancePeriodSettingService.resolvePayrollMonth(any(LocalDate.class)))
+                .thenAnswer(invocation -> {
+                    LocalDate date = invocation.getArgument(0);
+                    return date.getDayOfMonth() > 20
+                            ? YearMonth.from(date).plusMonths(1)
+                            : YearMonth.from(date);
+                });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -197,6 +210,8 @@ class AttendanceSubmissionServiceStateTest {
             AttendanceSubmission returned = submissionWith("RETURNED");
             returned.setSubmissionId(99L);
             returned.setUserId(2L);
+            returned.setStartDate(LocalDate.of(2026, 4, 25));
+            returned.setEndDate(LocalDate.of(2026, 5, 24));
             when(attendanceSubmissionMapper.selectByUserAndMonth(2L, "2026-06"))
                     .thenReturn(Optional.of(returned));
 
@@ -204,6 +219,8 @@ class AttendanceSubmissionServiceStateTest {
 
             verify(attendanceSubmissionMapper).update(returned);
             assertThat(returned.getStatus()).isEqualTo(AttendanceSubmissionService.STATUS_PENDING);
+            assertThat(returned.getStartDate()).isEqualTo(LocalDate.of(2026, 4, 25));
+            assertThat(returned.getEndDate()).isEqualTo(LocalDate.of(2026, 5, 24));
         }
 
         @Test
@@ -341,9 +358,9 @@ class AttendanceSubmissionServiceStateTest {
         }
 
         @Test
-        @DisplayName("個人・部署アサインが存在する場合、同じ勤務クラスでもアサイン外の承認者は承認できない")
-        void assignedApproverExists_unassignedSameClassApprover_throwsException() {
-            User applicant = User.builder().userId(20L).className("A").build();
+        @DisplayName("個人・部署アサイン外の一般承認者は承認できない")
+        void unassignedApprover_throwsException() {
+            User applicant = User.builder().userId(20L).className("A").department("総務部").build();
             User unassignedSameClassApprover = User.builder()
                     .userId(31L).userRole(UserRole.USER).className("A")
                     .isActive(true).canApproveAttendance(true).build();
@@ -353,7 +370,7 @@ class AttendanceSubmissionServiceStateTest {
             when(attendanceSubmissionMapper.selectByIdForUpdate(99L))
                     .thenReturn(Optional.of(pendingSubmission));
             when(userService.getUserById(20L)).thenReturn(Optional.of(applicant));
-            when(approverAssignmentService.resolveAssignedApproverIds(20L, "A")).thenReturn(List.of(30L));
+            when(approverAssignmentService.resolveAssignedApproverIds(20L, "総務部")).thenReturn(List.of(30L));
 
             assertThatThrownBy(() -> service.approve(99L, 31L, null))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -363,7 +380,7 @@ class AttendanceSubmissionServiceStateTest {
         @Test
         @DisplayName("個人・部署アサインが存在する場合、アサインされた承認者は承認できる")
         void assignedApproverExists_assignedApprover_canApprove() {
-            User applicant = User.builder().userId(20L).className("A").build();
+            User applicant = User.builder().userId(20L).className("A").department("総務部").build();
             User assignedApprover = User.builder()
                     .userId(30L).userRole(UserRole.USER).className("A")
                     .isActive(true).canApproveAttendance(true).build();
@@ -373,7 +390,7 @@ class AttendanceSubmissionServiceStateTest {
             when(attendanceSubmissionMapper.selectByIdForUpdate(99L))
                     .thenReturn(Optional.of(pendingSubmission));
             when(userService.getUserById(20L)).thenReturn(Optional.of(applicant));
-            when(approverAssignmentService.resolveAssignedApproverIds(20L, "A")).thenReturn(List.of(30L));
+            when(approverAssignmentService.resolveAssignedApproverIds(20L, "総務部")).thenReturn(List.of(30L));
 
             service.approve(99L, 30L, null);
 
@@ -388,11 +405,6 @@ class AttendanceSubmissionServiceStateTest {
     @Nested
     @DisplayName("resolvePayrollMonth")
     class ResolvePayrollMonth {
-
-        @BeforeEach
-        void setUp() {
-            when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
-        }
 
         @Test
         @DisplayName("21日以降（開始日）は翌月扱い")
@@ -456,8 +468,8 @@ class AttendanceSubmissionServiceStateTest {
         }
 
             @Test
-            @DisplayName("一般承認者は同じ勤務クラスの申請のみ取得できる")
-            void approver_getsOnlyAssignedByClass() {
+            @DisplayName("一般承認者は明示的にアサインされた申請のみ取得できる")
+            void approver_getsOnlyExplicitlyAssigned() {
                 User approver = User.builder()
                     .userId(30L)
                     .userRole(UserRole.USER)
@@ -485,8 +497,8 @@ class AttendanceSubmissionServiceStateTest {
                 when(userService.isAttendanceApprover(approver)).thenReturn(true);
                 when(attendanceSubmissionMapper.selectByStatus("PENDING"))
                     .thenReturn(List.of(sameClassSubmission, differentClassSubmission));
-                when(userService.getUserById(1001L)).thenReturn(Optional.of(applicantA));
-                when(userService.getUserById(1002L)).thenReturn(Optional.of(applicantB));
+                when(approverAssignmentService.getApplicantsAssignedToApprover(List.of(1001L, 1002L), 30L))
+                        .thenReturn(List.of(1001L));
 
                 List<AttendanceSubmission> result = service.getPendingSubmissions(approver);
 

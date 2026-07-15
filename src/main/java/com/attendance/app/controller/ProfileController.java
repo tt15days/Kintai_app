@@ -1,7 +1,6 @@
 package com.attendance.app.controller;
 
 import com.attendance.app.entity.User;
-import com.attendance.app.entity.WorkScheduleClass;
 import com.attendance.app.security.SecurityUtil;
 import com.attendance.app.service.LeaveApplicationService;
 import com.attendance.app.service.PaidLeaveBalanceService;
@@ -18,14 +17,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.List;
-
 /**
  * Profile Controller - ユーザープロフィール
  *
  * 主な責務:
  * - ログイン中ユーザーのプロフィール表示
- * - 所属クラス（勤務クラス）の変更
+ * - 所属クラス（勤務クラス）の表示
  */
 @Slf4j
 @Controller
@@ -35,13 +32,11 @@ import java.util.List;
 public class ProfileController {
 
     private static final String PROFILE_VIEW = "user/profile";
-    private static final String PROFILE_REDIRECT = "redirect:/profile";
-
-    private final UserService userService;
     private final WorkScheduleClassService workScheduleClassService;
     private final SecurityUtil securityUtil;
     private final LeaveApplicationService leaveApplicationService;
     private final PaidLeaveBalanceService paidLeaveBalanceService;
+    private final UserService userService;
 
     /**
      * プロフィール画面を表示します。
@@ -53,8 +48,6 @@ public class ProfileController {
     public String showProfile(Model model) {
         try {
             User currentUser = securityUtil.getCurrentUser();
-            List<WorkScheduleClass> workScheduleClasses = workScheduleClassService.getAllActiveClasses();
-
             int currentYear = com.attendance.app.util.DateTimeUtil.todayJapan().getYear();
             java.math.BigDecimal yearlyUsedPaidLeaveDays = leaveApplicationService.calculateYearlyUsedPaidLeaveDays(
                     currentUser.getUserId(), currentYear);
@@ -63,10 +56,10 @@ public class ProfileController {
                     paidLeaveBalanceService.getTotalRemainingDays(currentUser.getUserId());
 
             model.addAttribute("currentUser", currentUser);
-            model.addAttribute("workScheduleClasses", workScheduleClasses);
             // 無効化されたクラスに割当中でも「現在の所属クラス」表示が壊れないよう別途取得する
             model.addAttribute("currentWorkScheduleClass",
                     workScheduleClassService.getClassByName(currentUser.getClassName()).orElse(null));
+            model.addAttribute("workScheduleClasses", workScheduleClassService.getAllActiveClasses());
             model.addAttribute("yearlyUsedPaidLeaveDays", yearlyUsedPaidLeaveDays);
             model.addAttribute("remainingPaidLeaveDays", remainingPaidLeaveDays);
             // 有給残高年次一覧
@@ -80,29 +73,20 @@ public class ProfileController {
         return PROFILE_VIEW;
     }
 
-    /**
-     * 所属クラス（勤務クラス）を更新します。
-     *
-     * @param className 選択した勤務クラス名（未選択の場合は null）
-     * @param redirectAttributes リダイレクト先メッセージ
-     * @return プロフィール画面へリダイレクト
-     */
     @PostMapping("/work-schedule")
-    public String updateWorkScheduleClass(
-            @RequestParam(required = false) String className,
-            RedirectAttributes redirectAttributes) {
+    public String updateWorkSchedule(@RequestParam(required = false) String className,
+                                     RedirectAttributes redirectAttributes) {
         try {
-            Long userId = securityUtil.getCurrentUserId();
-            userService.updateWorkScheduleClass(userId, className);
-            redirectAttributes.addFlashAttribute("successMessage", "所属クラスを更新しました");
-            log.info("所属クラスを更新: userId={}, className={}", userId, className);
+            User currentUser = securityUtil.getCurrentUser();
+            userService.updateWorkScheduleClass(currentUser.getUserId(), className);
+            redirectAttributes.addFlashAttribute("successMessage", "勤務クラスを変更しました");
         } catch (IllegalArgumentException e) {
-            log.warn("所属クラス更新に失敗", e);
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (Exception e) {
-            log.error("所属クラス更新に失敗", e);
-            redirectAttributes.addFlashAttribute("errorMessage", "所属クラスの更新に失敗しました");
+            log.error("勤務クラスの変更に失敗", e);
+            redirectAttributes.addFlashAttribute("errorMessage", "勤務クラスの変更に失敗しました");
         }
-        return PROFILE_REDIRECT;
+        return "redirect:/profile";
     }
+
 }

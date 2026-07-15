@@ -59,8 +59,8 @@ class AttendanceCorrectionRequestServiceTest {
         adminUser = User.builder().userId(1L).userRole(UserRole.ADMIN).isActive(true).canApproveAttendance(true).build();
         regularUser = User.builder().userId(2L).userRole(UserRole.USER).isActive(true).canApproveAttendance(false).build();
         approverUserClassA = User.builder().userId(3L).userRole(UserRole.USER).className("A").isActive(true).canApproveAttendance(true).build();
-        applicantClassA = User.builder().userId(21L).userRole(UserRole.USER).className("A").isActive(true).build();
-        applicantClassB = User.builder().userId(22L).userRole(UserRole.USER).className("B").isActive(true).build();
+        applicantClassA = User.builder().userId(21L).userRole(UserRole.USER).className("A").department("総務部").isActive(true).build();
+        applicantClassB = User.builder().userId(22L).userRole(UserRole.USER).className("B").department("開発部").isActive(true).build();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -212,8 +212,8 @@ class AttendanceCorrectionRequestServiceTest {
     class ApproveRequest {
 
         @Test
-        @DisplayName("正常系: 一般承認者が同じ勤務クラスの申請を承認する")
-        void approve_approverSameClass_success() {
+        @DisplayName("正常系: 個人・部署アサインされた一般承認者が申請を承認する")
+        void approve_assignedApprover_success() {
             AttendanceCorrectionRequest pending = AttendanceCorrectionRequest.builder()
                     .requestId(300L).userId(21L).attendanceDate(LocalDate.of(2026, 5, 15))
                     .status(AttendanceCorrectionRequestService.STATUS_PENDING)
@@ -224,6 +224,7 @@ class AttendanceCorrectionRequestServiceTest {
             when(userService.isAttendanceApprover(approverUserClassA)).thenReturn(true);
             when(correctionRequestMapper.selectByIdForUpdate(300L)).thenReturn(Optional.of(pending));
             when(userService.getUserById(21L)).thenReturn(Optional.of(applicantClassA));
+            when(approverAssignmentService.resolveAssignedApproverIds(21L, "総務部")).thenReturn(List.of(3L));
 
             service.approveRequest(300L, 3L, "承認します");
 
@@ -237,8 +238,8 @@ class AttendanceCorrectionRequestServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 個人アサインが存在する場合、同じ勤務クラスでもアサイン外の承認者は承認できない")
-        void approve_assignedApproverExists_unassignedSameClassApprover_throwsException() {
+        @DisplayName("異常系: アサイン外の一般承認者は承認できない")
+        void approve_unassignedApprover_throwsException() {
             AttendanceCorrectionRequest pending = AttendanceCorrectionRequest.builder()
                     .requestId(300L).userId(21L).status(AttendanceCorrectionRequestService.STATUS_PENDING).build();
 
@@ -246,7 +247,7 @@ class AttendanceCorrectionRequestServiceTest {
             when(userService.isAttendanceApprover(approverUserClassA)).thenReturn(true);
             when(correctionRequestMapper.selectByIdForUpdate(300L)).thenReturn(Optional.of(pending));
             when(userService.getUserById(21L)).thenReturn(Optional.of(applicantClassA));
-            when(approverAssignmentService.resolveAssignedApproverIds(21L, "A")).thenReturn(List.of(99L));
+            when(approverAssignmentService.resolveAssignedApproverIds(21L, "総務部")).thenReturn(List.of(99L));
 
             assertThatThrownBy(() -> service.approveRequest(300L, 3L, "承認"))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -254,8 +255,8 @@ class AttendanceCorrectionRequestServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 一般承認者が異なるクラスの申請を承認しようとすると例外")
-        void approve_approverDifferentClass_throwsException() {
+        @DisplayName("異常系: アサインのない一般承認者は承認できない")
+        void approve_unassignedApproverWithoutAssignments_throwsException() {
             AttendanceCorrectionRequest pending = AttendanceCorrectionRequest.builder()
                     .requestId(300L).userId(22L).status(AttendanceCorrectionRequestService.STATUS_PENDING).build();
 
@@ -395,8 +396,8 @@ class AttendanceCorrectionRequestServiceTest {
 
             when(userService.isAttendanceApprover(approverUserClassA)).thenReturn(true);
             when(correctionRequestMapper.selectByStatus("PENDING")).thenReturn(List.of(req1, req2));
-            when(userService.getUserById(21L)).thenReturn(Optional.of(applicantClassA));
-            when(userService.getUserById(22L)).thenReturn(Optional.of(applicantClassB));
+            when(attendanceSubmissionService.canApproveAll(approverUserClassA, List.of(21L, 22L)))
+                    .thenReturn(java.util.Map.of(21L, true, 22L, false));
 
             List<AttendanceCorrectionRequest> result = service.getPendingRequests(approverUserClassA);
 

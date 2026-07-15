@@ -22,7 +22,9 @@ public interface AlertBatchMapper {
     List<Article36AlertDto> findUsersExceedingOvertimeLimit(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
-            @Param("limitHours") int limitHours);
+            @Param("limitHours") int limitHours,
+            @Param("afterUserId") long afterUserId,
+            @Param("limit") int limit);
 
     /**
      * 現在の有効な有給休暇において、付与日から指定月数以上経過し、
@@ -36,5 +38,7 @@ public interface AlertBatchMapper {
     List<PaidLeaveAlertDto> findUsersWithInsufficientPaidLeave(
             @Param("monthsPassed") int monthsPassed,
             @Param("daysLimit") int daysLimit,
-            @Param("currentDate") LocalDate currentDate);
+            @Param("currentDate") LocalDate currentDate,
+            @Param("afterUserId") long afterUserId,
+            @Param("limit") int limit);
 }

@@ -2,6 +2,7 @@ package com.attendance.app.service;
 
 import com.attendance.app.entity.*;
 import com.attendance.app.mapper.AttendanceRecordMapper;
+import com.attendance.app.mapper.AttendanceSubmissionMapper;
 import com.attendance.app.mapper.LeaveApplicationMapper;
 import com.attendance.app.util.CsvSanitizeUtil;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -35,12 +37,15 @@ import java.util.zip.GZIPOutputStream;
 @RequiredArgsConstructor
 public class PayrollExportService {
 
+    private static final int EXPORT_PAGE_SIZE = 100;
+
     private final UserService userService;
     private final AttendanceRecordService attendanceRecordService;
     private final LeaveApplicationService leaveApplicationService;
     private final AttendanceSubmissionService attendanceSubmissionService;
     private final AttendanceRecordMapper attendanceRecordMapper;
     private final LeaveApplicationMapper leaveApplicationMapper;
+    private final AttendanceSubmissionMapper attendanceSubmissionMapper;
 
     /**
      * 指定年月の全ユーザー給与計算連携用CSVを生成し、GZIP圧縮して返します。
@@ -52,34 +57,21 @@ public class PayrollExportService {
      * @throws IOException
      */
     public byte[] generatePayrollCsvGzip(YearMonth yearMonth, PayrollExportFormat format, Charset charset) throws IOException {
-        List<User> users = userService.getActiveUsers();
-        AttendanceRecordService.MonthRange monthRange = attendanceRecordService.getMonthRange(yearMonth);
-
-        // ユーザーごとの実対象期間（勤怠申請提出時にスナップショットされた期間があればそれを優先。
-        // 期間設定変更後に未申請のユーザーは既定のmonthRangeを使う）
-        Map<Long, LocalDate[]> effectiveRangeByUser = buildEffectiveRangeByUser(yearMonth, monthRange);
-        LocalDate fetchStart = monthRange.getStartDate();
-        LocalDate fetchEnd = monthRange.getEndDate();
-        for (LocalDate[] range : effectiveRangeByUser.values()) {
-            if (range[0].isBefore(fetchStart)) {
-                fetchStart = range[0];
-            }
-            if (range[1].isAfter(fetchEnd)) {
-                fetchEnd = range[1];
-            }
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            writePayrollCsvGzip(yearMonth, format, charset, outputStream);
+            return outputStream.toByteArray();
         }
+    }
 
-        // 全ユーザー分の勤怠記録・休暇申請を一括取得し、userId でグルーピング(N+1回避)
-        Instant rangeStart = com.attendance.app.util.DateTimeUtil.toInstant(fetchStart);
-        Instant rangeEnd = com.attendance.app.util.DateTimeUtil.toInstant(fetchEnd.plusDays(1));
-        Map<Long, List<AttendanceRecord>> recordsByUser = attendanceRecordMapper.selectAllByDateRange(rangeStart, rangeEnd)
-                .stream().collect(Collectors.groupingBy(AttendanceRecord::getUserId));
-        Map<Long, List<LeaveApplication>> leaveApplicationsByUser = leaveApplicationMapper.selectAllByDateRange(
-                        fetchStart, fetchEnd)
-                .stream().collect(Collectors.groupingBy(LeaveApplication::getUserId));
+    /**
+     * 指定年月の給与計算連携CSVをGZIP圧縮し、出力ストリームへ書き込みます。
+     */
+    public void writePayrollCsvGzip(YearMonth yearMonth, PayrollExportFormat format, Charset charset,
+            OutputStream outputStream) throws IOException {
+        AttendanceRecordService.MonthRange monthRange = attendanceRecordService.getMonthRange(yearMonth);
+        int exportedUserCount = 0;
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
+        try (GZIPOutputStream gzipOut = new GZIPOutputStream(outputStream);
              OutputStreamWriter osw = new OutputStreamWriter(gzipOut, charset);
              CSVPrinter csvPrinter = new CSVPrinter(osw, CSVFormat.EXCEL)) {
 
@@ -103,8 +95,31 @@ public class PayrollExportService {
                     "休日労働時間"
             );
 
-            java.nio.charset.CharsetEncoder encoder = charset.newEncoder();
-            for (User user : users) {
+            long afterUserId = 0;
+            while (true) {
+                List<User> users = userService.getUsersAfterId(
+                        null, null, true, false, afterUserId, EXPORT_PAGE_SIZE);
+                if (users.isEmpty()) {
+                    break;
+                }
+                List<Long> userIds = users.stream().map(User::getUserId).toList();
+                Map<Long, LocalDate[]> effectiveRangeByUser = buildEffectiveRangeByUser(yearMonth, userIds);
+                LocalDate fetchStart = monthRange.getStartDate();
+                LocalDate fetchEnd = monthRange.getEndDate();
+                for (LocalDate[] range : effectiveRangeByUser.values()) {
+                    if (range[0].isBefore(fetchStart)) fetchStart = range[0];
+                    if (range[1].isAfter(fetchEnd)) fetchEnd = range[1];
+                }
+                Instant rangeStart = com.attendance.app.util.DateTimeUtil.toInstant(fetchStart);
+                Instant rangeEnd = com.attendance.app.util.DateTimeUtil.toInstant(fetchEnd.plusDays(1));
+                Map<Long, List<AttendanceRecord>> recordsByUser = attendanceRecordMapper
+                        .selectByDateRangeAndUserIds(rangeStart, rangeEnd, userIds).stream()
+                        .collect(Collectors.groupingBy(AttendanceRecord::getUserId));
+                Map<Long, List<LeaveApplication>> leaveApplicationsByUser = leaveApplicationMapper
+                        .selectByDateRangeAndUserIds(fetchStart, fetchEnd, userIds).stream()
+                        .collect(Collectors.groupingBy(LeaveApplication::getUserId));
+                java.nio.charset.CharsetEncoder encoder = charset.newEncoder();
+                for (User user : users) {
                 if (user.getFullName() != null && !encoder.canEncode(user.getFullName())) {
                     // Shift_JIS等では未対応文字が無警告で '?' に置換されるため、氏名特定を誤らないよう運用者に警告する
                     log.warn("氏名に出力文字コード({})で表現できない文字が含まれています。CSV上で文字化けする可能性があります: userId={}",
@@ -199,11 +214,13 @@ public class PayrollExportService {
                         formatDecimalHours(totalNightShiftHours),
                         formatDecimalHours(totalHolidayWorkHours)
                 );
+                }
+                exportedUserCount += users.size();
+                afterUserId = users.get(users.size() - 1).getUserId();
             }
         }
 
-        log.info("給与連携CSV(GZIP)生成完了: yearMonth={}, format={}, users={}", yearMonth, format, users.size());
-        return baos.toByteArray();
+        log.info("給与連携CSV(GZIP)生成完了: yearMonth={}, format={}, users={}", yearMonth, format, exportedUserCount);
     }
 
     /**
@@ -212,10 +229,10 @@ public class PayrollExportService {
      * 未提出（または期間未設定）のユーザーは既定の monthRange を使用します。
      * 期間設定変更を跨いで提出されたユーザーが混在していても、各ユーザーの提出時点の期間で集計するための補正です。
      */
-    private Map<Long, LocalDate[]> buildEffectiveRangeByUser(YearMonth yearMonth, AttendanceRecordService.MonthRange monthRange) {
+    private Map<Long, LocalDate[]> buildEffectiveRangeByUser(YearMonth yearMonth, List<Long> userIds) {
         Map<Long, LocalDate[]> result = new HashMap<>();
         for (com.attendance.app.entity.AttendanceSubmission submission
-                : attendanceSubmissionService.getSubmissionsByTargetYearMonth(yearMonth)) {
+                : attendanceSubmissionMapper.selectByTargetYearMonthAndUserIds(yearMonth.toString(), userIds)) {
             if (submission.getStartDate() != null && submission.getEndDate() != null) {
                 result.put(submission.getUserId(), new LocalDate[]{submission.getStartDate(), submission.getEndDate()});
             }

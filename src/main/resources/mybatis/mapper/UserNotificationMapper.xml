@@ -8,15 +8,11 @@
         <result column="message" property="message"/>
         <result column="is_read" property="isRead"/>
         <result column="notification_type" property="notificationType"/>
+        <result column="idempotency_key" property="idempotencyKey"/>
         <result column="sender_user_id" property="senderUserId"/>
         <result column="sender_name" property="senderName"/>
         <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"
                 typeHandler="com.attendance.app.config.typehandler.InstantTypeHandler"/>
-    </resultMap>
-
-    <resultMap id="notificationKeyResultMap" type="com.attendance.app.dto.UserNotificationKeyDto">
-        <result column="user_id" property="userId"/>
-        <result column="notification_type" property="notificationType"/>
     </resultMap>
 
     <select id="selectUnreadByUserId" resultMap="notificationResultMap">
@@ -25,6 +21,7 @@
                un.message,
                un.is_read,
                un.notification_type,
+               un.idempotency_key,
                un.sender_user_id,
                u.full_name AS sender_name,
                un.created_at
@@ -47,26 +44,27 @@
         )
     </insert>
 
+    <insert id="insertBatchIfAbsent">
+        INSERT INTO user_notifications
+            (user_id, message, notification_type, idempotency_key, is_read, sender_user_id, created_at)
+        VALUES (
+            #{userId},
+            #{message},
+            #{notificationType},
+            #{idempotencyKey},
+            false,
+            #{senderUserId},
+            NOW()
+        )
+        ON CONFLICT (user_id, notification_type, idempotency_key) DO NOTHING
+    </insert>
+
     <update id="markAsRead">
         UPDATE user_notifications
            SET is_read = true
          WHERE notification_id = #{notificationId}
            AND user_id          = #{userId}
     </update>
-
-    <select id="selectExistingNotificationKeys" resultMap="notificationKeyResultMap">
-        SELECT DISTINCT user_id, notification_type
-          FROM user_notifications
-         WHERE user_id IN
-        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
-            #{userId}
-        </foreach>
-           AND notification_type IN
-        <foreach collection="notificationTypes" item="notificationType" open="(" separator="," close=")">
-            #{notificationType}
-        </foreach>
-           AND created_at &gt;= #{since, typeHandler=com.attendance.app.config.typehandler.InstantTypeHandler}
-    </select>
 
     <update id="markAllAsRead">
         UPDATE user_notifications

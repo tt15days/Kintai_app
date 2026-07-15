@@ -13,13 +13,13 @@
 
     <div layout:fragment="content">
         <!-- フラッシュメッセージ -->
-        <div th:if="${successMessage}" class="alert alert-success" role="alert">
+        <div th:if="${successMessage}" class="alert alert-success" role="status" aria-live="polite">
             <span><i class="fas fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+            <button type="button" class="icon-button text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
-        <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+        <div th:if="${errorMessage}" class="alert alert-danger" role="alert" aria-live="assertive">
             <span><i class="fas fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+            <button type="button" class="icon-button text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
 
         <!-- 新規登録フォーム -->
@@ -73,7 +73,8 @@
                                 </td>
                                 <td>
                                     <button type="button"
-                                            class="btn btn-primary p-2 rounded-lg text-xs"
+                                            class="btn btn-primary min-w-11 p-2 rounded-lg text-xs"
+                                            th:aria-label="|${dept.name}を編集|"
                                             th:onclick="'openEditModal(' + ${dept.departmentId} + ')'">
                                         <i class="fas fa-edit"></i>
                                     </button>
@@ -94,14 +95,14 @@
     <th:block layout:fragment="modals">
         <!-- 編集モーダル（各部署用） -->
         <div th:each="dept : ${departments}">
-            <div class="modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300"
+            <div class="modal fixed inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300"
                  th:id="${'editModal' + dept.departmentId}" tabindex="-1" th:onclick="'closeEditModal(' + ${dept.departmentId} + ')'"
-                 role="dialog" aria-modal="true" aria-hidden="true" th:aria-label="|${dept.departmentName}の部署編集|">
+                 role="dialog" aria-modal="true" aria-hidden="true" th:aria-label="|${dept.name}の部署編集|">
                 <div class="flex min-h-full items-center justify-center p-4">
                     <div class="card-heavy w-full max-w-lg" onclick="event.stopPropagation()">
                         <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
                             <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5"><i class="fas fa-edit text-primary"></i> 部署編集</h5>
-                            <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity"
+                            <button type="button" class="icon-button text-txt-primary hover:opacity-75 transition-opacity"
                                     th:onclick="'closeEditModal(' + ${dept.departmentId} + ')'" aria-label="閉じる">
                                 <i class="fa-solid fa-xmark text-xl"></i>
                             </button>
@@ -118,7 +119,7 @@
                                     <input type="checkbox" name="isActive" value="true" th:id="${'active' + dept.departmentId}"
                                            class="w-4 h-4 rounded border-glass-border text-primary focus:ring-primary/50 bg-glass"
                                            th:checked="${dept.isActive}">
-                                    <label th:for="${'active' + dept.departmentId}" class="text-sm font-medium text-txt-primary cursor-pointer">有効（チェックを外すと廃止）</label>
+                                    <label th:for="${'active' + dept.departmentId}" class="choice-label text-sm font-medium text-txt-primary">有効（チェックを外すと廃止）</label>
                                 </div>
                             </div>
                             <div class="flex gap-4 mt-4">

@@ -2,6 +2,7 @@ package com.attendance.app.controller;
 
 import com.attendance.app.entity.AdminAnnouncement;
 import com.attendance.app.security.SecurityUtil;
+import com.attendance.app.service.AdminAnnouncementNotFoundException;
 import com.attendance.app.service.AdminAnnouncementService;
 import com.attendance.app.util.DateTimeUtil;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 
 /**
  * AdminAnnouncementController - 管理者お知らせ管理
@@ -32,8 +34,9 @@ public class AdminAnnouncementController {
 
     private static final String ANNOUNCEMENTS_VIEW = "admin/announcements";
     private static final String ANNOUNCEMENTS_REDIRECT = "redirect:/admin/announcements";
-    /** タイトルの上限文字数（admin_announcements.title VARCHAR(200) と同一） */
-    private static final int MAX_TITLE_LENGTH = 200;
+    private static final int DEFAULT_PAGE_SIZE = 10;
+    private static final int PAGE_WINDOW_SIZE = 5;
+    private static final ZoneId JST_ZONE_ID = ZoneId.of("Asia/Tokyo");
 
     private final AdminAnnouncementService adminAnnouncementService;
     private final SecurityUtil securityUtil;
@@ -45,10 +48,28 @@ public class AdminAnnouncementController {
      * @return テンプレート名 (admin/announcements)
      */
     @GetMapping
-    public String listAnnouncements(Model model) {
-        model.addAttribute("announcements", adminAnnouncementService.getAllAnnouncements());
+    public String listAnnouncements(
+            @RequestParam(defaultValue = "0") String page,
+            @RequestParam(defaultValue = "10") String size,
+            Model model) {
+        int pageSize = parsePageSize(size);
+        long totalCount = adminAnnouncementService.countAnnouncements();
+        long totalPages = totalCount == 0 ? 0 : ((totalCount - 1) / pageSize) + 1;
+        long requestedPage = parseNonNegativeLong(page, 0);
+        long currentPage = totalPages == 0 ? 0 : Math.min(requestedPage, totalPages - 1);
+        long pageStart = Math.max(0, Math.min(currentPage - 2, totalPages - PAGE_WINDOW_SIZE));
+        long pageEnd = Math.min(totalPages, pageStart + PAGE_WINDOW_SIZE);
+
+        model.addAttribute("announcements",
+                adminAnnouncementService.getAnnouncementsPage(currentPage * pageSize, pageSize));
         model.addAttribute("newAnnouncement", new AdminAnnouncement());
         model.addAttribute("today", DateTimeUtil.todayJapan());
+        model.addAttribute("jstZoneId", JST_ZONE_ID);
+        model.addAttribute("currentPage", currentPage);
+        model.addAttribute("pageSize", pageSize);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("totalAnnouncementCount", totalCount);
+        model.addAttribute("pageNumbers", java.util.stream.LongStream.range(pageStart, pageEnd).boxed().toList());
         return ANNOUNCEMENTS_VIEW;
     }
 
@@ -69,10 +90,6 @@ public class AdminAnnouncementController {
             @RequestParam LocalDate displayStartDate,
             @RequestParam(required = false) LocalDate displayEndDate,
             RedirectAttributes redirectAttributes) {
-        if (title.strip().length() > MAX_TITLE_LENGTH) {
-            redirectAttributes.addFlashAttribute("errorMessage", "タイトルは" + MAX_TITLE_LENGTH + "文字以内で入力してください。");
-            return ANNOUNCEMENTS_REDIRECT;
-        }
         if (displayEndDate != null && displayEndDate.isBefore(displayStartDate)) {
             redirectAttributes.addFlashAttribute("errorMessage", "表示終了日は表示開始日より後の日付を指定してください。");
             return ANNOUNCEMENTS_REDIRECT;
@@ -93,6 +110,8 @@ public class AdminAnnouncementController {
                     .build();
             adminAnnouncementService.create(announcement);
             redirectAttributes.addFlashAttribute("successMessage", "お知らせを登録しました。");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (Exception e) {
             log.error("お知らせ登録に失敗しました", e);
             redirectAttributes.addFlashAttribute("errorMessage", "お知らせの登録に失敗しました。");
@@ -120,11 +139,10 @@ public class AdminAnnouncementController {
             @RequestParam(defaultValue = "false") boolean isActive,
             @RequestParam LocalDate displayStartDate,
             @RequestParam(required = false) LocalDate displayEndDate,
+            @RequestParam(defaultValue = "0") String page,
+            @RequestParam(defaultValue = "10") String size,
             RedirectAttributes redirectAttributes) {
-        if (title.strip().length() > MAX_TITLE_LENGTH) {
-            redirectAttributes.addFlashAttribute("errorMessage", "タイトルは" + MAX_TITLE_LENGTH + "文字以内で入力してください。");
-            return ANNOUNCEMENTS_REDIRECT;
-        }
+        addPaginationRedirectAttributes(page, size, redirectAttributes);
         if (displayEndDate != null && displayEndDate.isBefore(displayStartDate)) {
             redirectAttributes.addFlashAttribute("errorMessage", "表示終了日は表示開始日より後の日付を指定してください。");
             return ANNOUNCEMENTS_REDIRECT;
@@ -144,6 +162,10 @@ public class AdminAnnouncementController {
                     .build();
             adminAnnouncementService.update(announcement);
             redirectAttributes.addFlashAttribute("successMessage", "お知らせを更新しました。");
+        } catch (AdminAnnouncementNotFoundException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "対象のお知らせが見つかりません。");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (Exception e) {
             log.error("お知らせ更新に失敗しました: announcementId={}", announcementId, e);
             redirectAttributes.addFlashAttribute("errorMessage", "お知らせの更新に失敗しました。");
@@ -161,14 +183,41 @@ public class AdminAnnouncementController {
     @PostMapping("/{announcementId}/delete")
     public String deleteAnnouncement(
             @PathVariable Long announcementId,
+            @RequestParam(defaultValue = "0") String page,
+            @RequestParam(defaultValue = "10") String size,
             RedirectAttributes redirectAttributes) {
+        addPaginationRedirectAttributes(page, size, redirectAttributes);
         try {
             adminAnnouncementService.delete(announcementId);
             redirectAttributes.addFlashAttribute("successMessage", "お知らせを削除しました。");
+        } catch (AdminAnnouncementNotFoundException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "対象のお知らせが見つかりません。");
         } catch (Exception e) {
             log.error("お知らせ削除に失敗しました: announcementId={}", announcementId, e);
             redirectAttributes.addFlashAttribute("errorMessage", "お知らせの削除に失敗しました。");
         }
         return ANNOUNCEMENTS_REDIRECT;
+    }
+
+    private int parsePageSize(String value) {
+        long parsed = parseNonNegativeLong(value, DEFAULT_PAGE_SIZE);
+        if (parsed < 1) {
+            return DEFAULT_PAGE_SIZE;
+        }
+        return (int) Math.min(parsed, AdminAnnouncementService.MAX_PAGE_SIZE);
+    }
+
+    private long parseNonNegativeLong(String value, long defaultValue) {
+        try {
+            return Math.max(0, Long.parseLong(value));
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private void addPaginationRedirectAttributes(
+            String page, String size, RedirectAttributes redirectAttributes) {
+        redirectAttributes.addAttribute("page", parseNonNegativeLong(page, 0));
+        redirectAttributes.addAttribute("size", parsePageSize(size));
     }
 }

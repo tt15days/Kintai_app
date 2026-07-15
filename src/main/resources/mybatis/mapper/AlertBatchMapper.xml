@@ -5,31 +5,43 @@
 
     <select id="findUsersExceedingOvertimeLimit" resultType="com.attendance.app.dto.Article36AlertDto">
         SELECT
-            user_id,
-            SUM(overtime_hours) AS total_overtime_hours
+            ar.user_id,
+            SUM(ar.overtime_hours) AS total_overtime_hours
         FROM
-            attendance_records
+            attendance_records ar
+            INNER JOIN users u ON u.user_id = ar.user_id
         WHERE
-            attendance_date >= #{startDate}
-            AND attendance_date &lt;= #{endDate}
-            AND is_deleted = false
+            ar.attendance_date >= (CAST(#{startDate} AS date) AT TIME ZONE 'Asia/Tokyo')
+            AND ar.attendance_date &lt; ((CAST(#{endDate} AS date) + interval '1 day') AT TIME ZONE 'Asia/Tokyo')
+            AND ar.is_deleted = false
+            AND u.is_active = true
+            AND u.deleted_at IS NULL
+            AND ar.user_id &gt; #{afterUserId}
         GROUP BY
-            user_id
+            ar.user_id
         HAVING
-            SUM(overtime_hours) >= #{limitHours}
+            SUM(ar.overtime_hours) >= #{limitHours}
+        ORDER BY ar.user_id ASC
+        LIMIT #{limit}
     </select>
 
     <select id="findUsersWithInsufficientPaidLeave" resultType="com.attendance.app.dto.PaidLeaveAlertDto">
-        SELECT
-            user_id,
-            grant_date,
-            used_days
+        SELECT DISTINCT ON (plb.user_id)
+            plb.user_id,
+            plb.grant_date,
+            plb.used_days
         FROM
-            paid_leave_balance
+            paid_leave_balance plb
+            INNER JOIN users u ON u.user_id = plb.user_id
         WHERE
-            expiry_date >= #{currentDate}
-            AND #{currentDate} >= (grant_date + interval '1 month' * #{monthsPassed})
-            AND used_days &lt; #{daysLimit}
+            plb.expiry_date >= #{currentDate}
+            AND #{currentDate} >= (plb.grant_date + interval '1 month' * #{monthsPassed})
+            AND plb.used_days &lt; #{daysLimit}
+            AND u.is_active = true
+            AND u.deleted_at IS NULL
+            AND plb.user_id &gt; #{afterUserId}
+        ORDER BY plb.user_id ASC, plb.grant_date ASC, plb.balance_id ASC
+        LIMIT #{limit}
     </select>
 
 </mapper>

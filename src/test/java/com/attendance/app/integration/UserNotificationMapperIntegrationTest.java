@@ -82,4 +82,34 @@ class UserNotificationMapperIntegrationTest {
             assertThat(notification.getNotificationId()).isNotNull();
         }
     }
+
+    @Test
+    @DisplayName("期間キー付き通知は同一ユーザー・種別・期間だけ原子的に重複排除する")
+    void batchInsert_isIdempotentOnlyForSameNonNullKey() {
+        Long userId = userMapper.selectByEmail("user@example.com").orElseThrow().getUserId();
+        UserNotification june = UserNotification.builder()
+                .userId(userId).message("June").notificationType("REMINDER")
+                .idempotencyKey("2026-06").build();
+        UserNotification juneDuplicate = UserNotification.builder()
+                .userId(userId).message("June duplicate").notificationType("REMINDER")
+                .idempotencyKey("2026-06").build();
+        UserNotification july = UserNotification.builder()
+                .userId(userId).message("July").notificationType("REMINDER")
+                .idempotencyKey("2026-07").build();
+        UserNotification otherType = UserNotification.builder()
+                .userId(userId).message("Other type").notificationType("ALERT_PAID_LEAVE")
+                .idempotencyKey("2026-06").build();
+
+        assertThat(userNotificationMapper.insertBatchIfAbsent(june)).isEqualTo(1);
+        assertThat(userNotificationMapper.insertBatchIfAbsent(juneDuplicate)).isZero();
+        assertThat(userNotificationMapper.insertBatchIfAbsent(july)).isEqualTo(1);
+        assertThat(userNotificationMapper.insertBatchIfAbsent(otherType)).isEqualTo(1);
+
+        UserNotification withoutKey1 = UserNotification.builder()
+                .userId(userId).message("No key 1").notificationType("REMINDER").build();
+        UserNotification withoutKey2 = UserNotification.builder()
+                .userId(userId).message("No key 2").notificationType("REMINDER").build();
+        assertThat(userNotificationMapper.insert(withoutKey1)).isEqualTo(1);
+        assertThat(userNotificationMapper.insert(withoutKey2)).isEqualTo(1);
+    }
 }

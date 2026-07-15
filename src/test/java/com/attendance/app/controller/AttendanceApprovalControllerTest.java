@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
@@ -23,6 +24,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
@@ -42,6 +45,48 @@ class AttendanceApprovalControllerTest {
 
     @InjectMocks
     private AttendanceApprovalController controller;
+
+    @Test
+    @DisplayName("checkViewPermission: 管理者は承認アサインに関係なく閲覧できる")
+    void checkViewPermission_admin_isAllowed() {
+        User admin = User.builder().userId(1L).userRole(UserRole.ADMIN).build();
+        when(securityUtil.getCurrentUser()).thenReturn(admin);
+
+        assertThatCode(() -> controller.checkViewPermission(10L)).doesNotThrowAnyException();
+        verify(attendanceSubmissionService, never()).canApprove(admin, 10L);
+    }
+
+    @Test
+    @DisplayName("checkViewPermission: 同一勤務クラスでも明示アサイン対象外は閲覧できない")
+    void checkViewPermission_sameClassButNotAssigned_isDenied() {
+        User approver = User.builder().userId(2L).userRole(UserRole.USER).className("東京").build();
+        when(securityUtil.getCurrentUser()).thenReturn(approver);
+        when(attendanceSubmissionService.canApprove(approver, 10L)).thenReturn(false);
+
+        assertThatThrownBy(() -> controller.checkViewPermission(10L))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("勤怠の閲覧権限がありません");
+    }
+
+    @Test
+    @DisplayName("checkViewPermission: 個人アサイン済みの異勤務クラスユーザーを閲覧できる")
+    void checkViewPermission_individuallyAssigned_isAllowed() {
+        User approver = User.builder().userId(2L).userRole(UserRole.USER).className("東京").build();
+        when(securityUtil.getCurrentUser()).thenReturn(approver);
+        when(attendanceSubmissionService.canApprove(approver, 10L)).thenReturn(true);
+
+        assertThatCode(() -> controller.checkViewPermission(10L)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("checkViewPermission: 部署アサイン済みの異勤務クラスユーザを閲覧できる")
+    void checkViewPermission_departmentAssigned_isAllowed() {
+        User approver = User.builder().userId(2L).userRole(UserRole.USER).className("東京").build();
+        when(securityUtil.getCurrentUser()).thenReturn(approver);
+        when(attendanceSubmissionService.canApprove(approver, 20L)).thenReturn(true);
+
+        assertThatCode(() -> controller.checkViewPermission(20L)).doesNotThrowAnyException();
+    }
 
     @Test
     @DisplayName("showPendingApprovals: 承認一覧と申請者マップをモデルに設定する")

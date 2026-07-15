@@ -1,6 +1,7 @@
 package com.attendance.app.service;
 
 import com.attendance.app.entity.User;
+import com.attendance.app.dto.ApproverAssignmentRowDto;
 import com.attendance.app.mapper.AttendanceApproverAssignmentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -123,23 +124,53 @@ public class AttendanceApproverAssignmentService {
 
     /**
      * 申請者に対して管理者が明示的にアサインした承認者ID一覧（個人アサイン＋部署アサインの合算）を返します。
-     * 個人・部署いずれのアサインも1件も無い場合は空リストを返します。呼び出し側は、
-     * 空リストの場合のみ勤務クラス一致等の既定ルールにフォールバックしてください
-     * （1件でもアサインが存在する場合は、それ以外の承認者を許可してはいけません）。
+     * 個人・部署いずれのアサインも1件も無い場合は空リストを返します。
      *
      * @param applicantUserId 申請者のユーザーID
-     * @param applicantClassName 申請者の所属勤務クラス名（部署アサインの判定に使用）
+     * @param applicantDepartment 申請者の所属部署名（部署アサインの判定に使用）
      * @return アサイン済み承認者IDのリスト（アサインが無い場合は空リスト）
      */
-    public List<Long> resolveAssignedApproverIds(Long applicantUserId, String applicantClassName) {
+    public List<Long> resolveAssignedApproverIds(Long applicantUserId, String applicantDepartment) {
         List<Long> userApprovers = getUserApproverIds(applicantUserId);
-        List<Long> departmentApprovers = getDepartmentApproverIds(applicantClassName);
+        List<Long> departmentApprovers = getDepartmentApproverIds(applicantDepartment);
         if (userApprovers.isEmpty() && departmentApprovers.isEmpty()) {
             return Collections.emptyList();
         }
         Set<Long> combined = new LinkedHashSet<>(userApprovers);
         combined.addAll(departmentApprovers);
         return List.copyOf(combined);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> getApplicantsWithAssignments(java.util.Collection<Long> applicantUserIds) {
+        return applicantUserIds == null || applicantUserIds.isEmpty() ? List.of()
+                : assignmentMapper.selectApplicantIdsWithAssignments(applicantUserIds);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> getApplicantsAssignedToApprover(java.util.Collection<Long> applicantUserIds, Long approverUserId) {
+        return applicantUserIds == null || applicantUserIds.isEmpty() || approverUserId == null ? List.of()
+                : assignmentMapper.selectApplicantIdsAssignedToApprover(applicantUserIds, approverUserId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApproverAssignmentRowDto> getUserApproverAssignmentsPage(long offset, int limit) {
+        return assignmentMapper.selectUserApproverAssignmentsPage(offset, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public long countUserApproverAssignments() {
+        return assignmentMapper.countUserApproverAssignments();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApproverAssignmentRowDto> getDepartmentApproverAssignmentsPage(long offset, int limit) {
+        return assignmentMapper.selectDepartmentApproverAssignmentsPage(offset, limit);
+    }
+
+    @Transactional(readOnly = true)
+    public long countDepartmentApproverAssignments() {
+        return assignmentMapper.countDepartmentApproverAssignments();
     }
 
     /**

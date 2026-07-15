@@ -2,6 +2,7 @@ package com.attendance.app.service;
 
 import com.attendance.app.entity.User;
 import com.attendance.app.entity.UserRole;
+import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.mapper.SystemSettingMapper;
 import com.attendance.app.mapper.UserMapper;
 import com.attendance.app.mapper.WorkScheduleClassMapper;
@@ -12,16 +13,22 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
+import java.util.Collections;
+import java.util.List;
+import java.time.LocalDate;
+import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -78,15 +85,20 @@ class UserServiceTest {
         void newUser_callsInsert() {
             when(userMapper.existsByEmail("new@example.com")).thenReturn(false);
             when(passwordEncoder.encode("Pass1234")).thenReturn("$encoded$");
-
             User result = service.createUser("new@example.com", "Pass1234", "新規ユーザー", UserRole.USER, null, 1L);
 
-            verify(userMapper).insert(any(User.class));
+            ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+            ArgumentCaptor<PaidLeaveBalance> balanceCaptor = ArgumentCaptor.forClass(PaidLeaveBalance.class);
+            verify(userMapper).insert(userCaptor.capture());
+            verify(paidLeaveBalanceMapper).insert(balanceCaptor.capture());
             assertThat(result.getEmail()).isEqualTo("new@example.com");
             assertThat(result.getFullName()).isEqualTo("新規ユーザー");
             assertThat(result.getUserRole()).isEqualTo(UserRole.USER);
             assertThat(result.getIsActive()).isTrue();
             assertThat(result.getPassword()).isEqualTo("$encoded$");
+            assertThat(result.getAnnualLeaveGrantDays()).isEqualTo(10);
+            assertThat(userCaptor.getValue().getPaidLeaveDays()).isEqualByComparingTo("10");
+            assertThat(balanceCaptor.getValue().getGrantedDays()).isEqualByComparingTo("10");
         }
 
         @Test
@@ -434,6 +446,114 @@ class UserServiceTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // grantAnnualPaidLeave
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("grantAnnualPaidLeave")
+    class GrantAnnualPaidLeave {
+
+        @Test
+        @DisplayName("設定済みの付与日数で付与し、次年度用の日数を増加する")
+        void grant_incrementsNextGrantDays() {
+            User user = User.builder()
+                    .userId(2L)
+                    .annualLeaveGrantDays(18)
+                    .annualLeaveIncrement(BigDecimal.ONE)
+                    .maxPaidLeaveDays(40)
+                    .build();
+            when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(user));
+            when(paidLeaveBalanceMapper.selectByUserAndYear(eq(2L), any(Integer.class)))
+                    .thenReturn(Optional.empty());
+            when(paidLeaveBalanceMapper.selectActiveByUserId(eq(2L), any()))
+                    .thenReturn(Collections.emptyList());
+
+            service.grantAnnualPaidLeave(2L);
+
+            org.mockito.ArgumentCaptor<PaidLeaveBalance> balanceCaptor =
+                    org.mockito.ArgumentCaptor.forClass(PaidLeaveBalance.class);
+            verify(paidLeaveBalanceMapper).insert(balanceCaptor.capture());
+            assertThat(balanceCaptor.getValue().getGrantedDays()).isEqualByComparingTo("18");
+            verify(userMapper).updatePaidLeaveSettings(2L, 19, BigDecimal.ONE, 40);
+        }
+
+        @Test
+        @DisplayName("付与後に次回付与日数を増加する")
+        void grantWithSpecifiedDays_incrementsNextGrantDays() {
+            User user = User.builder()
+                    .userId(2L)
+                    .annualLeaveGrantDays(12)
+                    .annualLeaveIncrement(BigDecimal.ONE)
+                    .maxPaidLeaveDays(40)
+                    .build();
+            when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(user));
+            when(paidLeaveBalanceMapper.selectByUserAndYear(eq(2L), any(Integer.class)))
+                    .thenReturn(Optional.empty());
+            when(paidLeaveBalanceMapper.selectActiveByUserId(eq(2L), any()))
+                    .thenReturn(Collections.emptyList());
+
+            service.grantAnnualPaidLeave(2L, 12);
+
+            verify(userMapper).updatePaidLeaveSettings(2L, 13, BigDecimal.ONE, 40);
+        }
+
+        @Test
+        @DisplayName("当年付与済みの場合は二重付与せず個別値も更新しない")
+        void alreadyGranted_skipsBalanceAndOverrideUpdates() {
+            User user = User.builder().userId(2L).annualLeaveGrantDays(12).build();
+            when(userMapper.selectByIdForUpdate(2L)).thenReturn(Optional.of(user));
+            when(paidLeaveBalanceMapper.selectByUserAndYear(eq(2L), any(Integer.class)))
+                    .thenReturn(Optional.of(PaidLeaveBalance.builder().userId(2L).build()));
+
+            service.grantAnnualPaidLeave(2L, 12);
+
+            verify(paidLeaveBalanceMapper, never()).insert(any());
+            verify(userMapper, never()).updatePaidLeaveSettings(any(), any(), any(), anyInt());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("deactivateExpiredUsers")
+    class DeactivateExpiredUsers {
+
+        @Test
+        @DisplayName("利用終了日を過ぎた有効ユーザーを無効化し関連データを後処理する")
+        void expiredUsers_areDeactivatedAndCleanedUp() {
+            User expiredUser = User.builder()
+                    .userId(7L)
+                    .isActive(true)
+                    .scheduledEndDate(LocalDate.now().minusDays(1))
+                    .build();
+            when(userMapper.selectExpiredActiveUsers(any(LocalDate.class))).thenReturn(List.of(expiredUser));
+            when(leaveApplicationService.getApplicationsByUserIdAndStatus(eq(7L), any()))
+                    .thenReturn(Collections.emptyList());
+
+            int count = service.deactivateExpiredUsers();
+
+            assertThat(count).isEqualTo(1);
+            assertThat(expiredUser.getIsActive()).isFalse();
+            assertThat(expiredUser.getDeletedAt()).isNotNull();
+            verify(userMapper).update(expiredUser);
+            verify(userMapper).resetLoginAttempt(7L);
+            verify(approverAssignmentMapper).deleteUserApproverByApprover(7L);
+            verify(approverAssignmentMapper).deleteDepartmentApproverByApprover(7L);
+            verify(auditLogService).recordUserEvent(any(), any(), eq(7L), anyString());
+        }
+
+        @Test
+        @DisplayName("対象ユーザーがいない場合は更新しない")
+        void noExpiredUsers_returnsZeroWithoutUpdates() {
+            when(userMapper.selectExpiredActiveUsers(any(LocalDate.class))).thenReturn(Collections.emptyList());
+
+            int count = service.deactivateExpiredUsers();
+
+            assertThat(count).isZero();
+            verify(userMapper, never()).update(any(User.class));
+            verify(userMapper, never()).resetLoginAttempt(any());
+        }
+    }
+
     // authenticate
     // ─────────────────────────────────────────────────────────────────────────
 

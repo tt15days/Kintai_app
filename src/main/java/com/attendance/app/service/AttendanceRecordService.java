@@ -182,8 +182,10 @@ public class AttendanceRecordService {
             startDate = submission.get().getStartDate();
             endDate = submission.get().getEndDate();
         } else {
-            startDate = yearMonth.minusMonths(1).atDay(attendancePeriodSettingService.getStartDay());
-            endDate = yearMonth.atDay(attendancePeriodSettingService.getEndDay());
+            AttendancePeriodSettingService.AttendancePeriod period =
+                    attendancePeriodSettingService.resolvePeriod(yearMonth);
+            startDate = period.startDate();
+            endDate = period.endDate();
         }
 
         Instant startDateTime = DateTimeUtil.toInstant(startDate);
@@ -571,27 +573,38 @@ public class AttendanceRecordService {
      * @return 年月をキー、ユーザーIDをキーとする残業時間合計Mapを値とするMap
      */
     public Map<YearMonth, Map<Long, Double>> getOvertimeSumByUserForMonthRange(List<YearMonth> months) {
+        return getOvertimeSumByUserForMonthRange(months, null);
+    }
+
+    public Map<YearMonth, Map<Long, Double>> getOvertimeSumByUserForMonthRange(
+            List<YearMonth> months, java.util.Collection<Long> userIds) {
         if (months == null || months.isEmpty()) {
+            return Map.of();
+        }
+        if (userIds != null && userIds.isEmpty()) {
             return Map.of();
         }
         List<YearMonth> sortedMonths = months.stream().sorted().toList();
         YearMonth rangeStart = sortedMonths.get(0);
         YearMonth rangeEnd = sortedMonths.get(sortedMonths.size() - 1);
+        int closingDay = attendancePeriodSettingService.getEndDay();
 
-        LocalDate rangeStartDate = rangeStart.minusMonths(1).atDay(attendancePeriodSettingService.getStartDay());
-        LocalDate rangeEndDate = rangeEnd.atDay(attendancePeriodSettingService.getEndDay());
+        LocalDate rangeStartDate = AttendancePeriodSettingService.calculatePeriod(rangeStart, closingDay).startDate();
+        LocalDate rangeEndDate = AttendancePeriodSettingService.calculatePeriod(rangeEnd, closingDay).endDate();
         Instant rangeStartInstant = DateTimeUtil.toInstant(rangeStartDate);
         Instant rangeEndInstant = DateTimeUtil.toInstant(rangeEndDate.plusDays(1));
-        List<AttendanceRecord> records = attendanceRecordMapper.selectAllByDateRange(rangeStartInstant, rangeEndInstant);
+        List<AttendanceRecord> records = userIds == null
+                ? attendanceRecordMapper.selectAllByDateRange(rangeStartInstant, rangeEndInstant)
+                : attendanceRecordMapper.selectByDateRangeAndUserIds(rangeStartInstant, rangeEndInstant, userIds);
         Map<Long, WorkScheduleDefinition> scheduleByClassId = bulkResolveScheduleDefinitions(records);
 
-        // 各対象月の勤怠期間（前月startDay〜当月endDay）をあらかじめ算出しておく
+        // 各対象月の勤怠期間（前月締め日の翌日〜当月締め日）をあらかじめ算出しておく
         Map<YearMonth, LocalDate[]> periodByMonth = new java.util.LinkedHashMap<>();
         Map<YearMonth, Map<Long, Double>> result = new java.util.LinkedHashMap<>();
         for (YearMonth ym : sortedMonths) {
-            LocalDate periodStart = ym.minusMonths(1).atDay(attendancePeriodSettingService.getStartDay());
-            LocalDate periodEnd = ym.atDay(attendancePeriodSettingService.getEndDay());
-            periodByMonth.put(ym, new LocalDate[]{periodStart, periodEnd});
+            AttendancePeriodSettingService.AttendancePeriod period =
+                    AttendancePeriodSettingService.calculatePeriod(ym, closingDay);
+            periodByMonth.put(ym, new LocalDate[]{period.startDate(), period.endDate()});
             result.put(ym, new java.util.HashMap<>());
         }
 
@@ -748,8 +761,10 @@ public class AttendanceRecordService {
      * N+1対策として全ユーザー分を一括取得して集計します。
      */
     public Map<Long, Double> getWorkingSumByUserForMonth(YearMonth yearMonth) {
-        LocalDate startDate = yearMonth.minusMonths(1).atDay(attendancePeriodSettingService.getStartDay());
-        LocalDate endDate = yearMonth.atDay(attendancePeriodSettingService.getEndDay());
+        AttendancePeriodSettingService.AttendancePeriod period =
+                attendancePeriodSettingService.resolvePeriod(yearMonth);
+        LocalDate startDate = period.startDate();
+        LocalDate endDate = period.endDate();
         Instant startInstant = DateTimeUtil.toInstant(startDate);
         Instant endInstant = DateTimeUtil.toInstant(endDate.plusDays(1));
         List<AttendanceRecord> records = attendanceRecordMapper.selectAllByDateRange(startInstant, endInstant);
@@ -766,8 +781,10 @@ public class AttendanceRecordService {
      * overtime_hours が未設定(null/0)の場合は基準終了時刻(18:00)からのフォールバック算出を行います。
      */
     public Map<Long, Double> getOvertimeSumByUserForMonth(YearMonth yearMonth) {
-        LocalDate startDate = yearMonth.minusMonths(1).atDay(attendancePeriodSettingService.getStartDay());
-        LocalDate endDate = yearMonth.atDay(attendancePeriodSettingService.getEndDay());
+        AttendancePeriodSettingService.AttendancePeriod period =
+                attendancePeriodSettingService.resolvePeriod(yearMonth);
+        LocalDate startDate = period.startDate();
+        LocalDate endDate = period.endDate();
         Instant startInstant = DateTimeUtil.toInstant(startDate);
         Instant endInstant = DateTimeUtil.toInstant(endDate.plusDays(1));
         List<AttendanceRecord> records = attendanceRecordMapper.selectAllByDateRange(startInstant, endInstant);
@@ -783,8 +800,10 @@ public class AttendanceRecordService {
      * N+1対策として全ユーザー分を一括取得して集計します。
      */
     public Map<Long, Double> getNightShiftSumByUserForMonth(YearMonth yearMonth) {
-        LocalDate startDate = yearMonth.minusMonths(1).atDay(attendancePeriodSettingService.getStartDay());
-        LocalDate endDate = yearMonth.atDay(attendancePeriodSettingService.getEndDay());
+        AttendancePeriodSettingService.AttendancePeriod period =
+                attendancePeriodSettingService.resolvePeriod(yearMonth);
+        LocalDate startDate = period.startDate();
+        LocalDate endDate = period.endDate();
         Instant startInstant = DateTimeUtil.toInstant(startDate);
         Instant endInstant = DateTimeUtil.toInstant(endDate.plusDays(1));
         List<AttendanceRecord> records = attendanceRecordMapper.selectAllByDateRange(startInstant, endInstant);
@@ -841,7 +860,9 @@ public class AttendanceRecordService {
      */
     public MonthRange getMonthRange(YearMonth yearMonth) {
         YearMonth ym = (yearMonth == null) ? YearMonth.now() : yearMonth;
-        return MonthRange.of(ym, attendancePeriodSettingService.getStartDay(), attendancePeriodSettingService.getEndDay());
+        AttendancePeriodSettingService.AttendancePeriod period =
+                attendancePeriodSettingService.resolvePeriod(ym);
+        return MonthRange.of(ym, period.startDate(), period.endDate());
     }
 
     /**
@@ -1157,9 +1178,11 @@ public class AttendanceRecordService {
 
         public MonthRange(YearMonth yearMonth, int startDay, int endDay) {
             this.yearMonth = yearMonth;
-            // 対象月の表示範囲: 前月startDay日、当月endDay日
-            this.startDate = yearMonth.minusMonths(1).atDay(startDay);
-            this.endDate = yearMonth.atDay(endDay);
+            // 互換シグネチャ。開始日は締め日から導出し、引数startDayには依存しない。
+            this.endDate = yearMonth.atDay(Math.min(endDay, yearMonth.lengthOfMonth()));
+            YearMonth previous = yearMonth.minusMonths(1);
+            LocalDate previousEnd = previous.atDay(Math.min(endDay, previous.lengthOfMonth()));
+            this.startDate = previousEnd.plusDays(1);
             this.previousMonth = yearMonth.minusMonths(1);
             this.nextMonth = yearMonth.plusMonths(1);
             // inclusive days between startDate and endDate
@@ -1237,11 +1260,26 @@ public class AttendanceRecordService {
      * @return ユーザーIDをキーとした月次集計リスト
      */
     public List<MonthlyUserSummary> getMonthlyAggregateForAllUsers(YearMonth yearMonth) {
-        LocalDate startDate = yearMonth.minusMonths(1).atDay(attendancePeriodSettingService.getStartDay());
-        LocalDate endDate = yearMonth.atDay(attendancePeriodSettingService.getEndDay());
+        return getMonthlyAggregate(yearMonth, null);
+    }
+
+    public List<MonthlyUserSummary> getMonthlyAggregateForUsers(YearMonth yearMonth, java.util.Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        return getMonthlyAggregate(yearMonth, userIds);
+    }
+
+    private List<MonthlyUserSummary> getMonthlyAggregate(YearMonth yearMonth, java.util.Collection<Long> userIds) {
+        AttendancePeriodSettingService.AttendancePeriod period =
+                attendancePeriodSettingService.resolvePeriod(yearMonth);
+        LocalDate startDate = period.startDate();
+        LocalDate endDate = period.endDate();
         Instant startInstant = DateTimeUtil.toInstant(startDate);
         Instant endInstant = DateTimeUtil.toInstant(endDate.plusDays(1));
-        List<AttendanceRecord> records = attendanceRecordMapper.selectAllByDateRange(startInstant, endInstant);
+        List<AttendanceRecord> records = userIds == null
+                ? attendanceRecordMapper.selectAllByDateRange(startInstant, endInstant)
+                : attendanceRecordMapper.selectByDateRangeAndUserIds(startInstant, endInstant, userIds);
         Map<Long, WorkScheduleDefinition> scheduleByClassId = bulkResolveScheduleDefinitions(records);
 
         Map<Long, List<AttendanceRecord>> byUser = records.stream()

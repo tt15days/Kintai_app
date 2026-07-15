@@ -16,6 +16,8 @@
 
 アーキテクチャとしては、MVC (Model-View-Controller) パターンを採用し、`Controller` で画面からのリクエストを受け付け、ビジネスロジックを実行後、Thymeleaf を用いて画面 (`src/main/resources/templates`) をレンダリングする構成となっています。
 
+パスワードを忘れた場合のセルフサービス再設定は行わず、管理者が一時パスワードを発行します。対象ユーザーはその一時パスワードでログイン後、通常画面を利用する前に新しいパスワードへの変更を求められます。また、新規ユーザーの作成時には、初期有給残高と次回付与日数をともに10日で作成します。
+
 ## 2. Mavenでの利用の方法について
 本プロジェクトは Maven によってビルドおよび依存関係の管理が行われています。以下のコマンドで開発・実行を行います。
 
@@ -25,12 +27,12 @@ mvn spring-boot:run
 ```
 ※ `pom.xml` の設定により、デフォルトで `local` プロファイルがアクティブになります（これにより `application-local.yml` が読み込まれます）。
 
-### ビルド・パッケージング
+### ローカル開発用のビルド・パッケージング
 ```bash
 mvn clean package -P local
 ```
 上記コマンドを実行すると、ソースコードのコンパイルとテストが行われ、`target/` ディレクトリ配下に実行可能なJARファイル（`attendance-app-0.0.10.jar`）が生成されます。
-プロダクション環境等で実行する場合は、このJARファイルを利用します（例: `java -jar target/attendance-app-0.0.10.jar`）。
+このJARは `application-local.yml` を含むローカル開発用です。リリース環境へは配備しないでください。
 
 テストをスキップしてビルドする場合:
 ```bash
@@ -41,9 +43,24 @@ mvn clean package -DskipTests -P local
 | プロファイルID | 用途 | デフォルト |
 |---|---|---|
 | `local` | ローカル開発用（`application-local.yml` を使用） | ✅（activeByDefault） |
-| `release` | 本番リリース用（`application-release.yml` を使用、テストスキップ） | - |
+| `release` | 本番・ステージング用（`application-release.yml` を使用） | - |
 
 `application.yml` の有効プロファイルはビルド時にMavenプロファイルから埋め込まれるため、生成したJARを直接起動しても `-P local` / `-P release` と同じ設定ファイルを使用します。`SPRING_PROFILES_ACTIVE` または起動引数を指定した場合は、その値が優先されます。
+
+### リリース用のビルドと起動
+```bash
+mvn clean package -P release
+export DB_URL='jdbc:postgresql://db-host:5432/attendance_db'
+export DB_USERNAME='app_user'
+export DB_PASSWORD='set-a-secure-password'
+export LOG_PATH='logs'
+java -jar target/attendance-app-0.0.10.jar
+```
+
+`release` JARは `application-release.yml` のみを含み、起動時に `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` が必須です。`LOG_PATH` は任意で、未指定時は `logs` を使用します。接続先には専用の PostgreSQL データベースと必要権限を持つユーザーを事前に用意し、認証情報はリポジトリに保存しないでください。
+
+### 勤怠期間の算出
+勤怠期間の設定値は締め日（`attendance_period_end_day`）のみです。対象給与月の期間は「前月締め日の翌日〜当月締め日」として連続するように算出します。旧 `attendance_period_start_day` は互換用に残しますが、業務ロジックでは参照しません。提出済み申請は提出時の開始日・終了日をスナップショットとして保持し、締め日変更後に再申請しても既存期間を書き換えません。
 
 ### Tailwind CSSの設定とビルドについて
 本プロジェクトでは、リッチでモダンなUIデザイン（グラスモフィズム等）を実現するために Tailwind CSS を採用しています。
@@ -90,3 +107,7 @@ mvn clean package -DskipTests -P local
 
 ### データベースについて
 Flyway が導入されているため、アプリケーション起動時に `src/main/resources/db/migration` フォルダ内のSQLスクリプトが自動的に実行され、データベースの初期化やテーブルのマイグレーションが行われます。開発環境（ローカル）の場合は、必要に応じて `src/main/resources/db/sample/V2__Sample_Data.sql` も自動的に実行され、テスト用のサンプルデータが投入される設定になっています。
+
+`baseline-on-migrate` は全プロファイルで `false` です。そのため、Flywayのスキーマ履歴がない非空データベースに接続すると起動は fail-fast します。既存データベースに対する手動 baseline は、バックアップを取得し、現在のスキーマが対応するマイグレーション版と一致することを監査した場合に限って実施してください。
+
+Issue #182 の段階対応として、適用済み環境のチェックサム互換性を優先し、`V1__Initial_Schema.sql` の固定 `postgres` ロールへの権限付与と、`V2__Sample_Data.sql` を含むプロファイル間の履歴差は現時点で未解決です。V1/V2は編集せず、新規環境用の baseline migration（B5以降）と再実行安全なサンプルデータ方式を Issue #182 で継続検討します。

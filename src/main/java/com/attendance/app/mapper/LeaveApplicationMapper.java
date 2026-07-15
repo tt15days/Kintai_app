@@ -81,6 +81,12 @@ public interface LeaveApplicationMapper {
             @Param("endDate") LocalDate endDate
     );
 
+    List<LeaveApplication> selectByDateRangeAndUserIds(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("userIds") java.util.Collection<Long> userIds
+    );
+
     /**
      * 休暇申請を新規作成
      *
