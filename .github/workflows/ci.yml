@@ -38,4 +38,4 @@ jobs:
           cache: maven
 
       - name: Build and Test with Maven
-        run: mvn clean verify -Dspring.profiles.active=integration
+        run: mvn clean verify -Dspring.profiles.active=local
