@@ -11,8 +11,8 @@
             attendance_records ar
             INNER JOIN users u ON u.user_id = ar.user_id
         WHERE
-            ar.attendance_date >= #{startDate}
-            AND ar.attendance_date &lt;= #{endDate}
+            ar.attendance_date >= (CAST(#{startDate} AS date) AT TIME ZONE 'Asia/Tokyo')
+            AND ar.attendance_date &lt; ((CAST(#{endDate} AS date) + interval '1 day') AT TIME ZONE 'Asia/Tokyo')
             AND ar.is_deleted = false
             AND u.is_active = true
             AND u.deleted_at IS NULL
