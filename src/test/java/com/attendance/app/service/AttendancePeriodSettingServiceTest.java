@@ -7,6 +7,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -75,6 +78,24 @@ public class AttendancePeriodSettingServiceTest {
     }
 
     @Test
+    void testUpdateEndDay_Success() {
+        attendancePeriodSettingService.updateEndDay(20);
+
+        verify(systemSettingMapper).upsertValue(AttendancePeriodSettingService.SETTING_KEY_END_DAY, "20");
+        verify(systemSettingMapper, never()).upsertValue(eq(AttendancePeriodSettingService.SETTING_KEY_START_DAY), anyString());
+    }
+
+    @Test
+    void testUpdateEndDay_Invalid() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> attendancePeriodSettingService.updateEndDay(29));
+
+        assertTrue(ex.getMessage().contains("締め日"));
+        verify(systemSettingMapper, never()).upsertValue(anyString(), anyString());
+    }
+
+    @Test
     void testUpdatePeriod_InvalidStartDay() {
         IllegalArgumentException ex1 = assertThrows(IllegalArgumentException.class, () -> {
             attendancePeriodSettingService.updatePeriod(0, 14);
@@ -97,5 +118,62 @@ public class AttendancePeriodSettingServiceTest {
         assertTrue(ex.getMessage().contains("終了日"));
 
         verify(systemSettingMapper, never()).upsertValue(anyString(), anyString());
+    }
+
+    @Test
+    void closingDay20_isContinuousAcrossYearBoundary() {
+        var december = AttendancePeriodSettingService.calculatePeriod(YearMonth.of(2025, 12), 20);
+        var january = AttendancePeriodSettingService.calculatePeriod(YearMonth.of(2026, 1), 20);
+
+        assertEquals(LocalDate.of(2025, 11, 21), december.startDate());
+        assertEquals(LocalDate.of(2025, 12, 20), december.endDate());
+        assertEquals(december.endDate().plusDays(1), january.startDate());
+        assertEquals(LocalDate.of(2026, 1, 20), january.endDate());
+    }
+
+    @Test
+    void resolvePeriod_readsOnlyClosingDaySetting() {
+        when(systemSettingMapper.selectValueByKey(AttendancePeriodSettingService.SETTING_KEY_END_DAY))
+                .thenReturn("20");
+
+        var period = attendancePeriodSettingService.resolvePeriod(YearMonth.of(2026, 5));
+
+        assertEquals(LocalDate.of(2026, 4, 21), period.startDate());
+        assertEquals(LocalDate.of(2026, 5, 20), period.endDate());
+        verify(systemSettingMapper, never())
+                .selectValueByKey(AttendancePeriodSettingService.SETTING_KEY_START_DAY);
+    }
+
+    @Test
+    void closingDay28_isContinuousAcrossNonLeapFebruary() {
+        var february = AttendancePeriodSettingService.calculatePeriod(YearMonth.of(2025, 2), 28);
+        var march = AttendancePeriodSettingService.calculatePeriod(YearMonth.of(2025, 3), 28);
+
+        assertEquals(LocalDate.of(2025, 1, 29), february.startDate());
+        assertEquals(LocalDate.of(2025, 2, 28), february.endDate());
+        assertEquals(LocalDate.of(2025, 3, 1), march.startDate());
+        assertEquals(february.endDate().plusDays(1), march.startDate());
+    }
+
+    @Test
+    void closingDay28_assignsLeapDayToMarchWithoutGap() {
+        var february = AttendancePeriodSettingService.calculatePeriod(YearMonth.of(2024, 2), 28);
+        var march = AttendancePeriodSettingService.calculatePeriod(YearMonth.of(2024, 3), 28);
+
+        assertEquals(LocalDate.of(2024, 2, 28), february.endDate());
+        assertEquals(LocalDate.of(2024, 2, 29), march.startDate());
+        assertEquals(february.endDate().plusDays(1), march.startDate());
+        assertEquals(LocalDate.of(2024, 3, 28), march.endDate());
+    }
+
+    @Test
+    void resolvePayrollMonth_usesClosingDayBoundary() {
+        when(systemSettingMapper.selectValueByKey(AttendancePeriodSettingService.SETTING_KEY_END_DAY))
+                .thenReturn("28");
+
+        assertEquals(YearMonth.of(2024, 2),
+                attendancePeriodSettingService.resolvePayrollMonth(LocalDate.of(2024, 2, 28)));
+        assertEquals(YearMonth.of(2024, 3),
+                attendancePeriodSettingService.resolvePayrollMonth(LocalDate.of(2024, 2, 29)));
     }
 }

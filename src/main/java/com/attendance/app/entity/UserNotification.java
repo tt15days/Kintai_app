@@ -29,6 +29,8 @@ public class UserNotification {
     private Boolean isRead;
     /** 通知の種類（例: SYSTEM, REMINDER） */
     private String notificationType;
+    /** バッチ通知の冪等性キー（通常通知はNULL） */
+    private String idempotencyKey;
     /** 送信者のユーザーID（NULLはシステム） */
     private Long senderUserId;
     /** 送信者名（表示用、DBカラムなし） */

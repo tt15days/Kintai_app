@@ -326,6 +326,10 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
+INSERT INTO system_settings (setting_key, setting_value, updated_at)
+VALUES ('PAID_LEAVE_GRANT_DATE', '04-01', NOW())
+ON CONFLICT (setting_key) DO NOTHING;
+
 -- ============================================================
 -- attendance_correction_requests テーブル（勤怠修正申請）
 -- 目的: 月次勤怠が承認済み（APPROVED）または申請中（PENDING）で
@@ -406,6 +410,7 @@ CREATE TABLE IF NOT EXISTS user_notifications (
     message           TEXT          NOT NULL,
     is_read           BOOLEAN       NOT NULL DEFAULT false,
     notification_type VARCHAR(50)   NOT NULL DEFAULT 'REMINDER',
+    idempotency_key   VARCHAR(64),
     created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_un_user
         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
@@ -419,6 +424,8 @@ CREATE INDEX IF NOT EXISTS idx_user_notifications_user_created
     ON user_notifications(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_notifications_user_unread
     ON user_notifications(user_id, is_read);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_notifications_idempotency
+    ON user_notifications(user_id, notification_type, idempotency_key);
 
 -- ============================================================
 -- paid_leave_balance テーブル（有給休暇年次残高）

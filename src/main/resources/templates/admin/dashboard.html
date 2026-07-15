@@ -10,13 +10,13 @@
 
     <div layout:fragment="content">
         <!-- フラッシュメッセージ -->
-        <div th:if="${successMessage}" class="alert alert-success mb-6">
+        <div th:if="${successMessage}" class="alert alert-success mb-6" role="status" aria-live="polite">
             <span><i class="fa-solid fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+            <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
-        <div th:if="${errorMessage}" class="alert alert-danger mb-6">
+        <div th:if="${errorMessage}" class="alert alert-danger mb-6" role="alert" aria-live="assertive">
             <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+            <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
 
         <!-- アクションボタン -->

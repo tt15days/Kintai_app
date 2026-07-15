@@ -2,7 +2,6 @@ package com.attendance.app.service;
 
 import com.attendance.app.dto.Article36AlertDto;
 import com.attendance.app.dto.PaidLeaveAlertDto;
-import com.attendance.app.dto.UserNotificationKeyDto;
 import com.attendance.app.entity.UserNotification;
 import com.attendance.app.mapper.AlertBatchMapper;
 import com.attendance.app.mapper.UserNotificationMapper;
@@ -57,8 +56,13 @@ public class AlertBatchServiceTest {
         lenient().when(batchSettingService.getAlertArticle36Limit2()).thenReturn(45);
         lenient().when(batchSettingService.getAlertPaidLeaveMonths()).thenReturn(9);
         lenient().when(batchSettingService.getAlertPaidLeaveDays()).thenReturn(3);
-        lenient().when(attendancePeriodSettingService.getStartDay()).thenReturn(21);
-        lenient().when(attendancePeriodSettingService.getEndDay()).thenReturn(20);
+        lenient().when(attendancePeriodSettingService.resolvePeriod(any(YearMonth.class)))
+                .thenAnswer(invocation -> {
+                    YearMonth month = invocation.getArgument(0);
+                    return new AttendancePeriodSettingService.AttendancePeriod(
+                            month.minusMonths(1).atDay(21), month.atDay(20));
+                });
+        lenient().when(userNotificationMapper.insertBatchIfAbsent(any())).thenReturn(1);
     }
 
     @Nested
@@ -77,15 +81,15 @@ public class AlertBatchServiceTest {
                 LocalDate expectedStart = LocalDate.of(2023, 9, 21);
                 LocalDate expectedEnd = LocalDate.of(2023, 10, 20);
 
-                when(alertBatchMapper.findUsersExceedingOvertimeLimit(expectedStart, expectedEnd, 30))
+                when(alertBatchMapper.findUsersExceedingOvertimeLimit(expectedStart, expectedEnd, 30, 0, 100))
                         .thenReturn(List.of());
-                when(alertBatchMapper.findUsersWithInsufficientPaidLeave(9, 3, mockNow))
+                when(alertBatchMapper.findUsersWithInsufficientPaidLeave(9, 3, mockNow, 0, 100))
                         .thenReturn(List.of());
 
                 alertBatchService.runAlertBatch();
 
-                verify(alertBatchMapper).findUsersExceedingOvertimeLimit(expectedStart, expectedEnd, 30);
-                verify(alertBatchMapper).findUsersWithInsufficientPaidLeave(9, 3, mockNow);
+                verify(alertBatchMapper).findUsersExceedingOvertimeLimit(expectedStart, expectedEnd, 30, 0, 100);
+                verify(alertBatchMapper).findUsersWithInsufficientPaidLeave(9, 3, mockNow, 0, 100);
             }
         }
     }
@@ -95,6 +99,34 @@ public class AlertBatchServiceTest {
     class RunAlertBatchManually {
 
         @Test
+        @DisplayName("36協定アラートを100件単位のユーザーIDカーソルで処理する")
+        void testArticle36Alert_UsesUserIdCursorAcrossPages() {
+            YearMonth targetMonth = YearMonth.of(2023, 10);
+            List<Article36AlertDto> firstPage = java.util.stream.LongStream.rangeClosed(1, 100)
+                    .mapToObj(id -> {
+                        Article36AlertDto dto = new Article36AlertDto();
+                        dto.setUserId(id);
+                        dto.setTotalOvertimeHours(BigDecimal.valueOf(35));
+                        return dto;
+                    }).toList();
+            Article36AlertDto newlyAddedUser = new Article36AlertDto();
+            newlyAddedUser.setUserId(101L);
+            newlyAddedUser.setTotalOvertimeHours(BigDecimal.valueOf(35));
+            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), eq(30), eq(0L), eq(100)))
+                    .thenReturn(firstPage);
+            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), eq(30), eq(100L), eq(100)))
+                    .thenReturn(List.of(newlyAddedUser));
+            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), eq(30), eq(101L), eq(100)))
+                    .thenReturn(List.of());
+
+            alertBatchService.runAlertBatchManually(targetMonth);
+
+            verify(userNotificationMapper, times(101)).insertBatchIfAbsent(any());
+            verify(alertBatchMapper).findUsersExceedingOvertimeLimit(any(), any(), eq(30), eq(100L), eq(100));
+            verify(alertBatchMapper).findUsersExceedingOvertimeLimit(any(), any(), eq(30), eq(101L), eq(100));
+        }
+
+        @Test
         @DisplayName("36協定第1閾値超過時に正しい警告通知が作成される")
         void testArticle36Alert_Limit1_Exceeded() {
             YearMonth targetMonth = YearMonth.of(2023, 10);
@@ -102,16 +134,17 @@ public class AlertBatchServiceTest {
             dto.setUserId(1L);
             dto.setTotalOvertimeHours(BigDecimal.valueOf(35.5)); // 35.5時間
 
-            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), eq(30)))
+            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), eq(30), eq(0L), eq(100)))
                     .thenReturn(List.of(dto));
 
             alertBatchService.runAlertBatchManually(targetMonth);
 
-            verify(userNotificationMapper, times(1)).insert(notificationCaptor.capture());
+            verify(userNotificationMapper, times(1)).insertBatchIfAbsent(notificationCaptor.capture());
             UserNotification notification = notificationCaptor.getValue();
             
             assertThat(notification.getUserId()).isEqualTo(1L);
             assertThat(notification.getNotificationType()).isEqualTo("ALERT_ARTICLE_36_LIMIT1");
+            assertThat(notification.getIdempotencyKey()).isEqualTo("2023-09-21/2023-10-20");
             assertThat(notification.getMessage()).contains("第1警告閾値(30時間)を超過");
             assertThat(notification.getIsRead()).isFalse();
         }
@@ -124,12 +157,12 @@ public class AlertBatchServiceTest {
             dto.setUserId(2L);
             dto.setTotalOvertimeHours(BigDecimal.valueOf(50.0)); // 50時間
 
-            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), eq(30)))
+            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), eq(30), eq(0L), eq(100)))
                     .thenReturn(List.of(dto));
 
             alertBatchService.runAlertBatchManually(targetMonth);
 
-            verify(userNotificationMapper, times(1)).insert(notificationCaptor.capture());
+            verify(userNotificationMapper, times(1)).insertBatchIfAbsent(notificationCaptor.capture());
             UserNotification notification = notificationCaptor.getValue();
             
             assertThat(notification.getUserId()).isEqualTo(2L);
@@ -146,20 +179,55 @@ public class AlertBatchServiceTest {
             dto.setGrantDate(LocalDate.of(2023, 1, 1));
             dto.setUsedDays(BigDecimal.valueOf(1.5)); // 消化1.5日（基準3日未満）
 
-            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), anyInt()))
+            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), anyInt(), eq(0L), eq(100)))
                     .thenReturn(List.of()); // 36協定は該当なし
 
-            when(alertBatchMapper.findUsersWithInsufficientPaidLeave(eq(9), eq(3), any()))
+            when(alertBatchMapper.findUsersWithInsufficientPaidLeave(eq(9), eq(3), any(), eq(0L), eq(100)))
                     .thenReturn(List.of(dto));
 
             alertBatchService.runAlertBatchManually(targetMonth);
 
-            verify(userNotificationMapper, times(1)).insert(notificationCaptor.capture());
+            verify(userNotificationMapper, times(1)).insertBatchIfAbsent(notificationCaptor.capture());
             UserNotification notification = notificationCaptor.getValue();
             
             assertThat(notification.getUserId()).isEqualTo(3L);
             assertThat(notification.getNotificationType()).isEqualTo("ALERT_PAID_LEAVE");
+            assertThat(notification.getIdempotencyKey())
+                    .isEqualTo(YearMonth.from(DateTimeUtil.todayJapan()).toString());
             assertThat(notification.getMessage()).contains("消化日数が 1.5 日となっており、基準である 3 日を下回っています");
+        }
+
+        @Test
+        @DisplayName("同一ユーザーに複数年度の有給残高があっても通知は1件だけ作成される")
+        void testPaidLeaveAlert_UsesUserIdCursorAcrossPages() {
+            YearMonth targetMonth = YearMonth.of(2023, 10);
+            List<PaidLeaveAlertDto> firstPage = java.util.stream.LongStream.rangeClosed(1, 100)
+                    .mapToObj(id -> {
+                        PaidLeaveAlertDto dto = new PaidLeaveAlertDto();
+                        dto.setUserId(id);
+                        dto.setGrantDate(LocalDate.of(2023, 1, 1));
+                        dto.setUsedDays(BigDecimal.ONE);
+                        return dto;
+                    }).toList();
+            PaidLeaveAlertDto remainingUser = new PaidLeaveAlertDto();
+            remainingUser.setUserId(102L);
+            remainingUser.setGrantDate(LocalDate.of(2023, 1, 1));
+            remainingUser.setUsedDays(BigDecimal.ONE);
+
+            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), anyInt(), eq(0L), eq(100)))
+                    .thenReturn(List.of());
+            when(alertBatchMapper.findUsersWithInsufficientPaidLeave(eq(9), eq(3), any(), eq(0L), eq(100)))
+                    .thenReturn(firstPage);
+            when(alertBatchMapper.findUsersWithInsufficientPaidLeave(eq(9), eq(3), any(), eq(100L), eq(100)))
+                    .thenReturn(List.of(remainingUser));
+            when(alertBatchMapper.findUsersWithInsufficientPaidLeave(eq(9), eq(3), any(), eq(102L), eq(100)))
+                    .thenReturn(List.of());
+
+            alertBatchService.runAlertBatchManually(targetMonth);
+
+            verify(userNotificationMapper, times(101)).insertBatchIfAbsent(any());
+            verify(alertBatchMapper).findUsersWithInsufficientPaidLeave(eq(9), eq(3), any(), eq(100L), eq(100));
+            verify(alertBatchMapper).findUsersWithInsufficientPaidLeave(eq(9), eq(3), any(), eq(102L), eq(100));
         }
 
         @Test
@@ -170,17 +238,13 @@ public class AlertBatchServiceTest {
             dto.setUserId(1L);
             dto.setTotalOvertimeHours(BigDecimal.valueOf(35.5));
 
-            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), eq(30)))
+            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), eq(30), eq(0L), eq(100)))
                     .thenReturn(List.of(dto));
-            UserNotificationKeyDto existingKey = new UserNotificationKeyDto();
-            existingKey.setUserId(1L);
-            existingKey.setNotificationType("ALERT_ARTICLE_36_LIMIT1");
-            when(userNotificationMapper.selectExistingNotificationKeys(any(), any(), any()))
-                    .thenReturn(List.of(existingKey));
+            when(userNotificationMapper.insertBatchIfAbsent(any())).thenReturn(0);
 
             alertBatchService.runAlertBatchManually(targetMonth);
 
-            verify(userNotificationMapper, never()).insert(any());
+            verify(userNotificationMapper).insertBatchIfAbsent(any());
         }
 
         @Test
@@ -192,19 +256,15 @@ public class AlertBatchServiceTest {
             dto.setGrantDate(LocalDate.of(2023, 1, 1));
             dto.setUsedDays(BigDecimal.valueOf(1.5));
 
-            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), anyInt()))
+            when(alertBatchMapper.findUsersExceedingOvertimeLimit(any(), any(), anyInt(), eq(0L), eq(100)))
                     .thenReturn(List.of());
-            when(alertBatchMapper.findUsersWithInsufficientPaidLeave(eq(9), eq(3), any()))
+            when(alertBatchMapper.findUsersWithInsufficientPaidLeave(eq(9), eq(3), any(), eq(0L), eq(100)))
                     .thenReturn(List.of(dto));
-            UserNotificationKeyDto existingKey = new UserNotificationKeyDto();
-            existingKey.setUserId(3L);
-            existingKey.setNotificationType("ALERT_PAID_LEAVE");
-            when(userNotificationMapper.selectExistingNotificationKeys(any(), any(), any()))
-                    .thenReturn(List.of(existingKey));
+            when(userNotificationMapper.insertBatchIfAbsent(any())).thenReturn(0);
 
             alertBatchService.runAlertBatchManually(targetMonth);
 
-            verify(userNotificationMapper, never()).insert(any());
+            verify(userNotificationMapper).insertBatchIfAbsent(any());
         }
     }
 }

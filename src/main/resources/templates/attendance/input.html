@@ -16,7 +16,7 @@
             
             <div class="flex items-center justify-center gap-4 mb-6">
                 <span class="text-sm font-semibold text-txt-secondary">通常出勤</span>
-                <label class="relative inline-flex items-center cursor-pointer select-none">
+                <label class="choice-label relative select-none">
                     <input type="checkbox" id="holiday-work-toggle" class="sr-only peer" aria-label="休日出勤フラグ">
                     <div class="w-14 h-8 bg-slate-200/50 rounded-full peer peer-focus:ring-2 peer-focus:ring-primary/50 peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
                 </label>
@@ -32,7 +32,7 @@
             <div class="mb-4 flex items-center justify-center gap-2" th:if="${todayRecord == null or todayRecord.startTime == null}">
                 <label for="quick-class-select" class="text-sm font-semibold text-txt-secondary">本日の勤務地</label>
                 <select id="quick-class-select" name="classId" form="clock-in-form"
-                        class="form-select max-w-60 p-1.5 text-sm">
+                        class="form-select max-w-60 p-1.5 text-base md:text-sm">
                     <option value="">所属クラス</option>
                     <option th:each="wsc : ${workScheduleClasses}" th:value="${wsc.classId}" th:text="${wsc.name}"></option>
                 </select>
@@ -68,13 +68,13 @@
     </div>
 
     <th:block layout:fragment="modals">
-        <div id="breakModal" class="modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" onclick="closeModal('breakModal')"
+        <div id="breakModal" class="modal fixed inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" onclick="closeModal('breakModal')"
              role="dialog" aria-modal="true" aria-labelledby="breakModalTitle" aria-hidden="true" tabindex="-1">
             <div class="flex min-h-full items-center justify-center p-4">
                 <div class="card-heavy w-full max-w-[400px]" onclick="event.stopPropagation()">
                     <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
                         <h5 id="breakModalTitle" class="m-0 text-base font-bold text-txt-primary">休憩時間の記録</h5>
-                        <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold p-2" onclick="closeModal('breakModal')" aria-label="閉じる">×</button>
+                        <button type="button" class="icon-button text-txt-primary hover:opacity-75 transition-opacity text-xl font-semibold" onclick="closeModal('breakModal')" aria-label="閉じる">×</button>
                     </div>
                     <div class="relative flex-auto py-2">
                         <label for="break-minutes-input" class="form-label">休憩時間（分）</label>

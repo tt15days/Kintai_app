@@ -1,5 +1,6 @@
 package com.attendance.app.mapper;
 
+import com.attendance.app.dto.ApproverAssignmentRowDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -18,6 +19,22 @@ public interface AttendanceApproverAssignmentMapper {
      * @return 承認者ユーザーIDのリスト
      */
     List<Long> selectUserApproverIds(@Param("applicantUserId") Long applicantUserId);
+
+    List<Long> selectApplicantIdsWithAssignments(@Param("applicantUserIds") java.util.Collection<Long> applicantUserIds);
+
+    List<Long> selectApplicantIdsAssignedToApprover(
+            @Param("applicantUserIds") java.util.Collection<Long> applicantUserIds,
+            @Param("approverUserId") Long approverUserId);
+
+    List<ApproverAssignmentRowDto> selectUserApproverAssignmentsPage(
+            @Param("offset") long offset, @Param("limit") int limit);
+
+    long countUserApproverAssignments();
+
+    List<ApproverAssignmentRowDto> selectDepartmentApproverAssignmentsPage(
+            @Param("offset") long offset, @Param("limit") int limit);
+
+    long countDepartmentApproverAssignments();
 
     /**
      * 指定申請者の個別承認者設定を全削除します。

@@ -23,6 +23,10 @@ import java.util.List;
 @Transactional
 public class AdminAnnouncementService {
 
+    public static final int MAX_TITLE_LENGTH = 200;
+    public static final int MAX_MESSAGE_LENGTH = 2000;
+    public static final int MAX_PAGE_SIZE = 50;
+
     private static final String LOG_CREATE = "お知らせを登録しました: announcementId={}, title={}";
     private static final String LOG_UPDATE = "お知らせを更新しました: announcementId={}, title={}";
     private static final String LOG_DELETE = "お知らせを削除しました: announcementId={}";
@@ -42,15 +46,19 @@ public class AdminAnnouncementService {
         return adminAnnouncementMapper.selectActive();
     }
 
-    /**
-     * システムに登録されている全てのお知らせ一覧を取得します。
-     * 管理者画面での一覧表示などに利用されます。
-     *
-     * @return 全てのお知らせのリスト
-     */
+    /** 管理画面用のお知らせ一覧をページ取得します。 */
     @Transactional(readOnly = true)
-    public List<AdminAnnouncement> getAllAnnouncements() {
-        return adminAnnouncementMapper.selectAll();
+    public List<AdminAnnouncement> getAnnouncementsPage(long offset, int limit) {
+        if (offset < 0 || limit < 1 || limit > MAX_PAGE_SIZE) {
+            throw new IllegalArgumentException("ページ指定が不正です。");
+        }
+        return adminAnnouncementMapper.selectPage(offset, limit);
+    }
+
+    /** 管理画面用の未削除お知らせ件数を取得します。 */
+    @Transactional(readOnly = true)
+    public long countAnnouncements() {
+        return adminAnnouncementMapper.countAll();
     }
 
     /**
@@ -71,27 +79,27 @@ public class AdminAnnouncementService {
      * @param announcement 登録するお知らせ情報
      */
     public void create(AdminAnnouncement announcement) {
+        normalizeAndValidate(announcement);
         if (announcement.getDisplayStartDate() == null) {
             ZoneId jst = ZoneId.of(TIMEZONE_JST);
             announcement.setDisplayStartDate(LocalDate.now(jst).atStartOfDay(jst).toInstant());
         }
-        adminAnnouncementMapper.insert(announcement);
+        if (adminAnnouncementMapper.insert(announcement) != 1) {
+            throw new IllegalStateException("お知らせを登録できませんでした。");
+        }
         log.info(LOG_CREATE, announcement.getAnnouncementId(), announcement.getTitle());
     }
 
     /**
      * 既存のお知らせ情報を更新します。
-     * 指定されたIDのお知らせが存在しない場合は、更新を行わずに処理を終了します。
-     *
      * @param announcement 更新するお知らせ情報（announcementIdが必須）
      */
     public void update(AdminAnnouncement announcement) {
-        AdminAnnouncement existing = adminAnnouncementMapper.selectById(announcement.getAnnouncementId());
-        if (existing == null) {
+        normalizeAndValidate(announcement);
+        if (adminAnnouncementMapper.update(announcement) != 1) {
             log.warn(LOG_NOT_FOUND, announcement.getAnnouncementId());
-            return;
+            throw new AdminAnnouncementNotFoundException(announcement.getAnnouncementId());
         }
-        adminAnnouncementMapper.update(announcement);
         log.info(LOG_UPDATE, announcement.getAnnouncementId(), announcement.getTitle());
     }
 
@@ -101,7 +109,33 @@ public class AdminAnnouncementService {
      * @param announcementId 削除対象のお知らせID
      */
     public void delete(Long announcementId) {
-        adminAnnouncementMapper.deleteById(announcementId);
+        if (adminAnnouncementMapper.deleteById(announcementId) != 1) {
+            log.warn(LOG_NOT_FOUND, announcementId);
+            throw new AdminAnnouncementNotFoundException(announcementId);
+        }
         log.info(LOG_DELETE, announcementId);
+    }
+
+    private void normalizeAndValidate(AdminAnnouncement announcement) {
+        if (announcement == null) {
+            throw new IllegalArgumentException("お知らせを入力してください。");
+        }
+        String title = normalizeRequired(announcement.getTitle(), "タイトル");
+        String message = normalizeRequired(announcement.getMessage(), "本文");
+        if (title.length() > MAX_TITLE_LENGTH) {
+            throw new IllegalArgumentException("タイトルは" + MAX_TITLE_LENGTH + "文字以内で入力してください。");
+        }
+        if (message.length() > MAX_MESSAGE_LENGTH) {
+            throw new IllegalArgumentException("本文は" + MAX_MESSAGE_LENGTH + "文字以内で入力してください。");
+        }
+        announcement.setTitle(title);
+        announcement.setMessage(message);
+    }
+
+    private String normalizeRequired(String value, String label) {
+        if (value == null || value.strip().isEmpty()) {
+            throw new IllegalArgumentException(label + "を入力してください。");
+        }
+        return value.strip();
     }
 }

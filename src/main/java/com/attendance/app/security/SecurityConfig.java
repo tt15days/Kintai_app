@@ -100,7 +100,7 @@ public class SecurityConfig {
 
                             log.warn("ログイン失敗: email={}, 原因={}", maskEmail(failEmail), exception.getMessage(), exception);
                             try {
-                                auditLogService.recordUserEvent(AuditEventType.LOGIN_FAILED, null, null, "ログイン失敗: email=" + failEmail);
+                                auditLogService.recordUserEvent(AuditEventType.LOGIN_FAILED, null, null, "ログイン失敗");
                             } catch (Exception e) {
                                 log.error("監査ログ(ログイン失敗)の記録に失敗", e);
                             }
@@ -151,7 +151,7 @@ public class SecurityConfig {
                                 String email = authentication.getName();
                                 log.info("ログアウト: email={}", maskEmail(email));
                                 try {
-                                    auditLogService.recordUserEvent(AuditEventType.LOGOUT, null, null, "ログアウト: email=" + email);
+                                    auditLogService.recordUserEvent(AuditEventType.LOGOUT, null, null, "ログアウト");
                                 } catch (Exception e) {
                                     log.error("監査ログ(ログアウト)の記録に失敗", e);
                                 }

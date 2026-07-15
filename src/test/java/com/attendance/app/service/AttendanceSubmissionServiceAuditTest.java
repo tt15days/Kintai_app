@@ -72,6 +72,12 @@ class AttendanceSubmissionServiceAuditTest {
                 .status(AttendanceSubmissionService.STATUS_PENDING)
                 .submittedAt(Instant.now())
                 .build();
+        lenient().when(attendancePeriodSettingService.resolvePeriod(any(YearMonth.class)))
+                .thenAnswer(invocation -> {
+                    YearMonth month = invocation.getArgument(0);
+                    return new AttendancePeriodSettingService.AttendancePeriod(
+                            month.minusMonths(1).atDay(21), month.atDay(20));
+                });
     }
 
     // ─────────────────────────────────────────────────────────────────────────

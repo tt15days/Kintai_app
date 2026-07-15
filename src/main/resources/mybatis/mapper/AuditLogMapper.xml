@@ -25,13 +25,4 @@
         VALUES (#{eventType}, #{actorUserId}, #{targetUserId}, #{targetType}, #{targetId}, #{description}, #{createdAt})
     </insert>
 
-    <update id="update">
-        UPDATE audit_logs
-        SET event_type = #{eventType}, actor_user_id = #{actorUserId}, target_user_id = #{targetUserId}, target_type = #{targetType}, target_id = #{targetId}, description = #{description}, created_at = #{createdAt}
-        WHERE log_id = #{logId}
-    </update>
-
-    <delete id="delete">
-        DELETE FROM audit_logs WHERE log_id = #{id}
-    </delete>
 </mapper>

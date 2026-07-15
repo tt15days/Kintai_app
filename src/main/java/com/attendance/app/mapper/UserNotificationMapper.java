@@ -1,12 +1,9 @@
 package com.attendance.app.mapper;
 
-import com.attendance.app.dto.UserNotificationKeyDto;
 import com.attendance.app.entity.UserNotification;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import java.time.Instant;
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -32,6 +29,14 @@ public interface UserNotificationMapper {
     int insert(UserNotification notification);
 
     /**
+     * 期間キー付きバッチ通知を未登録の場合だけ挿入します。
+     *
+     * @param notification 登録する通知情報
+     * @return 登録された場合は1、同一キーが登録済みの場合は0
+     */
+    int insertBatchIfAbsent(UserNotification notification);
+
+    /**
      * 指定した通知を既読にします（本人のみ）。
      *
      * @param notificationId 通知ID
@@ -48,16 +53,4 @@ public interface UserNotificationMapper {
      */
     int markAllAsRead(@Param("userId") Long userId);
 
-    /**
-     * 複数ユーザー・複数通知種別について、指定日時以降に作成された通知の (userId, notificationType) の
-     * 組み合わせを一括取得します。バッチ処理での重複通知チェックのN+1解消に使用します。
-     *
-     * @param userIds ユーザーIDのコレクション
-     * @param notificationTypes 通知種別のコレクション
-     * @param since この日時以降に作成された通知を対象とする
-     * @return 既に通知が存在する (userId, notificationType) の組み合わせのリスト
-     */
-    List<UserNotificationKeyDto> selectExistingNotificationKeys(@Param("userIds") Collection<Long> userIds,
-                                                                 @Param("notificationTypes") Collection<String> notificationTypes,
-                                                                 @Param("since") Instant since);
 }

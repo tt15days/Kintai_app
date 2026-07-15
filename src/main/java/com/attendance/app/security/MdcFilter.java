@@ -10,15 +10,13 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * MdcFilter
  *
- * リクエスト毎に一意の traceId を発行し、さらにログイン済みユーザーの userId を
+ * リクエスト毎に一意の traceId を発行し、さらに非PIIの認証状態を
  * MDC (Mapped Diagnostic Context) に設定するサーブレットフィルタ。
  * 複数スレッドのログが入り乱れても、同一リクエストのログを容易に抽出可能になります。
  */
@@ -39,11 +37,11 @@ public class MdcFilter extends OncePerRequestFilter {
                 MDC.put(TRACE_ID_KEY, UUID.randomUUID().toString());
             }
 
-            // Authenticationからユーザー情報を取得してuserIdをセット (もしあれば)
+            // principal nameはメールアドレスのため、MDCには格納しない
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             if (authentication != null && authentication.isAuthenticated()
                     && !authentication.getName().equals("anonymousUser")) {
-                MDC.put(USER_ID_KEY, authentication.getName());
+                MDC.put(USER_ID_KEY, "authenticated");
             } else {
                 MDC.put(USER_ID_KEY, "anonymous");
             }
@@ -69,16 +67,7 @@ public class MdcFilter extends OncePerRequestFilter {
             return;
         }
 
-        String queryString = request.getQueryString();
-        String relativePath = (queryString != null) ? uri + "?" + queryString : uri;
-
-        if ("GET".equalsIgnoreCase(method)) {
-            log.info("リクエスト=[GET], パス={}, ステータス={}, 処理時間={}ms", relativePath, status, duration);
-        } else if ("POST".equalsIgnoreCase(method)) {
-            String postData = getPostData(request);
-            log.info("リクエスト=[POST], パス={}, 送信内容=[{}], ステータス={}, 処理時間={}ms", relativePath, postData, status,
-                    duration);
-        }
+        log.info("リクエスト=[{}], パス={}, ステータス={}, 処理時間={}ms", method, uri, status, duration);
     }
 
     private boolean isStaticResource(String uri) {
@@ -102,51 +91,4 @@ public class MdcFilter extends OncePerRequestFilter {
                 uri.endsWith(".ttf");
     }
 
-    private String getPostData(HttpServletRequest request) {
-        Map<String, String[]> params = request.getParameterMap();
-        if (params == null || params.isEmpty()) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        params.forEach((key, values) -> {
-            if (sb.length() > 0) {
-                sb.append(", ");
-            }
-            sb.append(key).append("=");
-            if (isSensitiveField(key)) {
-                sb.append("****");
-            } else {
-                if (values != null) {
-                    if (values.length == 1) {
-                        sb.append(values[0]);
-                    } else {
-                        sb.append(Arrays.toString(values));
-                    }
-                } else {
-                    sb.append("null");
-                }
-            }
-        });
-        return sb.toString();
-    }
-
-    private boolean isSensitiveField(String key) {
-        if (key == null)
-            return false;
-        String lower = key.toLowerCase();
-        return lower.contains("password") ||
-                lower.contains("passwd") ||
-                lower.contains("secret") ||
-                lower.contains("_csrf") ||
-                lower.contains("token") ||
-                lower.contains("email") ||
-                lower.contains("phone") ||
-                lower.contains("tel") ||
-                lower.contains("address") ||
-                lower.contains("reason") ||
-                lower.contains("comment") ||
-                lower.contains("notes") ||
-                lower.contains("remarks") ||
-                lower.contains("message");
-    }
 }

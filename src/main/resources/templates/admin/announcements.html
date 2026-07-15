@@ -13,13 +13,13 @@
 
     <div layout:fragment="content">
         <!-- フラッシュメッセージ -->
-        <div th:if="${successMessage}" class="alert alert-success" role="alert">
+        <div th:if="${successMessage}" class="alert alert-success" role="status" aria-live="polite">
             <span><i class="fas fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+            <button type="button" class="icon-button text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
-        <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
+        <div th:if="${errorMessage}" class="alert alert-danger" role="alert" aria-live="assertive">
             <span><i class="fas fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
-            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+            <button type="button" class="icon-button text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
 
         <!-- 新規登録フォーム -->
@@ -39,7 +39,7 @@
                         <div class="md:col-span-3">
                             <label for="message" class="form-label">本文 <span class="text-danger font-bold">*</span></label>
                             <textarea class="form-textarea" id="message" name="message"
-                                      rows="3" required placeholder="お知らせ内容を入力してください"></textarea>
+                                      rows="3" maxlength="2000" required placeholder="お知らせ内容を入力してください"></textarea>
                         </div>
                         <div>
                             <label for="displayStartDate" class="form-label">表示開始日 <span class="text-danger font-bold">*</span></label>
@@ -64,7 +64,7 @@
         <div class="card">
             <div class="pb-4 mb-4 border-b border-glass-border/30">
                 <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5"><i class="fas fa-bullhorn text-primary"></i> お知らせ一覧
-                    <span class="badge bg-black/5 text-txt-secondary border-glass-border ml-2" th:text="${#lists.size(announcements)}">0</span>件
+                    <span class="badge bg-black/5 text-txt-secondary border-glass-border ml-2" th:text="${totalAnnouncementCount}">0</span>件
                 </h5>
             </div>
             <div>
@@ -87,8 +87,8 @@
                             <tr th:each="ann : ${announcements}">
                                 <td class="font-semibold" th:text="${ann.title}"></td>
                                 <td class="max-w-xs whitespace-pre-wrap break-words" th:text="${ann.message}"></td>
-                                <td class="font-mono" th:text="${ann.displayStartDate != null ? #temporals.format(ann.displayStartDate.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy/MM/dd') : '-'}"></td>
-                                <td class="font-mono" th:text="${ann.displayEndDate != null ? #temporals.format(ann.displayEndDate.atZone(T(java.time.ZoneId).of('Asia/Tokyo')), 'yyyy/MM/dd') : '期限なし'}"></td>
+                                <td class="font-mono" th:text="${ann.displayStartDate != null ? #temporals.format(ann.displayStartDate.atZone(jstZoneId), 'yyyy/MM/dd') : '-'}"></td>
+                                <td class="font-mono" th:text="${ann.displayEndDate != null ? #temporals.format(ann.displayEndDate.atZone(jstZoneId), 'yyyy/MM/dd') : '期限なし'}"></td>
                                 <td>
                                     <span th:if="${ann.isActive}" class="badge badge-success">有効</span>
                                     <span th:unless="${ann.isActive}" class="badge bg-black/5 text-txt-secondary border-glass-border">無効</span>
@@ -97,8 +97,15 @@
                                     <div class="flex gap-2">
                                         <!-- 編集ボタン（JS制御モーダルトリガー） -->
                                         <button type="button"
-                                                class="btn btn-primary p-2 rounded-lg text-xs"
-                                                th:onclick="'openEditModal(' + ${ann.announcementId} + ')'">
+                                                class="btn btn-primary min-w-11 p-2 rounded-lg text-xs"
+                                                th:aria-label="|${ann.title}を編集|"
+                                                th:data-action="@{/admin/announcements/{id}/update(id=${ann.announcementId})}"
+                                                th:data-title="${ann.title}"
+                                                th:data-message="${ann.message}"
+                                                th:data-active="${ann.isActive}"
+                                                th:data-start-date="${ann.displayStartDate != null ? #temporals.format(ann.displayStartDate.atZone(jstZoneId), 'yyyy-MM-dd') : ''}"
+                                                th:data-end-date="${ann.displayEndDate != null ? #temporals.format(ann.displayEndDate.atZone(jstZoneId), 'yyyy-MM-dd') : ''}"
+                                                onclick="openAnnouncementEdit(this)">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <!-- 削除ボタン -->
@@ -106,7 +113,10 @@
                                               method="post" class="inline m-0"
                                               onsubmit="return confirm('このお知らせを削除しますか？');">
                                             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                            <button type="submit" class="btn btn-danger p-2 rounded-lg text-xs">
+                                            <input type="hidden" name="page" th:value="${currentPage}"/>
+                                            <input type="hidden" name="size" th:value="${pageSize}"/>
+                                            <button type="submit" class="btn btn-danger min-w-11 p-2 rounded-lg text-xs"
+                                                    th:aria-label="|${ann.title}を削除|">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
@@ -116,61 +126,82 @@
                         </tbody>
                     </table>
                 </div>
+                <nav th:if="${totalPages > 1}" class="mt-5 flex flex-wrap items-center justify-center gap-2"
+                     aria-label="お知らせ一覧のページ">
+                    <a th:if="${currentPage > 0}"
+                       th:href="@{/admin/announcements(page=${currentPage - 1},size=${pageSize})}"
+                       class="btn btn-flat min-w-11" aria-label="前のページ">前へ</a>
+                    <span th:unless="${currentPage > 0}" class="btn btn-flat min-w-11 opacity-50" aria-disabled="true">前へ</span>
+                    <a th:each="pageNumber : ${pageNumbers}"
+                       th:href="@{/admin/announcements(page=${pageNumber},size=${pageSize})}"
+                       th:text="${pageNumber + 1}"
+                       th:aria-current="${pageNumber == currentPage} ? 'page' : null"
+                       th:class="${pageNumber == currentPage} ? 'btn btn-primary min-w-11' : 'btn btn-flat min-w-11'">1</a>
+                    <a th:if="${currentPage + 1 < totalPages}"
+                       th:href="@{/admin/announcements(page=${currentPage + 1},size=${pageSize})}"
+                       class="btn btn-flat min-w-11" aria-label="次のページ">次へ</a>
+                    <span th:unless="${currentPage + 1 < totalPages}" class="btn btn-flat min-w-11 opacity-50" aria-disabled="true">次へ</span>
+                </nav>
             </div>
         </div>
 
     </div>
 
     <th:block layout:fragment="modals">
-        <!-- 編集モーダル（各お知らせ用） -->
-        <div th:each="ann : ${announcements}">
-            <div class="modal announcement-modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300"
-                 th:id="${'editModal' + ann.announcementId}" tabindex="-1" th:onclick="'closeEditModal(' + ${ann.announcementId} + ')'"
-                 role="dialog" aria-modal="true" aria-hidden="true" th:aria-label="|${ann.title}のお知らせ編集|">
-                <div class="flex min-h-full items-center justify-center p-4">
-                    <div th:id="${'editModalContent' + ann.announcementId}" class="card-heavy w-full max-w-2xl" onclick="event.stopPropagation()">
-                        <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
-                            <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5"><i class="fas fa-edit text-primary"></i> お知らせ編集</h5>
-                            <button type="button" class="text-txt-primary hover:opacity-75 transition-opacity"
-                                    th:onclick="'closeEditModal(' + ${ann.announcementId} + ')'" aria-label="閉じる">
-                                <i class="fa-solid fa-xmark text-xl"></i>
+        <!-- 一覧で共用する編集モーダル -->
+        <div id="announcementEditModal"
+             class="modal announcement-modal absolute inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300"
+             tabindex="-1" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="announcementEditTitle">
+            <div class="flex min-h-full items-center justify-center p-4"
+                 onclick="if (event.target === this) closeModal('announcementEditModal')">
+                <div class="card-heavy w-full max-w-2xl">
+                    <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
+                        <h5 id="announcementEditTitle" class="text-base font-bold text-txt-primary flex items-center gap-1.5">
+                            <i class="fas fa-edit text-primary"></i> お知らせ編集
+                        </h5>
+                        <button type="button" class="icon-button text-txt-primary hover:opacity-75 transition-opacity"
+                                onclick="closeModal('announcementEditModal')" aria-label="閉じる">
+                            <i class="fa-solid fa-xmark text-xl"></i>
+                        </button>
+                    </div>
+                    <form id="announcementEditForm" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <input type="hidden" name="page" th:value="${currentPage}"/>
+                        <input type="hidden" name="size" th:value="${pageSize}"/>
+                        <div class="space-y-4 py-2">
+                            <div>
+                                <label for="editAnnouncementTitle" class="form-label">タイトル <span class="text-danger font-bold">*</span></label>
+                                <input type="text" id="editAnnouncementTitle" class="form-input" name="title" maxlength="200" required>
+                            </div>
+                            <div>
+                                <label for="editAnnouncementMessage" class="form-label">本文 <span class="text-danger font-bold">*</span></label>
+                                <textarea id="editAnnouncementMessage" class="form-textarea" name="message"
+                                          rows="6" maxlength="2000" required></textarea>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="editAnnouncementStartDate" class="form-label">表示開始日 <span class="text-danger font-bold">*</span></label>
+                                    <input type="date" id="editAnnouncementStartDate" class="form-input" name="displayStartDate" required>
+                                </div>
+                                <div>
+                                    <label for="editAnnouncementEndDate" class="form-label">表示終了日</label>
+                                    <input type="date" id="editAnnouncementEndDate" class="form-input" name="displayEndDate">
+                                    <p class="text-xs text-txt-secondary mt-1">未指定の場合は期限なしで掲載されます</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" name="isActive" id="editAnnouncementActive"
+                                       class="w-4 h-4 rounded border-glass-border text-primary focus:ring-primary/50 bg-glass">
+                                <label for="editAnnouncementActive" class="choice-label text-sm font-medium text-txt-primary">アクティブ（掲載する）</label>
+                            </div>
+                        </div>
+                        <div class="flex flex-col-reverse sm:flex-row gap-3 mt-4">
+                            <button type="button" class="btn btn-flat flex-1" onclick="closeModal('announcementEditModal')">キャンセル</button>
+                            <button type="submit" class="btn btn-primary flex-[2]">
+                                <i class="fa-solid fa-save"></i> 保存
                             </button>
                         </div>
-                        <form th:action="@{/admin/announcements/{id}/update(id=${ann.announcementId})}" method="post">
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                            <div class="space-y-4 py-2">
-                                <div>
-                                    <label class="form-label">タイトル <span class="text-danger font-bold">*</span></label>
-                                    <input type="text" class="form-input" name="title"
-                                           th:value="${ann.title}" maxlength="200" required>
-                                </div>
-                                <div>
-                                    <label class="form-label">本文 <span class="text-danger font-bold">*</span></label>
-                                    <textarea class="form-textarea" name="message"
-                                               rows="6" maxlength="2000" required th:text="${ann.message}"></textarea>
-                                </div>
-                                <div>
-                                    <label class="form-label">掲載期限</label>
-                                    <input type="date" class="form-input" name="expiryDate"
-                                           th:value="${ann.displayEndDate}">
-                                    <p class="text-xs text-txt-secondary mt-1">※未指定の場合は期限なしで掲載されます</p>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" name="active" th:id="${'active' + ann.announcementId}"
-                                           class="w-4 h-4 rounded border-glass-border text-primary focus:ring-primary/50 bg-glass"
-                                           th:checked="${ann.isActive}">
-                                    <label th:for="${'active' + ann.announcementId}" class="text-sm font-medium text-txt-primary cursor-pointer">アクティブ（掲載する）</label>
-                                </div>
-                            </div>
-                            <div class="flex gap-4 mt-4">
-                                <button type="button" class="btn btn-flat flex-1"
-                                        th:onclick="'closeEditModal(' + ${ann.announcementId} + ')'">キャンセル</button>
-                                <button type="submit" class="btn btn-primary flex-[2]">
-                                    <i class="fa-solid fa-save"></i> 保存
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -178,12 +209,15 @@
 
     <th:block layout:fragment="js">
         <script>
-            // openModal/closeModal は main.js の共通ユーティリティを使用
-            function openEditModal(id) {
-                openModal('editModal' + id);
-            }
-            function closeEditModal(id) {
-                closeModal('editModal' + id);
+            function openAnnouncementEdit(button) {
+                const form = document.getElementById('announcementEditForm');
+                form.action = button.dataset.action;
+                document.getElementById('editAnnouncementTitle').value = button.dataset.title || '';
+                document.getElementById('editAnnouncementMessage').value = button.dataset.message || '';
+                document.getElementById('editAnnouncementStartDate').value = button.dataset.startDate || '';
+                document.getElementById('editAnnouncementEndDate').value = button.dataset.endDate || '';
+                document.getElementById('editAnnouncementActive').checked = button.dataset.active === 'true';
+                openModal('announcementEditModal');
             }
         </script>
     </th:block>

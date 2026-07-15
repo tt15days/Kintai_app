@@ -47,6 +47,7 @@ class UserMapperIntegrationTest {
 
         User selected = userMapper.selectByEmail(email).orElseThrow();
         assertThat(selected.getEmail()).isEqualTo(email);
+        assertThat(selected.getAnnualLeaveGrantDays()).isEqualTo(10);
         assertThat(userMapper.existsByEmail(email)).isTrue();
 
         int updated = userMapper.softDeleteById(user.getUserId());

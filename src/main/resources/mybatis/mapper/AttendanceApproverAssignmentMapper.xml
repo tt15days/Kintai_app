@@ -9,6 +9,52 @@
         ORDER BY approver_user_id ASC
     </select>
 
+    <select id="selectApplicantIdsWithAssignments" resultType="long">
+        SELECT u.user_id
+        FROM users u
+        WHERE u.user_id IN
+        <foreach collection="applicantUserIds" item="userId" open="(" separator="," close=")">#{userId}</foreach>
+          AND (EXISTS (SELECT 1 FROM attendance_user_approvers ua WHERE ua.applicant_user_id = u.user_id)
+               OR EXISTS (SELECT 1 FROM attendance_department_approvers da WHERE da.department_name = u.department))
+    </select>
+
+    <select id="selectApplicantIdsAssignedToApprover" resultType="long">
+        SELECT u.user_id
+        FROM users u
+        WHERE u.user_id IN
+        <foreach collection="applicantUserIds" item="userId" open="(" separator="," close=")">#{userId}</foreach>
+          AND (EXISTS (SELECT 1 FROM attendance_user_approvers ua
+                      WHERE ua.applicant_user_id = u.user_id AND ua.approver_user_id = #{approverUserId})
+               OR EXISTS (SELECT 1 FROM attendance_department_approvers da
+                          WHERE da.department_name = u.department AND da.approver_user_id = #{approverUserId}))
+    </select>
+
+    <select id="selectUserApproverAssignmentsPage" resultType="com.attendance.app.dto.ApproverAssignmentRowDto">
+        SELECT ua.applicant_user_id, applicant.full_name AS applicant_name, applicant.department AS applicant_department,
+               ua.approver_user_id, approver.full_name AS approver_name
+        FROM attendance_user_approvers ua
+        LEFT JOIN users applicant ON applicant.user_id = ua.applicant_user_id
+        LEFT JOIN users approver ON approver.user_id = ua.approver_user_id
+        ORDER BY ua.applicant_user_id ASC, ua.approver_user_id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countUserApproverAssignments" resultType="long">
+        SELECT COUNT(*) FROM attendance_user_approvers
+    </select>
+
+    <select id="selectDepartmentApproverAssignmentsPage" resultType="com.attendance.app.dto.ApproverAssignmentRowDto">
+        SELECT da.department_name, da.approver_user_id, approver.full_name AS approver_name
+        FROM attendance_department_approvers da
+        LEFT JOIN users approver ON approver.user_id = da.approver_user_id
+        ORDER BY da.department_name ASC, da.approver_user_id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countDepartmentApproverAssignments" resultType="long">
+        SELECT COUNT(*) FROM attendance_department_approvers
+    </select>
+
     <delete id="deleteUserApprovers">
         DELETE FROM attendance_user_approvers
         WHERE applicant_user_id = #{applicantUserId}

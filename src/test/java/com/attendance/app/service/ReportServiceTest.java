@@ -6,6 +6,7 @@ import com.attendance.app.entity.LeaveStatus;
 import com.attendance.app.entity.LeaveType;
 import com.attendance.app.entity.User;
 import com.attendance.app.mapper.AttendanceRecordMapper;
+import com.attendance.app.mapper.AttendanceSubmissionMapper;
 import com.attendance.app.mapper.LeaveApplicationMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,9 @@ public class ReportServiceTest {
     @Mock
     private AttendanceSubmissionService attendanceSubmissionService;
 
+    @Mock
+    private AttendanceSubmissionMapper attendanceSubmissionMapper;
+
     @InjectMocks
     private ReportService reportService;
 
@@ -71,6 +75,8 @@ public class ReportServiceTest {
 
         lenient().when(attendanceSubmissionService.getSubmission(anyLong(), any())).thenReturn(java.util.Optional.empty());
         lenient().when(attendanceSubmissionService.getSubmissionsByTargetYearMonth(any())).thenReturn(Collections.emptyList());
+        lenient().when(attendanceSubmissionMapper.selectByTargetYearMonthAndUserIds(any(), any()))
+                .thenReturn(Collections.emptyList());
     }
 
     @Test
@@ -159,8 +165,8 @@ public class ReportServiceTest {
                 20
         );
         when(attendanceRecordService.getMonthRange(targetMonth)).thenReturn(monthRange);
-        when(attendanceRecordMapper.selectAllByDateRange(any(), any())).thenReturn(Collections.emptyList());
-        when(leaveApplicationMapper.selectAllByDateRange(any(), any())).thenReturn(Collections.emptyList());
+        when(attendanceRecordMapper.selectByDateRangeAndUserIds(any(), any(), any())).thenReturn(Collections.emptyList());
+        when(leaveApplicationMapper.selectByDateRangeAndUserIds(any(), any(), any())).thenReturn(Collections.emptyList());
 
         when(csvFilenamePatternService.buildCsvFilename(eq(user1), eq(targetMonth), any(OffsetDateTime.class)))
                 .thenReturn("user1.csv");
@@ -183,6 +189,45 @@ public class ReportServiceTest {
             assertEquals("user2.csv", entry2.getName());
 
             assertNull(zis.getNextEntry());
+        }
+    }
+
+    @Test
+    void writeAllActiveUsersAttendanceZip_usesCursorAfterUserDeletion() throws IOException {
+        List<User> firstPage = java.util.stream.LongStream.rangeClosed(1, 100)
+                .mapToObj(id -> {
+                    User user = new User();
+                    user.setUserId(id);
+                    user.setFullName("User" + id);
+                    return user;
+                }).toList();
+        User userAfterDeletedUser = new User();
+        userAfterDeletedUser.setUserId(102L);
+        userAfterDeletedUser.setFullName("User102");
+        AttendanceRecordService.MonthRange monthRange = new AttendanceRecordService.MonthRange(targetMonth, 21, 20);
+        OffsetDateTime downloadedAt = OffsetDateTime.now();
+
+        when(userService.getUsersAfterId(null, null, true, false, 0, 100)).thenReturn(firstPage);
+        when(userService.getUsersAfterId(null, null, true, false, 100, 100))
+                .thenReturn(List.of(userAfterDeletedUser));
+        when(userService.getUsersAfterId(null, null, true, false, 102, 100)).thenReturn(Collections.emptyList());
+        when(attendanceRecordService.getMonthRange(targetMonth)).thenReturn(monthRange);
+        when(attendanceRecordMapper.selectByDateRangeAndUserIds(any(), any(), any())).thenReturn(Collections.emptyList());
+        when(leaveApplicationMapper.selectByDateRangeAndUserIds(any(), any(), any())).thenReturn(Collections.emptyList());
+        when(csvFilenamePatternService.buildCsvFilename(any(), eq(targetMonth), eq(downloadedAt)))
+                .thenAnswer(invocation -> "user" + ((User) invocation.getArgument(0)).getUserId() + ".csv");
+
+        java.io.ByteArrayOutputStream outputStream = new java.io.ByteArrayOutputStream();
+        reportService.writeAllActiveUsersAttendanceZip(targetMonth, downloadedAt, null, null, outputStream);
+
+        verify(userService).getUsersAfterId(null, null, true, false, 100, 100);
+        verify(userService).getUsersAfterId(null, null, true, false, 102, 100);
+        try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(outputStream.toByteArray()))) {
+            int entries = 0;
+            while (zis.getNextEntry() != null) {
+                entries++;
+            }
+            assertEquals(101, entries);
         }
     }
 }

@@ -16,9 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SystemSettingService {
 
     public static final String PAID_LEAVE_GRANT_DATE_KEY = "PAID_LEAVE_GRANT_DATE";
-    public static final String PAID_LEAVE_GRANT_DAYS_KEY = "PAID_LEAVE_GRANT_DAYS";
     public static final String DEFAULT_PAID_LEAVE_GRANT_DATE = "04-01";
-    public static final String DEFAULT_PAID_LEAVE_GRANT_DAYS = "10";
 
     private final SystemSettingMapper systemSettingMapper;
 
@@ -41,12 +39,12 @@ public class SystemSettingService {
      * @return 更新または追加された件数
      */
     public int updateSettingValue(String settingKey, String settingValue) {
-        log.info("システム設定を更新します: key={}, value={}", settingKey, settingValue);
+        log.info("システム設定を更新します: key={}, valueLength={}",
+                settingKey, settingValue == null ? 0 : settingValue.length());
         return systemSettingMapper.upsertValue(settingKey, settingValue);
     }
 
-    public void updatePaidLeaveGrantSettings(String grantDate, int grantDays) {
+    public void updatePaidLeaveGrantDate(String grantDate) {
         systemSettingMapper.upsertValue(PAID_LEAVE_GRANT_DATE_KEY, grantDate);
-        systemSettingMapper.upsertValue(PAID_LEAVE_GRANT_DAYS_KEY, String.valueOf(grantDays));
     }
 }

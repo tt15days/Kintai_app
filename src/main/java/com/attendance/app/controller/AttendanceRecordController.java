@@ -32,6 +32,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.net.URLEncoder;
@@ -288,13 +289,12 @@ public class AttendanceRecordController {
      * @return CSVファイルレスポンス
      */
     @GetMapping("/export")
-    public ResponseEntity<byte[]> exportOwnAttendanceCsv(@RequestParam(required = false) String yearMonth) {
+    public ResponseEntity<StreamingResponseBody> exportOwnAttendanceCsv(@RequestParam(required = false) String yearMonth) {
         try {
             Long userId = securityUtil.getCurrentUserId();
             User user = userService.getUserById(userId)
                     .orElseThrow(() -> new IllegalArgumentException("ユーザーが見つかりません: userId=" + userId));
             YearMonth targetMonth = parseYearMonthOrDefault(yearMonth, resolveDefaultTargetMonth());
-            byte[] csvBytes = reportService.generateUserAttendanceCsv(user, targetMonth);
             OffsetDateTime downloadedAt = com.attendance.app.util.DateTimeUtil
                     .toOffsetDateTime(com.attendance.app.util.DateTimeUtil.now());
             String filename = csvFilenamePatternService.buildCsvFilename(user, targetMonth, downloadedAt);
@@ -302,7 +302,7 @@ public class AttendanceRecordController {
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodeFilename(filename))
                     .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-                    .body(csvBytes);
+                    .body(outputStream -> reportService.writeUserAttendanceCsv(user, targetMonth, outputStream));
         } catch (IllegalArgumentException e) {
             log.warn("月次勤怠CSVダウンロード（本人）に失敗", e);
             return ResponseEntity.badRequest().build();
@@ -470,11 +470,16 @@ public class AttendanceRecordController {
         try {
             Long userId = securityUtil.getCurrentUserId();
             attendanceSubmissionService.submitMonth(userId, selectedMonth);
-            // 承認権限を持つユーザーに通知を送信
-            com.attendance.app.entity.User currentUser = userService.getUserById(userId).orElse(null);
-            String applicantName = currentUser != null ? currentUser.getFullName() : "不明";
-            userNotificationService.notifyApproversNewSubmission(userId, applicantName, selectedMonth.toString());
             redirectAttributes.addFlashAttribute("message", "今月分の勤怠を申請しました");
+            try {
+                // 承認権限を持つユーザーに通知を送信
+                com.attendance.app.entity.User currentUser = userService.getUserById(userId).orElse(null);
+                String applicantName = currentUser != null ? currentUser.getFullName() : "不明";
+                userNotificationService.notifyApproversNewSubmission(userId, applicantName, selectedMonth.toString());
+            } catch (Exception notifyEx) {
+                redirectAttributes.addFlashAttribute("warning", "勤怠申請は完了しましたが、承認者への通知に失敗しました");
+                log.warn("月次勤怠申請の承認者通知に失敗: userId={}, yearMonth={}", userId, selectedMonth, notifyEx);
+            }
         } catch (IllegalArgumentException e) {
             addValidationRedirectError(redirectAttributes, e, "月次申請に失敗");
         } catch (Exception e) {
@@ -782,9 +787,7 @@ public class AttendanceRecordController {
      */
     private YearMonth resolveDefaultTargetMonth() {
         LocalDate today = DateTimeUtil.todayJapan();
-        YearMonth currentMonth = YearMonth.from(today);
-        int startDay = attendancePeriodSettingService.getStartDay();
-        return today.getDayOfMonth() >= startDay ? currentMonth.plusMonths(1) : currentMonth;
+        return attendancePeriodSettingService.resolvePayrollMonth(today);
     }
 
     /**
@@ -912,12 +915,17 @@ public class AttendanceRecordController {
             LocalTime endTime = parseTimeOrNull(requestedEndTime);
 
             correctionRequestService.submitRequest(userId, date, startTime, endTime, requestedRemarks, reason);
-            // 承認権限を持つユーザーに通知を送信
-            com.attendance.app.entity.User currentUser = userService.getUserById(userId).orElse(null);
-            String applicantName = currentUser != null ? currentUser.getFullName() : "不明";
-            userNotificationService.notifyApproversNewCorrectionRequest(userId, applicantName, date.toString());
             redirectAttributes.addFlashAttribute("message",
                     date + " の勤怠修正申請を提出しました。承認者の確認をお待ちください。");
+            try {
+                // 承認権限を持つユーザーに通知を送信
+                com.attendance.app.entity.User currentUser = userService.getUserById(userId).orElse(null);
+                String applicantName = currentUser != null ? currentUser.getFullName() : "不明";
+                userNotificationService.notifyApproversNewCorrectionRequest(userId, applicantName, date.toString());
+            } catch (Exception notifyEx) {
+                redirectAttributes.addFlashAttribute("warning", "勤怠修正申請は完了しましたが、承認者への通知に失敗しました");
+                log.warn("勤怠修正申請の承認者通知に失敗: userId={}, attendanceDate={}", userId, date, notifyEx);
+            }
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             log.warn("勤怠修正申請の提出に失敗", e);

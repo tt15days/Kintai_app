@@ -14,15 +14,15 @@
                 </div>
                 <div>
                     <div class="mb-4" th:if="${successMessage != null}">
-                        <div class="alert alert-success" role="alert">
+                        <div class="alert alert-success" role="status" aria-live="polite">
                             <span><i class="fa-solid fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
-                            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+                            <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
                         </div>
                     </div>
                     <div class="mb-4" th:if="${errorMessage != null}">
-                        <div class="alert alert-danger" role="alert">
+                        <div class="alert alert-danger" role="alert" aria-live="assertive">
                             <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
-                            <button type="button" class="text-txt-primary hover:opacity-100 opacity-70 transition-opacity p-0 bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
+                            <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
                         </div>
                     </div>
 
@@ -61,8 +61,9 @@
                             <div class="flex flex-col min-w-[200px]">
                                 <label for="yearMonth" class="form-label">表示月</label>
                                 <div class="flex">
-                                    <input type="month" class="form-input rounded-l-xl text-sm font-mono h-11 flex-1" id="yearMonth" name="yearMonth" th:value="${yearMonth}">
-                                    <button type="submit" class="btn btn-primary p-3 rounded-r-xl h-11 w-11 text-sm border-0">
+                                    <input type="month" class="form-input rounded-l-xl text-base md:text-sm font-mono h-11 flex-1" id="yearMonth" name="yearMonth" th:value="${yearMonth}">
+                                    <button type="submit" class="btn btn-primary p-3 rounded-r-xl h-11 w-11 text-sm border-0"
+                                            aria-label="表示月を検索">
                                         <i class="fas fa-search"></i>
                                     </button>
                                 </div>
@@ -141,17 +142,17 @@
                                         <td class="font-mono" th:classappend="${(holidays != null and holidays.contains(recDate)) or (recDate != null and recDate.dayOfWeek.value == 7) ? 'text-danger' : (recDate != null and recDate.dayOfWeek.value == 6 ? 'text-primary' : '')}" th:text="${recDate != null ? #temporals.format(recDate, 'MM-dd (E)') : '-'}"></td>
                                         <td>
                                             <input type="hidden" name="attendanceDate" th:value="${recDate}">
-                                            <input type="time" name="startTime" class="form-input md:max-w-[120px] max-w-[80px] md:p-2 p-1 font-mono text-center text-xs md:text-sm"
+                                            <input type="time" name="startTime" class="form-input md:max-w-[120px] max-w-[80px] md:p-2 p-1 font-mono text-center text-base md:text-sm"
                                                    th:value="${recordStartTimeMap != null ? recordStartTimeMap[record.recordId] : ''}"
                                                    th:attr="aria-label=|${recDate != null ? #temporals.format(recDate, 'MM/dd') : '対象日'}の出勤時刻|">
                                         </td>
                                         <td>
-                                            <input type="time" name="endTime" class="form-input md:max-w-[120px] max-w-[80px] md:p-2 p-1 font-mono text-center text-xs md:text-sm"
+                                            <input type="time" name="endTime" class="form-input md:max-w-[120px] max-w-[80px] md:p-2 p-1 font-mono text-center text-base md:text-sm"
                                                    th:value="${recordEndTimeMap != null ? recordEndTimeMap[record.recordId] : ''}"
                                                    th:attr="aria-label=|${recDate != null ? #temporals.format(recDate, 'MM/dd') : '対象日'}の退勤時刻|">
                                         </td>
                                         <td>
-                                            <select name="eventTypeId" class="form-select md:max-w-[120px] max-w-[85px] md:p-2 p-1 text-xs md:text-sm">
+                                            <select name="eventTypeId" class="form-select md:max-w-[120px] max-w-[85px] md:p-2 p-1 text-base md:text-sm">
                                                 <option th:each="et : ${eventTypes}"
                                                         th:value="${et.eventTypeId}"
                                                         th:text="${et.displayName}"
@@ -160,7 +161,7 @@
                                             </select>
                                         </td>
                                         <td>
-                                            <input type="text" name="remarks" class="form-input md:p-2 p-1 w-full text-xs md:text-sm font-semibold text-txt-primary" 
+                                            <input type="text" name="remarks" class="form-input md:p-2 p-1 w-full text-base md:text-sm font-semibold text-txt-primary"
                                                    th:value="${record.remarks != null ? record.remarks : ''}" placeholder="例) 会議参加"
                                                    th:attr="aria-label=|${recDate != null ? #temporals.format(recDate, 'MM/dd') : '対象日'}の備考|">
                                         </td>

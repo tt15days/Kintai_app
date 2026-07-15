@@ -25,6 +25,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -71,7 +72,10 @@ public class AdminController {
     private static final String ADMIN_NOTIFICATIONS_VIEW = "admin/notifications";
     private static final String ADMIN_NOTIFICATIONS_REDIRECT = "redirect:/admin/notifications";
     private static final String ADMIN_ARTICLE36_VIEW = "admin/article36-dashboard";
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 100;
     private static final String DEPARTMENTS_VIEW = "admin/departments";
+    private static final String APPROVER_ASSIGNMENTS_VIEW = "admin/approver-assignments";
     private static final String ADMIN_DEPARTMENTS_REDIRECT = "redirect:/admin/departments";
 
     private final UserService userService;
@@ -174,11 +178,15 @@ public class AdminController {
     public String showUserList(
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String page,
+            @RequestParam(required = false) String size,
             Model model) {
         try {
-            List<User> users = filterUsersByDepartmentAndKeyword(userService.getAllUsers(), department, keyword);
+            UserPage userPage = getUserPage(department, keyword, false, false, page, size);
+            List<User> users = userPage.users();
             model.addAttribute("users", users);
-            model.addAttribute("userCount", users.size());
+            model.addAttribute("userCount", userPage.totalCount());
+            addPaginationAttributes(model, userPage);
             model.addAttribute("department", department);
             model.addAttribute("keyword", keyword);
             List<String> departments = workScheduleClassService.getAllClasses().stream()
@@ -210,10 +218,10 @@ public class AdminController {
             model.addAttribute("activeDepartments", departmentService.getActiveDepartments());
             List<User> approverCandidates = userService.getAttendanceApproverCandidates();
             Set<Long> assignedUserApproverIds = Set.copyOf(approverAssignmentService.getUserApproverIds(userId));
-            Set<Long> assignedDepartmentApproverIds = user.getClassName() == null
-                    || user.getClassName().trim().isEmpty()
+            Set<Long> assignedDepartmentApproverIds = user.getDepartment() == null
+                    || user.getDepartment().trim().isEmpty()
                             ? Collections.emptySet()
-                            : Set.copyOf(approverAssignmentService.getDepartmentApproverIds(user.getClassName()));
+                            : Set.copyOf(approverAssignmentService.getDepartmentApproverIds(user.getDepartment()));
             model.addAttribute("approverCandidates", approverCandidates);
             model.addAttribute("assignedUserApproverIds", assignedUserApproverIds);
             model.addAttribute("assignedDepartmentApproverIds", assignedDepartmentApproverIds);
@@ -249,6 +257,38 @@ public class AdminController {
             logActionError(e, "申請者ごとの承認者割当更新に失敗");
         }
         return ADMIN_USER_DETAIL_REDIRECT_PREFIX + userId;
+    }
+
+    @GetMapping("/approver-assignments")
+    public String showApproverAssignments(
+            @RequestParam(defaultValue = "0") String userPage,
+            @RequestParam(defaultValue = "0") String departmentPage,
+            @RequestParam(defaultValue = "20") String size,
+            Model model) {
+        try {
+            int pageSize = parsePageSize(size);
+            long userCount = approverAssignmentService.countUserApproverAssignments();
+            long departmentCount = approverAssignmentService.countDepartmentApproverAssignments();
+            int userTotalPages = Math.max(1, (int) Math.ceil((double) userCount / pageSize));
+            int departmentTotalPages = Math.max(1, (int) Math.ceil((double) departmentCount / pageSize));
+            int currentUserPage = Math.min(parsePage(userPage), userTotalPages - 1);
+            int currentDepartmentPage = Math.min(parsePage(departmentPage), departmentTotalPages - 1);
+            model.addAttribute("adminApprovers", userService.getActiveAdmins());
+            model.addAttribute("userApproverAssignments", approverAssignmentService
+                    .getUserApproverAssignmentsPage((long) currentUserPage * pageSize, pageSize));
+            model.addAttribute("departmentApproverAssignments", approverAssignmentService
+                    .getDepartmentApproverAssignmentsPage((long) currentDepartmentPage * pageSize, pageSize));
+            model.addAttribute("userAssignmentCount", userCount);
+            model.addAttribute("departmentAssignmentCount", departmentCount);
+            model.addAttribute("userPage", currentUserPage);
+            model.addAttribute("userTotalPages", userTotalPages);
+            model.addAttribute("departmentPage", currentDepartmentPage);
+            model.addAttribute("departmentTotalPages", departmentTotalPages);
+            model.addAttribute("pageSize", pageSize);
+        } catch (Exception e) {
+            handleAdminViewError(model, e, "承認者一覧表示に失敗", "承認者一覧の表示に失敗しました");
+        }
+        return APPROVER_ASSIGNMENTS_VIEW;
     }
 
     /**
@@ -399,6 +439,43 @@ public class AdminController {
         return users;
     }
 
+    private UserPage getUserPage(String department, String keyword, boolean activeOnly, boolean excludeAdmin,
+                                 String requestedPage, String requestedSize) {
+        int pageSize = parsePageSize(requestedSize);
+        long totalCount = userService.countUsers(department, keyword, activeOnly, excludeAdmin);
+        int totalPages = Math.max(1, (int) Math.ceil((double) totalCount / pageSize));
+        int page = Math.min(parsePage(requestedPage), totalPages - 1);
+        List<User> users = userService.getUsersPage(department, keyword, activeOnly, excludeAdmin,
+                (long) page * pageSize, pageSize);
+        return new UserPage(users, totalCount, page, totalPages, pageSize);
+    }
+
+    private int parsePage(String page) {
+        try {
+            return Math.max(0, Integer.parseInt(page));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private int parsePageSize(String size) {
+        try {
+            return Math.min(MAX_PAGE_SIZE, Math.max(1, Integer.parseInt(size)));
+        } catch (NumberFormatException e) {
+            return DEFAULT_PAGE_SIZE;
+        }
+    }
+
+    private void addPaginationAttributes(Model model, UserPage userPage) {
+        model.addAttribute("page", userPage.page());
+        model.addAttribute("pageSize", userPage.pageSize());
+        model.addAttribute("totalPages", userPage.totalPages());
+        model.addAttribute("totalCount", userPage.totalCount());
+    }
+
+    private record UserPage(List<User> users, long totalCount, int page, int totalPages, int pageSize) {
+    }
+
     /**
      * 勤怠管理ダッシュボード（管理者用）を表示します。
      *
@@ -413,12 +490,14 @@ public class AdminController {
             @RequestParam(required = false) String yearMonth,
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String page,
+            @RequestParam(required = false) String size,
             Model model) {
         try {
-            List<User> users = userService.getActiveUsers();
+            UserPage userPage = getUserPage(department, keyword, true, false, page, size);
+            List<User> users = userPage.users();
             YearMonth currentMonth = parseYearMonthOrNow(yearMonth);
-
-            users = filterUsersByDepartmentAndKeyword(users, department, keyword);
+            addPaginationAttributes(model, userPage);
 
             List<AttendanceSubmission> submissions = attendanceSubmissionService
                     .getSubmissionsByTargetYearMonth(currentMonth);
@@ -443,7 +522,8 @@ public class AdminController {
 
             // 36協定チェックおよび各時間のサマリー取得（working/overtime/nightShiftを1回のフェッチで集計）
             List<AttendanceRecordService.MonthlyUserSummary> monthlySummaries =
-                    attendanceRecordService.getMonthlyAggregateForAllUsers(currentMonth);
+                    attendanceRecordService.getMonthlyAggregateForUsers(currentMonth,
+                            users.stream().map(User::getUserId).toList());
             Map<Long, Double> overtimeSumByUserMap = monthlySummaries.stream()
                     .collect(Collectors.toMap(AttendanceRecordService.MonthlyUserSummary::userId,
                             AttendanceRecordService.MonthlyUserSummary::overtimeHours));
@@ -578,7 +658,7 @@ public class AdminController {
     @PostMapping("/users/{userId}/leave-settings")
     public String updateLeaveSettings(
             @PathVariable Long userId,
-            @RequestParam int annualLeaveGrantDays,
+            @RequestParam Integer annualLeaveGrantDays,
             @RequestParam BigDecimal annualLeaveIncrement,
             @RequestParam int maxPaidLeaveDays,
             RedirectAttributes redirectAttributes) {
@@ -586,7 +666,8 @@ public class AdminController {
             userService.updatePaidLeaveSettings(userId, annualLeaveGrantDays, annualLeaveIncrement, maxPaidLeaveDays);
             redirectAttributes.addFlashAttribute("successMessage", "年次有給設定を更新しました");
             log.info("ユーザー別有給設定を更新: userId={}, grantDays={}, increment={}, maxDays={}",
-                    userId, annualLeaveGrantDays, annualLeaveIncrement, maxPaidLeaveDays);
+                    userId, annualLeaveGrantDays,
+                    annualLeaveIncrement, maxPaidLeaveDays);
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             log.warn("有給設定の更新に失敗: userId={}, reason={}", userId, e.getMessage(), e);
@@ -1029,6 +1110,8 @@ public class AdminController {
     @GetMapping("/article36")
     public String showArticle36Dashboard(
             @RequestParam(required = false) String yearMonth,
+            @RequestParam(required = false) String page,
+            @RequestParam(required = false) String size,
             Model model) {
         YearMonth baseMonth = parseYearMonthOrNow(yearMonth);
         List<User> users = Collections.emptyList();
@@ -1041,9 +1124,9 @@ public class AdminController {
         long normalCount = 0;
 
         try {
-            users = userService.getActiveUsers().stream()
-                    .filter(u -> u.getUserRole() != UserRole.ADMIN)
-                    .collect(Collectors.toList());
+            UserPage userPage = getUserPage(null, null, true, true, page, size);
+            users = userPage.users();
+            addPaginationAttributes(model, userPage);
 
             // 直近3ヶ月分の残業時間と36協定ステータスを収集
             List<YearMonth> months = List.of(baseMonth.minusMonths(2), baseMonth.minusMonths(1), baseMonth);
@@ -1054,7 +1137,8 @@ public class AdminController {
                     .toList();
 
             // 3ヶ月分の月次集計を1回のフェッチ（範囲取得＋YearMonthグルーピング）にまとめて取得
-            Map<YearMonth, Map<Long, Double>> overtimeByMonth = attendanceRecordService.getOvertimeSumByUserForMonthRange(months);
+            Map<YearMonth, Map<Long, Double>> overtimeByMonth = attendanceRecordService
+                    .getOvertimeSumByUserForMonthRange(months, users.stream().map(User::getUserId).toList());
             overtimeCellMap = new HashMap<>();
             article36StatusCellMap = new HashMap<>();
             for (YearMonth ym : months) {
@@ -1118,6 +1202,10 @@ public class AdminController {
         return ADMIN_ARTICLE36_VIEW;
     }
 
+    public String showArticle36Dashboard(String yearMonth, Model model) {
+        return showArticle36Dashboard(yearMonth, null, null, model);
+    }
+
     /**
      * 指定ユーザーに36協定アラート通知を送信します。
      *
@@ -1177,21 +1265,20 @@ public class AdminController {
      * @return CSVファイルレスポンス
      */
     @GetMapping("/attendance/export/csv")
-    public ResponseEntity<byte[]> downloadUserAttendanceCsv(
+    public ResponseEntity<StreamingResponseBody> downloadUserAttendanceCsv(
             @RequestParam Long userId,
             @RequestParam(required = false) String yearMonth) {
         try {
             User user = userService.getUserById(userId)
                     .orElseThrow(() -> new IllegalArgumentException("ユーザーが見つかりません: userId=" + userId));
             YearMonth targetMonth = parseYearMonthOrNow(yearMonth);
-            byte[] csvBytes = reportService.generateUserAttendanceCsv(user, targetMonth);
             OffsetDateTime downloadedAt = DateTimeUtil.toOffsetDateTime(DateTimeUtil.now());
             String filename = csvFilenamePatternService.buildCsvFilename(user, targetMonth, downloadedAt);
             log.info("月次勤怠CSVをダウンロード: userId={}, yearMonth={}, filename={}", userId, targetMonth, filename);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodeFilename(filename))
                     .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
-                    .body(csvBytes);
+                    .body(outputStream -> reportService.writeUserAttendanceCsv(user, targetMonth, outputStream));
         } catch (IllegalArgumentException e) {
             log.warn("月次勤怠CSVダウンロードに失敗", e);
             return ResponseEntity.badRequest().build();
@@ -1210,21 +1297,20 @@ public class AdminController {
      * @return ZIPファイルレスポンス
      */
     @GetMapping("/attendance/export/zip")
-    public ResponseEntity<byte[]> downloadAllAttendanceZip(
+    public ResponseEntity<StreamingResponseBody> downloadAllAttendanceZip(
             @RequestParam(required = false) String yearMonth,
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String keyword) {
         try {
             YearMonth targetMonth = parseYearMonthOrNow(yearMonth);
             OffsetDateTime downloadedAt = DateTimeUtil.toOffsetDateTime(DateTimeUtil.now());
-            List<User> users = filterUsersByDepartmentAndKeyword(userService.getActiveUsers(), department, keyword);
-            byte[] zipBytes = reportService.generateAllUsersAttendanceZip(targetMonth, downloadedAt, users);
             String filename = targetMonth + "_attendance.zip";
             log.info("全ユーザー月次勤怠ZIPをダウンロード: yearMonth={}, filename={}", targetMonth, filename);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodeFilename(filename))
                     .contentType(MediaType.parseMediaType("application/zip"))
-                    .body(zipBytes);
+                    .body(outputStream -> reportService.writeAllActiveUsersAttendanceZip(
+                            targetMonth, downloadedAt, department, keyword, outputStream));
         } catch (Exception e) {
             logActionError(e, "全ユーザー月次勤怠ZIPダウンロードに失敗");
             return ResponseEntity.internalServerError().build();

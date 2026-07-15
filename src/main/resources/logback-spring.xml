@@ -35,7 +35,7 @@
         </rollingPolicy>
     </appender>
 
-    <!-- 3. 操作監査ログ専用 ファイルアペンダー設定 (CSV形式で出力、日次+サイズ制限ローリング) -->
+    <!-- 3. 操作監査ログ専用 ファイルアペンダー設定 (CSV形式で出力、月次+サイズ制限ローリング) -->
     <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/audit.csv</file>
         <!-- 監査ログはCSVとしてパースしやすくするため、プレフィックスやスレッド名等を付与せず、メッセージ（CSV文字列）と改行のみを出力する -->
@@ -45,11 +45,11 @@
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- ローリング後の保存ファイル名パターン（GZIP圧縮保存） -->
-            <fileNamePattern>${LOG_DIR}/gzip/audit.%d{yyyy-MM-dd}.%i.csv.gz</fileNamePattern>
+            <fileNamePattern>${LOG_DIR}/gzip/audit.%d{yyyy-MM}.%i.csv.gz</fileNamePattern>
             <!-- 1ファイルあたりの最大サイズ -->
             <maxFileSize>10MB</maxFileSize>
-            <!-- アーカイブの最大保持日数（90日間保管など長期保存を想定） -->
-            <maxHistory>90</maxHistory>
+            <!-- 月次アーカイブの最大保持期間（24か月） -->
+            <maxHistory>24</maxHistory>
             <!-- アーカイブファイルの総容量制限（最大 1GB まで） -->
             <totalSizeCap>3GB</totalSizeCap>
         </rollingPolicy>

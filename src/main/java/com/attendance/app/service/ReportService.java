@@ -6,6 +6,7 @@ import com.attendance.app.entity.LeaveApplication;
 import com.attendance.app.entity.LeaveStatus;
 import com.attendance.app.entity.User;
 import com.attendance.app.mapper.AttendanceRecordMapper;
+import com.attendance.app.mapper.AttendanceSubmissionMapper;
 import com.attendance.app.mapper.LeaveApplicationMapper;
 import com.attendance.app.util.CsvSanitizeUtil;
 import com.attendance.app.util.DateTimeUtil;
@@ -15,6 +16,9 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -46,6 +50,7 @@ public class ReportService {
             + "\"勤務時間\",\"残業時間\",\"土曜休出時間\",\"日祝休出時間\",\"備考\",\"休暇種別\"";
     private static final String CRLF = "\r\n";
     private static final int SATURDAY = 6;
+    private static final int EXPORT_PAGE_SIZE = 100;
 
     private final AttendanceRecordService attendanceRecordService;
     private final LeaveApplicationService leaveApplicationService;
@@ -54,6 +59,23 @@ public class ReportService {
     private final AttendanceRecordMapper attendanceRecordMapper;
     private final LeaveApplicationMapper leaveApplicationMapper;
     private final AttendanceSubmissionService attendanceSubmissionService;
+    private final AttendanceSubmissionMapper attendanceSubmissionMapper;
+
+    public void writeAllActiveUsersAttendanceZip(YearMonth yearMonth, OffsetDateTime downloadedAt,
+            String department, String keyword, OutputStream outputStream) throws IOException {
+        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream, StandardCharsets.UTF_8)) {
+            long afterUserId = 0;
+            while (true) {
+                List<User> users = userService.getUsersAfterId(
+                        department, keyword, true, false, afterUserId, EXPORT_PAGE_SIZE);
+                if (users.isEmpty()) {
+                    break;
+                }
+                writeZipEntries(zipOutputStream, yearMonth, downloadedAt, users);
+                afterUserId = users.get(users.size() - 1).getUserId();
+            }
+        }
+    }
 
     /**
      * 指定ユーザーの月次勤怠CSVをバイト配列で返します。
@@ -63,6 +85,18 @@ public class ReportService {
      * @return CSV バイト配列（UTF-8 BOMなし）
      */
     public byte[] generateUserAttendanceCsv(User user, YearMonth yearMonth) {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            writeUserAttendanceCsv(user, yearMonth, outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("月次勤怠CSVの生成に失敗しました", e);
+        }
+    }
+
+    /**
+     * 指定ユーザーの月次勤怠CSVを出力ストリームへ書き込みます。
+     */
+    public void writeUserAttendanceCsv(User user, YearMonth yearMonth, OutputStream outputStream) throws IOException {
         AttendanceRecordService.MonthRange defaultMonthRange = attendanceRecordService.getMonthRange(yearMonth);
         // 勤怠申請提出時にスナップショットされた期間があれば、取得した記録の範囲と一致させる
         AttendanceRecordService.MonthRange monthRange = attendanceSubmissionService.getSubmission(user.getUserId(), yearMonth)
@@ -73,11 +107,12 @@ public class ReportService {
         List<LeaveApplication> leaves = leaveApplicationService.getApplicationsByUserAndDateRange(
                 user.getUserId(), monthRange.getStartDate(), monthRange.getEndDate());
 
-        byte[] csvBytes = buildAttendanceCsv(user, monthRange, records, leaves);
+        Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
+        writeAttendanceCsv(writer, user, monthRange, records, leaves);
+        writer.flush();
 
         log.info("月次勤怠CSV生成: userId={}, yearMonth={}, rows={}", user.getUserId(), yearMonth,
                 monthRange.getDaysInMonth());
-        return csvBytes;
     }
 
     /**
@@ -91,21 +126,32 @@ public class ReportService {
      */
     private byte[] buildAttendanceCsv(User user, AttendanceRecordService.MonthRange monthRange,
             List<AttendanceRecord> records, List<LeaveApplication> leaves) {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+             Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
+            writeAttendanceCsv(writer, user, monthRange, records, leaves);
+            writer.flush();
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException("月次勤怠CSVの構築に失敗しました", e);
+        }
+    }
+
+    private void writeAttendanceCsv(Writer writer, User user, AttendanceRecordService.MonthRange monthRange,
+            List<AttendanceRecord> records, List<LeaveApplication> leaves) throws IOException {
         Map<LocalDate, AttendanceRecord> recordMap = buildRecordMap(records);
         Map<LocalDate, String> leaveMap = buildLeaveMap(leaves, monthRange);
 
-        StringBuilder sb = new StringBuilder();
-        sb.append(CSV_HEADER).append(CRLF);
+        writer.write(CSV_HEADER);
+        writer.write(CRLF);
 
         LocalDate current = monthRange.getStartDate();
         while (!current.isAfter(monthRange.getEndDate())) {
             AttendanceRecord rec = recordMap.get(current);
             String leaveType = leaveMap.getOrDefault(current, "");
-            sb.append(buildCsvRow(user, current, rec, leaveType));
-            sb.append(CRLF);
+            writer.write(buildCsvRow(user, current, rec, leaveType));
+            writer.write(CRLF);
             current = current.plusDays(1);
         }
-        return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     /**
@@ -131,12 +177,35 @@ public class ReportService {
      * @throws IOException ZIP生成に失敗した場合
      */
     public byte[] generateAllUsersAttendanceZip(YearMonth yearMonth, OffsetDateTime downloadedAt, List<User> users) throws IOException {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            writeAllUsersAttendanceZip(yearMonth, downloadedAt, users, outputStream);
+            return outputStream.toByteArray();
+        }
+    }
+
+    /**
+     * 指定ユーザー一覧の月次勤怠CSVをまとめたZIPを出力ストリームへ書き込みます。
+     */
+    public void writeAllUsersAttendanceZip(YearMonth yearMonth, OffsetDateTime downloadedAt,
+            List<User> users, OutputStream outputStream) throws IOException {
+        try (ZipOutputStream zos = new ZipOutputStream(outputStream, StandardCharsets.UTF_8)) {
+            writeZipEntries(zos, yearMonth, downloadedAt, users);
+        }
+    }
+
+    private void writeZipEntries(ZipOutputStream zos, YearMonth yearMonth, OffsetDateTime downloadedAt,
+            List<User> users) throws IOException {
+        if (users.isEmpty()) {
+            return;
+        }
         AttendanceRecordService.MonthRange monthRange = attendanceRecordService.getMonthRange(yearMonth);
 
         // ユーザーごとの実対象期間（勤怠申請提出時にスナップショットされた期間があればそれを優先。
         // 期間設定変更後に未申請のユーザーは既定のmonthRangeを使う）
         Map<Long, AttendanceRecordService.MonthRange> monthRangeByUser = new HashMap<>();
-        for (AttendanceSubmission submission : attendanceSubmissionService.getSubmissionsByTargetYearMonth(yearMonth)) {
+        List<Long> userIds = users.stream().map(User::getUserId).toList();
+        for (AttendanceSubmission submission : attendanceSubmissionMapper
+                .selectByTargetYearMonthAndUserIds(yearMonth.toString(), userIds)) {
             if (submission.getStartDate() != null && submission.getEndDate() != null) {
                 monthRangeByUser.put(submission.getUserId(),
                         AttendanceRecordService.MonthRange.of(yearMonth, submission.getStartDate(), submission.getEndDate()));
@@ -156,16 +225,12 @@ public class ReportService {
         // 全ユーザー分の勤怠記録・休暇申請を一括取得し、userId でグルーピング(N+1回避)
         Instant rangeStart = DateTimeUtil.toInstant(fetchStart);
         Instant rangeEnd = DateTimeUtil.toInstant(fetchEnd.plusDays(1));
-        Map<Long, List<AttendanceRecord>> recordsByUser = attendanceRecordMapper.selectAllByDateRange(rangeStart, rangeEnd)
+        Map<Long, List<AttendanceRecord>> recordsByUser = attendanceRecordMapper.selectByDateRangeAndUserIds(rangeStart, rangeEnd, userIds)
                 .stream().collect(Collectors.groupingBy(AttendanceRecord::getUserId));
-        Map<Long, List<LeaveApplication>> leavesByUser = leaveApplicationMapper.selectAllByDateRange(
-                        fetchStart, fetchEnd)
+        Map<Long, List<LeaveApplication>> leavesByUser = leaveApplicationMapper.selectByDateRangeAndUserIds(
+                        fetchStart, fetchEnd, userIds)
                 .stream().collect(Collectors.groupingBy(LeaveApplication::getUserId));
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-        try (ZipOutputStream zos = new ZipOutputStream(baos, StandardCharsets.UTF_8)) {
-            for (User user : users) {
+        for (User user : users) {
                 AttendanceRecordService.MonthRange userRange = monthRangeByUser.getOrDefault(user.getUserId(), monthRange);
                 List<AttendanceRecord> userRecords = recordsByUser.getOrDefault(user.getUserId(), Collections.emptyList())
                         .stream()
@@ -174,18 +239,14 @@ public class ReportService {
                             return d != null && !d.isBefore(userRange.getStartDate()) && !d.isAfter(userRange.getEndDate());
                         })
                         .collect(Collectors.toList());
-                byte[] csvBytes = buildAttendanceCsv(user, userRange,
-                        userRecords,
-                        leavesByUser.getOrDefault(user.getUserId(), Collections.emptyList()));
                 String entryName = csvFilenamePatternService.buildCsvFilename(user, yearMonth, downloadedAt);
                 zos.putNextEntry(new ZipEntry(entryName));
-                zos.write(csvBytes);
+                Writer writer = new OutputStreamWriter(zos, StandardCharsets.UTF_8);
+                writeAttendanceCsv(writer, user, userRange, userRecords,
+                        leavesByUser.getOrDefault(user.getUserId(), Collections.emptyList()));
+                writer.flush();
                 zos.closeEntry();
-            }
         }
-
-        log.info("月次勤怠ZIP生成: yearMonth={}, userCount={}", yearMonth, users.size());
-        return baos.toByteArray();
     }
 
     /**

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}"
+      th:with="activePage='approver-assignments'">
+<head>
+    <title>承認者一覧 - 管理</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-txt-primary flex items-center gap-2"><i class="fa-solid fa-user-check text-primary"></i> 承認者一覧</h2>
+                <p class="text-sm text-txt-secondary mt-1">個人別・部署別に現在設定されている承認者を確認できます。</p>
+            </div>
+            <a th:href="@{/admin/users}" class="btn btn-flat text-sm"><i class="fa-solid fa-users-gear"></i> 従業員管理</a>
+        </div>
+
+        <div class="card mb-6">
+            <div class="pb-4 mb-4 border-b border-glass-border/30">
+                <h3 class="text-base font-bold text-txt-primary">全申請を承認可能な管理者 <span class="badge bg-black/5 text-txt-secondary border-glass-border ml-2" th:text="${#lists.size(adminApprovers)}">0</span>人</h3>
+            </div>
+            <p th:if="${#lists.isEmpty(adminApprovers)}" class="py-3 text-txt-secondary opacity-80">有効な管理者はいません。</p>
+            <div th:unless="${#lists.isEmpty(adminApprovers)}" class="flex flex-wrap gap-2">
+                <a th:each="admin : ${adminApprovers}" class="badge badge-primary py-2 px-3 hover:opacity-80" th:href="@{/admin/users/{id}(id=${admin.userId})}" th:text="${admin.fullName}">管理者</a>
+            </div>
+        </div>
+
+        <div class="card mb-6">
+            <div class="pb-4 mb-4 border-b border-glass-border/30">
+                <h3 class="text-base font-bold text-txt-primary">個人別の承認者割当 <span class="badge bg-black/5 text-txt-secondary border-glass-border ml-2" th:text="${userAssignmentCount}">0</span>件</h3>
+            </div>
+            <p th:if="${#lists.isEmpty(userApproverAssignments)}" class="py-6 text-txt-secondary opacity-80 text-center">個人別の承認者割当はありません。</p>
+            <div th:unless="${#lists.isEmpty(userApproverAssignments)}" class="table-container">
+                <table class="table-custom">
+                    <thead class="bg-black/10 text-txt-primary"><tr><th>申請者</th><th>部署</th><th>承認者</th></tr></thead>
+                    <tbody class="divide-y divide-glass-border/10">
+                        <tr th:each="assignment : ${userApproverAssignments}">
+                            <td><a class="text-primary font-semibold hover:underline" th:href="@{/admin/users/{id}(id=${assignment.applicantUserId})}" th:text="${assignment.applicantName != null ? assignment.applicantName : '削除済みユーザー'}">申請者</a></td>
+                            <td th:text="${assignment.applicantDepartment != null ? assignment.applicantDepartment : '未設定'}">部署</td>
+                            <td th:text="${assignment.approverName != null ? assignment.approverName : '削除済みユーザー'}">承認者</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end gap-2 mt-4" th:if="${userTotalPages > 1}">
+                <a class="btn btn-flat text-sm" th:if="${userPage > 0}" th:href="@{/admin/approver-assignments(userPage=${userPage - 1},departmentPage=${departmentPage},size=${pageSize})}">前へ</a>
+                <span class="text-sm text-txt-secondary py-2" th:text="${userPage + 1 + ' / ' + userTotalPages}">1 / 1</span>
+                <a class="btn btn-flat text-sm" th:if="${userPage + 1 < userTotalPages}" th:href="@{/admin/approver-assignments(userPage=${userPage + 1},departmentPage=${departmentPage},size=${pageSize})}">次へ</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="pb-4 mb-4 border-b border-glass-border/30">
+                <h3 class="text-base font-bold text-txt-primary">部署別の承認者割当 <span class="badge bg-black/5 text-txt-secondary border-glass-border ml-2" th:text="${departmentAssignmentCount}">0</span>件</h3>
+            </div>
+            <p th:if="${#lists.isEmpty(departmentApproverAssignments)}" class="py-6 text-txt-secondary opacity-80 text-center">部署別の承認者割当はありません。</p>
+            <div th:unless="${#lists.isEmpty(departmentApproverAssignments)}" class="table-container">
+                <table class="table-custom">
+                    <thead class="bg-black/10 text-txt-primary"><tr><th>部署</th><th>承認者</th></tr></thead>
+                    <tbody class="divide-y divide-glass-border/10">
+                        <tr th:each="assignment : ${departmentApproverAssignments}">
+                            <td class="font-semibold" th:text="${assignment.departmentName}">総務部</td>
+                            <td th:text="${assignment.approverName != null ? assignment.approverName : '削除済みユーザー'}">承認者</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-end gap-2 mt-4" th:if="${departmentTotalPages > 1}">
+                <a class="btn btn-flat text-sm" th:if="${departmentPage > 0}" th:href="@{/admin/approver-assignments(userPage=${userPage},departmentPage=${departmentPage - 1},size=${pageSize})}">前へ</a>
+                <span class="text-sm text-txt-secondary py-2" th:text="${departmentPage + 1 + ' / ' + departmentTotalPages}">1 / 1</span>
+                <a class="btn btn-flat text-sm" th:if="${departmentPage + 1 < departmentTotalPages}" th:href="@{/admin/approver-assignments(userPage=${userPage},departmentPage=${departmentPage + 1},size=${pageSize})}">次へ</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

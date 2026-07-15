@@ -24,20 +24,25 @@
 </head>
 
 <body>
+    <a href="#main-content"
+       class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[3000] focus:min-h-11 focus:inline-flex focus:items-center focus:bg-white focus:text-primary focus:px-4 focus:py-2 focus:rounded-lg focus:ring-2 focus:ring-primary focus:ring-offset-2">
+        本文へ移動
+    </a>
     <div id="mobile-overlay" class="mobile-overlay fixed inset-0 bg-black/50 z-[999]" aria-hidden="true"></div>
-    <div class="flex flex-1 relative overflow-hidden h-screen md:p-4 p-1 box-border md:gap-5 gap-1.5"
-        th:classappend="${hideSidebar == true} ? 'h-screen w-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-200 p-0 m-0' : ''">
+    <div class="flex flex-1 relative overflow-hidden h-dvh md:p-4 p-1 box-border md:gap-5 gap-1.5"
+        th:classappend="${hideSidebar == true} ? 'h-dvh w-screen flex items-start justify-center bg-gradient-to-br from-slate-50 to-slate-200 p-0 m-0' : ''">
         <!-- Sidebar -->
         <aside id="sidebar"
             class="sidebar w-[260px] border border-glass-border bg-white md:bg-glass/70 rounded-[24px] shadow-glass flex flex-col py-6 z-[1000] h-full box-border overflow-y-auto"
             th:if="${hideSidebar != true}">
-            <div class="flex flex-row items-start justify-between gap-1 pt-2 px-6 pb-5 border-b border-glass-border mb-4">
-                <div class="flex items-center gap-3 min-h-11">
-                    <i class="fa-solid fa-clock text-primary text-2xl"></i>
-                    <span class="font-bold text-xl tracking-tight"
-                        th:text="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</span>
+            <div class="flex flex-row items-start justify-between gap-1 min-w-0 pt-2 px-6 pb-5 border-b border-glass-border mb-4">
+                <div class="flex items-center gap-3 min-h-11 min-w-0 flex-1">
+                    <i class="fa-solid fa-clock text-primary text-2xl shrink-0"></i>
+                    <span class="block min-w-0 truncate font-bold text-xl tracking-tight"
+                        th:text="${systemName != null ? systemName : '勤怠管理システム'}"
+                        th:title="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</span>
                 </div>
-                <button type="button" id="sidebar-close" class="md:hidden w-11 h-11 rounded-lg text-txt-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                <button type="button" id="sidebar-close" class="md:hidden w-11 h-11 shrink-0 rounded-lg text-txt-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         aria-label="メニューを閉じる">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
@@ -108,7 +113,7 @@
                         <span class="inline-flex items-center gap-4"><i class="fa-regular fa-folder-open"></i>
                             勤怠承認待ち</span>
                         <span th:if="${pendingSubmissionsCount != null && pendingSubmissionsCount > 0}"
-                            class="bg-danger text-white px-2 py-0.5 text-[0.7rem] font-bold rounded-full font-mono"
+                            class="bg-danger-action text-white px-2 py-0.5 text-[0.7rem] font-bold rounded-full font-mono"
                             th:text="${pendingSubmissionsCount}">3</span>
                     </a>
                     <a th:href="@{/attendance/approval/corrections}"
@@ -117,7 +122,7 @@
                         <span class="inline-flex items-center gap-4"><i class="fa-regular fa-circle-check"></i>
                             修正申請承認</span>
                         <span th:if="${pendingCorrectionsCount != null && pendingCorrectionsCount > 0}"
-                            class="bg-danger text-white px-2 py-0.5 text-[0.7rem] font-bold rounded-full font-mono"
+                            class="bg-danger-action text-white px-2 py-0.5 text-[0.7rem] font-bold rounded-full font-mono"
                             th:text="${pendingCorrectionsCount}">2</span>
                     </a>
                     <a th:href="@{/attendance/approval/today-status}" class="nav-link text-sm font-medium"
@@ -138,6 +143,10 @@
                     <a th:href="@{/admin/users}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'users'} ? 'active' : ''">
                         <i class="fa-solid fa-users-gear"></i> 従業員管理
+                    </a>
+                    <a th:href="@{/admin/approver-assignments}" class="nav-link text-sm font-medium"
+                        th:classappend="${activePage == 'approver-assignments'} ? 'active' : ''">
+                        <i class="fa-solid fa-user-check"></i> 承認者一覧
                     </a>
                     <a th:href="@{/admin/work-schedules}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'schedules'} ? 'active' : ''">
@@ -181,21 +190,23 @@
         </aside>
 
         <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col overflow-hidden h-full box-border">
+        <div class="min-w-0 flex-1 flex flex-col overflow-hidden h-full box-border">
             <!-- Mobile Header -->
             <header th:if="${hideSidebar != true}" class="flex md:hidden items-center justify-between px-4 py-3 bg-glass/70 border-b border-glass-border backdrop-blur-glass z-50">
-                <button id="menu-toggle" class="text-txt-primary w-11 h-11 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
+                <button id="menu-toggle" class="text-txt-primary w-11 h-11 shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
                         aria-label="メニューを開く" aria-expanded="false" aria-controls="sidebar">
                     <i class="fa-solid fa-bars text-xl"></i>
                 </button>
-                <span class="font-bold text-lg text-txt-primary" th:text="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</span>
-                <div class="w-9"></div>
+                <span class="min-w-0 flex-1 mx-2 truncate text-center font-bold text-lg text-txt-primary"
+                      th:text="${systemName != null ? systemName : '勤怠管理システム'}"
+                      th:title="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</span>
+                <div class="w-11 shrink-0"></div>
             </header>
 
             <!-- Main Content -->
-            <main class="flex-1 md:py-2 md:px-4 md:pb-4 py-1 px-1 pb-1 overflow-y-auto h-full box-border"
-                th:classappend="${hideSidebar == true} ? '!p-0 !overflow-hidden flex items-center justify-center h-full w-full' : ''">
-                <div class="flex flex-col min-h-full">
+            <main id="main-content" tabindex="-1" class="min-w-0 w-full flex-1 md:py-2 md:px-4 md:pb-4 py-1 px-1 pb-1 overflow-y-auto h-full box-border"
+                th:classappend="${hideSidebar == true} ? '!p-0 !overflow-y-auto flex items-start justify-center h-full w-full' : ''">
+                <div class="min-w-0 flex flex-col min-h-full">
                     <div class="flex flex-col flex-grow">
                         <div layout:fragment="content" class="animate-fade-in flex flex-col flex-grow">
                             <!-- Content goes here -->

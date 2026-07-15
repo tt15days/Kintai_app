@@ -14,8 +14,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -62,6 +61,31 @@ class AdminAnnouncementServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("管理画面ページング")
+    class Paging {
+
+        @Test
+        @DisplayName("指定範囲の一覧と全件数をMapperから取得する")
+        void returnsPageAndCount() {
+            AdminAnnouncement ann = AdminAnnouncement.builder().announcementId(11L).build();
+            when(adminAnnouncementMapper.selectPage(10, 10)).thenReturn(List.of(ann));
+            when(adminAnnouncementMapper.countAll()).thenReturn(21L);
+
+            assertThat(service.getAnnouncementsPage(10, 10)).containsExactly(ann);
+            assertThat(service.countAnnouncements()).isEqualTo(21L);
+        }
+
+        @Test
+        @DisplayName("負のoffsetと上限超過limitを拒否する")
+        void invalidRange_isRejected() {
+            assertThatThrownBy(() -> service.getAnnouncementsPage(-1, 10))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> service.getAnnouncementsPage(0, AdminAnnouncementService.MAX_PAGE_SIZE + 1))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // create
     // ─────────────────────────────────────────────────────────────────────────
@@ -76,6 +100,7 @@ class AdminAnnouncementServiceTest {
             AdminAnnouncement ann = AdminAnnouncement.builder()
                     .title("テスト").message("内容").isActive(true)
                     .displayStartDate(null).build();
+            when(adminAnnouncementMapper.insert(ann)).thenReturn(1);
 
             service.create(ann);
 
@@ -90,11 +115,45 @@ class AdminAnnouncementServiceTest {
             AdminAnnouncement ann = AdminAnnouncement.builder()
                     .title("テスト").message("内容").isActive(true)
                     .displayStartDate(fixedDate).build();
+            when(adminAnnouncementMapper.insert(ann)).thenReturn(1);
 
             service.create(ann);
 
             assertThat(ann.getDisplayStartDate()).isEqualTo(fixedDate);
             verify(adminAnnouncementMapper).insert(ann);
+        }
+
+        @Test
+        @DisplayName("空白のみのタイトル・本文を拒否する")
+        void blankRequiredValues_areRejected() {
+            AdminAnnouncement blankTitle = AdminAnnouncement.builder().title(" \n ").message("本文").build();
+            AdminAnnouncement blankMessage = AdminAnnouncement.builder().title("タイトル").message("\t").build();
+
+            assertThatThrownBy(() -> service.create(blankTitle))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("タイトルを入力してください。");
+            assertThatThrownBy(() -> service.create(blankMessage))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("本文を入力してください。");
+        }
+
+        @Test
+        @DisplayName("タイトルと本文の上限境界を検証する")
+        void lengthBoundary_isValidated() {
+            AdminAnnouncement boundary = AdminAnnouncement.builder()
+                    .title("題".repeat(AdminAnnouncementService.MAX_TITLE_LENGTH))
+                    .message("文".repeat(AdminAnnouncementService.MAX_MESSAGE_LENGTH))
+                    .build();
+            when(adminAnnouncementMapper.insert(boundary)).thenReturn(1);
+
+            service.create(boundary);
+
+            AdminAnnouncement overTitle = AdminAnnouncement.builder()
+                    .title("題".repeat(AdminAnnouncementService.MAX_TITLE_LENGTH + 1)).message("本文").build();
+            AdminAnnouncement overMessage = AdminAnnouncement.builder()
+                    .title("タイトル").message("文".repeat(AdminAnnouncementService.MAX_MESSAGE_LENGTH + 1)).build();
+            assertThatThrownBy(() -> service.create(overTitle)).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> service.create(overMessage)).isInstanceOf(IllegalArgumentException.class);
         }
     }
 
@@ -109,24 +168,22 @@ class AdminAnnouncementServiceTest {
         @Test
         @DisplayName("既存のお知らせは Mapper.update が呼ばれる")
         void existingAnnouncement_callsUpdate() {
-            AdminAnnouncement existing = AdminAnnouncement.builder().announcementId(1L).title("旧タイトル").build();
-            when(adminAnnouncementMapper.selectById(1L)).thenReturn(existing);
-
-            AdminAnnouncement updated = AdminAnnouncement.builder().announcementId(1L).title("新タイトル").build();
+            AdminAnnouncement updated = AdminAnnouncement.builder()
+                    .announcementId(1L).title("新タイトル").message("本文").build();
+            when(adminAnnouncementMapper.update(updated)).thenReturn(1);
             service.update(updated);
 
             verify(adminAnnouncementMapper).update(updated);
         }
 
         @Test
-        @DisplayName("存在しない ID の場合は update が呼ばれない（no-op）")
-        void notFoundId_noUpdate() {
-            when(adminAnnouncementMapper.selectById(999L)).thenReturn(null);
+        @DisplayName("存在しない ID の場合は業務例外を送出する")
+        void notFoundId_throwsBusinessException() {
+            AdminAnnouncement ann = AdminAnnouncement.builder()
+                    .announcementId(999L).title("存在しない").message("本文").build();
 
-            AdminAnnouncement ann = AdminAnnouncement.builder().announcementId(999L).title("存在しない").build();
-            service.update(ann);
-
-            verify(adminAnnouncementMapper, never()).update(any());
+            assertThatThrownBy(() -> service.update(ann))
+                    .isInstanceOf(AdminAnnouncementNotFoundException.class);
         }
     }
 
@@ -141,8 +198,18 @@ class AdminAnnouncementServiceTest {
         @Test
         @DisplayName("Mapper の deleteById を呼び出す")
         void callsMapperDeleteById() {
+            when(adminAnnouncementMapper.deleteById(5L)).thenReturn(1);
             service.delete(5L);
             verify(adminAnnouncementMapper).deleteById(5L);
+        }
+
+        @Test
+        @DisplayName("存在しない・削除済みIDは業務例外を送出する")
+        void notFoundId_throwsBusinessException() {
+            when(adminAnnouncementMapper.deleteById(999L)).thenReturn(0);
+
+            assertThatThrownBy(() -> service.delete(999L))
+                    .isInstanceOf(AdminAnnouncementNotFoundException.class);
         }
     }
 

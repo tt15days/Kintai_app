@@ -277,15 +277,13 @@ ON CONFLICT (setting_key) DO NOTHING;
 -- ============================================================
 -- バッチ処理設定（旧 V7）
 -- monthly_summary_days_after_end: 月次集計実行日（勤怠期間終了日の何日後か）
--- paid_leave_grant_month        : 年次有給付与月（1-12）
--- paid_leave_grant_day          : 年次有給付与日（1-28）
+-- PAID_LEAVE_GRANT_DATE         : 年次有給付与日（MM-DD）
 -- reminder_day                  : 勤怠提出リマインド送信日（1-28）
 -- reminder_hour                 : 勤怠提出リマインド送信時刻（0-23）
 -- ============================================================
 INSERT INTO system_settings (setting_key, setting_value) VALUES
     ('monthly_summary_days_after_end', '5'),
-    ('paid_leave_grant_month',         '4'),
-    ('paid_leave_grant_day',           '1'),
+    ('PAID_LEAVE_GRANT_DATE',          '04-01'),
     ('reminder_day',                   '20'),
     ('reminder_hour',                  '9')
 ON CONFLICT (setting_key) DO NOTHING;

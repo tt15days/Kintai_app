@@ -47,10 +47,9 @@ public class UserService {
 
     private static final String USER_NOT_FOUND_PREFIX = "ユーザーが見つかりません: userId=";
     private static final BigDecimal DEFAULT_PAID_LEAVE_DAYS = new BigDecimal("10.0");
+    private static final int DEFAULT_ANNUAL_LEAVE_GRANT_DAYS = 10;
     /** デフォルトの有給残日数上限（ユーザー別 max_paid_leave_days が未設定の場合に使用） */
     private static final int DEFAULT_MAX_PAID_LEAVE_DAYS = 40;
-    /** デフォルトの初回有給付与日数 */
-    private static final int DEFAULT_ANNUAL_LEAVE_GRANT_DAYS = 10;
     /** パスワードポリシー: 英字と数字をそれぞれ1文字以上含む8文字以上 */
     private static final java.util.regex.Pattern PASSWORD_PATTERN =
             java.util.regex.Pattern.compile("^(?=.*[a-zA-Z])(?=.*[0-9]).{8,}$");
@@ -110,6 +109,30 @@ public class UserService {
         return userMapper.selectAll();
     }
 
+    public List<User> getUsersByIds(java.util.Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        return userMapper.selectByIds(userIds);
+    }
+
+    public List<User> getUsersPage(String department, String keyword, boolean activeOnly,
+                                   boolean excludeAdmin, long offset, int limit) {
+        return userMapper.selectPage(department, keyword, activeOnly, excludeAdmin, offset, limit);
+    }
+
+    public List<User> getUsersAfterId(String department, String keyword, boolean activeOnly,
+                                      boolean excludeAdmin, long afterUserId, int limit) {
+        if (afterUserId < 0 || limit < 1 || limit > 100) {
+            throw new IllegalArgumentException("カーソルまたは取得件数が不正です");
+        }
+        return userMapper.selectAfterId(department, keyword, activeOnly, excludeAdmin, afterUserId, limit);
+    }
+
+    public long countUsers(String department, String keyword, boolean activeOnly, boolean excludeAdmin) {
+        return userMapper.countByFilter(department, keyword, activeOnly, excludeAdmin);
+    }
+
     /**
      * 指定されたロールを持つユーザー一覧を取得します。
      *
@@ -143,6 +166,8 @@ public class UserService {
             prefix = "";
         }
         String empNo = prefix + String.format("%03d", nextUserId);
+        BigDecimal initialPaidLeaveDays = DEFAULT_PAID_LEAVE_DAYS;
+        LocalDate today = DateTimeUtil.todayJapan();
 
         User user = User.builder()
                 .empNo(empNo)
@@ -150,7 +175,8 @@ public class UserService {
                 .password(passwordEncoder.encode(password))
                 .passwordResetRequired(false)
                 .fullName(fullName)
-                .paidLeaveDays(DEFAULT_PAID_LEAVE_DAYS)
+                .paidLeaveDays(initialPaidLeaveDays)
+                .annualLeaveGrantDays(DEFAULT_ANNUAL_LEAVE_GRANT_DAYS)
                 .userRole(role)
                 .canApproveAttendance(false)
                 .isActive(true)
@@ -162,13 +188,13 @@ public class UserService {
         userMapper.insert(user);
 
         // 新規作成されたユーザーに初期有給残高レコードを付与する
-        int currentYear = DateTimeUtil.todayJapan().getYear();
+        int currentYear = today.getYear();
         PaidLeaveBalance balance = PaidLeaveBalance.builder()
                 .userId(user.getUserId())
                 .grantYear(currentYear)
-                .grantedDays(DEFAULT_PAID_LEAVE_DAYS)
-                .grantDate(DateTimeUtil.todayJapan())
-                .expiryDate(DateTimeUtil.todayJapan().plusYears(2).minusDays(1))
+                .grantedDays(initialPaidLeaveDays)
+                .grantDate(today)
+                .expiryDate(today.plusYears(2).minusDays(1))
                 .carriedOverDays(BigDecimal.ZERO)
                 .usedDays(BigDecimal.ZERO)
                 .build();
@@ -599,6 +625,10 @@ public class UserService {
                 .toList();
     }
 
+    public List<User> getActiveAdmins() {
+        return userMapper.selectActiveAdmins();
+    }
+
     /**
      * ユーザーの勤務クラスを更新します。
      * className に null を渡すと勤務クラスの割当を解除します。
@@ -657,8 +687,7 @@ public class UserService {
     @Transactional
     public void grantAnnualPaidLeave(Long userId) {
         User user = findUserForUpdateOrThrow(userId);
-        int grantDays = user.getAnnualLeaveGrantDays() != null
-                ? user.getAnnualLeaveGrantDays() : DEFAULT_ANNUAL_LEAVE_GRANT_DAYS;
+        int grantDays = user.getAnnualLeaveGrantDays();
         grantAnnualPaidLeave(userId, grantDays);
     }
 
@@ -700,14 +729,12 @@ public class UserService {
             BigDecimal newDays = getCalculatedTotalRemainingDays(userId, maxDays);
             userMapper.updatePaidLeaveDays(userId, newDays);
 
-            // 来年度向けに annual_leave_grant_days を自動増加（20日上限）
             int nextGrantDays = (int) Math.min(grantDays + increment.doubleValue(), 20.0);
             userMapper.updatePaidLeaveSettings(userId, nextGrantDays, increment, maxDays);
-
-            log.info("有給付与: userId={}, grantDays={}, afterSync={}, nextGrantDays={}",
+            log.debug("有給付与: userId={}, grantDays={}, afterSync={}, nextGrantDays={}",
                     userId, grantDays, newDays, nextGrantDays);
         } else {
-            log.info("有給付与: userId={} は{}年分を付与済みのためスキップ", userId, currentYear);
+            log.debug("有給付与スキップ: userId={}, grantYear={}", userId, currentYear);
         }
     }
 
@@ -728,10 +755,10 @@ public class UserService {
      * @param maxPaidLeaveDays    有給残日数の上限（1〜100）
      */
     @Transactional
-    public void updatePaidLeaveSettings(Long userId, int annualLeaveGrantDays,
+    public void updatePaidLeaveSettings(Long userId, Integer annualLeaveGrantDays,
                                         BigDecimal annualLeaveIncrement, int maxPaidLeaveDays) {
         findUserOrThrow(userId);
-        if (annualLeaveGrantDays < 0 || annualLeaveGrantDays > 30) {
+        if (annualLeaveGrantDays == null || annualLeaveGrantDays < 0 || annualLeaveGrantDays > 30) {
             throw new IllegalArgumentException("次回付与日数は0〜30の範囲で設定してください");
         }
         if (annualLeaveIncrement == null
