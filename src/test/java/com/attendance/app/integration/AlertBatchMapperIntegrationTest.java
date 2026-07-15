@@ -46,8 +46,7 @@ class AlertBatchMapperIntegrationTest {
             jdbcTemplate.update("""
                     INSERT INTO attendance_records (user_id, attendance_date, overtime_hours)
                     VALUES (?, ?, 40.0)
-                    """, userId, attendanceDate.atTime(12, 0)
-                            .atZone(ZoneId.of("Asia/Tokyo")).toOffsetDateTime());
+                    """, userId, attendanceDate.atStartOfDay(ZoneId.of("Asia/Tokyo")).toOffsetDateTime());
             jdbcTemplate.update("""
                     INSERT INTO paid_leave_balance
                         (user_id, grant_year, granted_days, grant_date, expiry_date, carried_over_days, used_days)

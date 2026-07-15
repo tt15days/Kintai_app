@@ -10,6 +10,9 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      TZ: Asia/Tokyo
+      JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Tokyo
 
     services:
       postgres:
