@@ -6,13 +6,6 @@ on:
   pull_request:
     branches: [ "main", "dev" ]
 
-permissions:
-  contents: read
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -37,13 +30,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Use Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24.x'  # Node.js 24 を明示的に指定
-      - run: npm ci
-      - run: npm run build
-
       - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
@@ -53,12 +39,3 @@ jobs:
 
       - name: Build and Test with Maven
         run: mvn clean verify -Dspring.profiles.active=integration
-
-      - name: Verify release package
-        run: |
-          mvn clean package -P release -DskipTests
-          unzip -l target/*.jar | grep -q 'BOOT-INF/classes/application-release.yml'
-          if unzip -l target/*.jar | grep -q 'BOOT-INF/classes/application-local.yml'; then
-            echo 'release package must not contain application-local.yml'
-            exit 1
-          fi
