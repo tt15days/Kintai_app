@@ -42,7 +42,7 @@
 
 #### Flyway運用上の注意
 - `baseline-on-migrate=false` のため、Flyway履歴がない非空DBは自動的に既存スキーマとみなさず、起動時に失敗する。手動 baseline はバックアップとスキーマ版の監査完了後に限る。
-- Issue #182 では、V1の固定 `postgres` ロールへのGRANT、local/integrationだけがV2サンプルデータを適用することによるプロファイル間の履歴差、fresh DB用baseline migration（B5以降）が未解決である。適用済みV1/V2はチェックサム互換性のため編集しない。
+- 開発段階では、固定 `postgres` ロールへのGRANTを含むV1を共通の初期スキーマとする。local/integrationはV1の後に `V2__Sample_Data.sql` を適用し、releaseはV1のみを適用してサンプルデータを含めない。
 
 
 ---
