@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main", "dev" ]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -16,6 +20,7 @@ jobs:
 
     services:
       postgres:
+        # PostgreSQLのメジャー更新は、互換性を確認したレビュー済みPRでのみ行う。
         image: postgres:18
         env:
           POSTGRES_DB: attendance_db
@@ -32,10 +37,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        # v4.7.1
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
         with:
           java-version: '25'
           distribution: 'temurin'
