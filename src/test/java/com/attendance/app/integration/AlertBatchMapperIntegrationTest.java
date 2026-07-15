@@ -16,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,7 +36,7 @@ class AlertBatchMapperIntegrationTest {
     @Test
     @DisplayName("36協定・有休消化アラートは有効かつ未削除のユーザーだけを抽出する")
     void alertQueries_onlyReturnActiveAndNotDeletedUsers() {
-        Long activeUserId = insertUser(true, null);
+        Long activeUserId = Objects.requireNonNull(insertUser(true, null));
         Long inactiveUserId = insertUser(false, null);
         Long deletedUserId = insertUser(true, OffsetDateTime.now(ZoneOffset.UTC));
         List<Long> excludedUserIds = List.of(inactiveUserId, deletedUserId);
@@ -58,10 +59,10 @@ class AlertBatchMapperIntegrationTest {
         List<PaidLeaveAlertDto> paidLeaveAlerts = alertBatchMapper.findUsersWithInsufficientPaidLeave(
                 9, 3, LocalDate.of(2099, 10, 1), 0, 100);
 
-        assertThat(article36Alerts).extracting(Article36AlertDto::getUserId)
+        assertThat(article36Alerts).extracting(dto -> dto == null ? null : dto.getUserId())
                 .contains(activeUserId)
                 .doesNotContainAnyElementsOf(excludedUserIds);
-        assertThat(paidLeaveAlerts).extracting(PaidLeaveAlertDto::getUserId)
+        assertThat(paidLeaveAlerts).extracting(dto -> dto == null ? null : dto.getUserId())
                 .contains(activeUserId)
                 .doesNotContainAnyElementsOf(excludedUserIds);
     }
