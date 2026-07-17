@@ -212,7 +212,7 @@ class DashboardControllerTest {
     @DisplayName("changePassword: パスワードと確認パスワードが一致しない場合のエラーハンドリング")
     void changePassword_passwordsDoNotMatch_returnsError() {
         ExtendedModelMap model = new ExtendedModelMap();
-        String view = controller.changePassword("old", "new", "different", model);
+        String view = controller.changePassword("old", "new", "different", new org.springframework.mock.web.MockHttpSession(), model);
 
         assertThat(view).isEqualTo("user/change-password");
         assertThat(model.get("error")).isEqualTo("新しいパスワードと確認用パスワードが一致しません");
@@ -225,10 +225,10 @@ class DashboardControllerTest {
         when(securityUtil.getCurrentUserId()).thenReturn(1L);
         ExtendedModelMap model = new ExtendedModelMap();
 
-        String view = controller.changePassword("old", "new", "new", model);
+        String view = controller.changePassword("old", "new", "new", new org.springframework.mock.web.MockHttpSession(), model);
 
         assertThat(view).isEqualTo("redirect:/dashboard?passwordChanged=true");
-        verify(userService).changePassword(1L, "old", "new");
+        verify(userService).changePassword(eq(1L), eq("old"), eq("new"), any());
     }
 
     @Test
@@ -236,10 +236,10 @@ class DashboardControllerTest {
     void changePassword_invalidArgs_returnsError() {
         when(securityUtil.getCurrentUserId()).thenReturn(1L);
         doThrow(new IllegalArgumentException("現在のパスワードが正しくありません"))
-                .when(userService).changePassword(anyLong(), any(), any());
+                .when(userService).changePassword(anyLong(), any(), any(), any());
 
         ExtendedModelMap model = new ExtendedModelMap();
-        String view = controller.changePassword("old", "new", "new", model);
+        String view = controller.changePassword("old", "new", "new", new org.springframework.mock.web.MockHttpSession(), model);
 
         assertThat(view).isEqualTo("user/change-password");
         assertThat(model.get("error")).isEqualTo("現在のパスワードが正しくありません");
@@ -250,10 +250,10 @@ class DashboardControllerTest {
     void changePassword_otherException_returnsGeneralError() {
         when(securityUtil.getCurrentUserId()).thenReturn(1L);
         doThrow(new RuntimeException("Server error"))
-                .when(userService).changePassword(anyLong(), any(), any());
+                .when(userService).changePassword(anyLong(), any(), any(), any());
 
         ExtendedModelMap model = new ExtendedModelMap();
-        String view = controller.changePassword("old", "new", "new", model);
+        String view = controller.changePassword("old", "new", "new", new org.springframework.mock.web.MockHttpSession(), model);
 
         assertThat(view).isEqualTo("user/change-password");
         assertThat(model.get("error")).isEqualTo("予期しないエラーが発生しました");

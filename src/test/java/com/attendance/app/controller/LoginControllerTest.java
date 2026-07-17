@@ -17,7 +17,7 @@ public class LoginControllerTest {
     @Test
     void testShowLoginForm() {
         ExtendedModelMap model = new ExtendedModelMap();
-        String view = controller.showLoginForm(null, null, model);
+        String view = controller.showLoginForm(null, null, null, model);
         assertEquals("login", view);
         assertEquals(null, model.getAttribute("error"));
         assertEquals(null, model.getAttribute("message"));
@@ -26,7 +26,7 @@ public class LoginControllerTest {
     @Test
     void testShowLoginForm_WithError() {
         ExtendedModelMap model = new ExtendedModelMap();
-        String view = controller.showLoginForm("true", null, model);
+        String view = controller.showLoginForm("true", null, null, model);
         assertEquals("login", view);
         assertEquals("メールアドレスまたはパスワードが正しくありません", model.getAttribute("error"));
     }
@@ -34,8 +34,16 @@ public class LoginControllerTest {
     @Test
     void testShowLoginForm_WithLogout() {
         ExtendedModelMap model = new ExtendedModelMap();
-        String view = controller.showLoginForm(null, "true", model);
+        String view = controller.showLoginForm(null, null, "true", model);
         assertEquals("login", view);
         assertEquals("ログアウトしました", model.getAttribute("message"));
+    }
+
+    @Test
+    void testShowLoginForm_WithExpired() {
+        ExtendedModelMap model = new ExtendedModelMap();
+        String view = controller.showLoginForm(null, "true", null, model);
+        assertEquals("login", view);
+        assertEquals("セッションが無効になりました。再度ログインしてください。", model.getAttribute("message"));
     }
 }

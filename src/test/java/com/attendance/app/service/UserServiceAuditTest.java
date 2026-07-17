@@ -61,6 +61,8 @@ class UserServiceAuditTest {
     @Mock
     private AttendanceApproverAssignmentMapper approverAssignmentMapper;
 
+    @Mock
+    private com.attendance.app.security.SessionInvalidationService sessionInvalidationService;
 
     @InjectMocks
     private UserService userService;
@@ -166,6 +168,7 @@ class UserServiceAuditTest {
         @Test
         @DisplayName("削除成功時に USER_DELETED が記録される")
         void delete_recordsDeletedEvent() {
+            when(userMapper.selectById(TARGET_ID)).thenReturn(Optional.of(existingUser));
             userService.deleteUser(TARGET_ID, ACTOR_ID);
 
             verify(auditLogService).recordUserEvent(

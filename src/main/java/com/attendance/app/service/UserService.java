@@ -11,6 +11,7 @@ import com.attendance.app.mapper.AttendanceApproverAssignmentMapper;
 import com.attendance.app.mapper.DepartmentMapper;
 import com.attendance.app.mapper.PaidLeaveBalanceMapper;
 import com.attendance.app.entity.Department;
+import com.attendance.app.security.SessionInvalidationService;
 import com.attendance.app.util.DateTimeUtil;
 import com.attendance.app.entity.PaidLeaveBalance;
 import com.attendance.app.entity.LeaveApplication;
@@ -70,6 +71,7 @@ public class UserService {
     private final PaidLeaveBalanceMapper paidLeaveBalanceMapper;
     private final DepartmentMapper departmentMapper;
     private final LeaveApplicationService leaveApplicationService;
+    private final SessionInvalidationService sessionInvalidationService;
 
     /**
      * 指定されたユーザーIDでユーザー情報を取得します。
@@ -245,6 +247,8 @@ public class UserService {
             boolean isActive,
             Long actorUserId) {
         User user = findUserForUpdateOrThrow(userId);
+        String oldEmail = user.getEmail();
+        UserRole oldRole = user.getUserRole();
 
         if (userId.equals(actorUserId) && user.getUserRole() == UserRole.ADMIN && role != UserRole.ADMIN) {
             throw new IllegalArgumentException("自分自身の管理者ロールを降格することはできません。");
@@ -300,6 +304,12 @@ public class UserService {
             deletePendingLeaveApplications(userId);
         }
 
+        // 無効化・ロール変更・メールアドレス変更は既存セッションへ即時反映が必要なため失効させる
+        // （セッション登録時の principal はログイン時のメールアドレスのため oldEmail で失効）
+        if (!isActive || oldRole != role || !oldEmail.equals(email)) {
+            sessionInvalidationService.expireSessions(oldEmail);
+        }
+
         log.info("ユーザー情報を更新しました: userId={}", userId);
 
         auditLogService.recordUserEvent(
@@ -330,6 +340,7 @@ public class UserService {
             userMapper.resetLoginAttempt(user.getUserId());
             cleanupApproverAssignments(user.getUserId());
             deletePendingLeaveApplications(user.getUserId());
+            sessionInvalidationService.expireSessions(user.getEmail());
 
             log.info("利用終了日到達によりユーザーを無効化しました: userId={}", user.getUserId());
             auditLogService.recordUserEvent(
@@ -380,8 +391,9 @@ public class UserService {
      * @param userId ユーザーID
      * @param oldPassword 現在のパスワード
      * @param newPassword 新しいパスワード
+     * @param currentSessionId 変更操作を行った本人のセッションID（このセッションのみ維持し、他は失効させる。null 可）
      */
-    public void changePassword(Long userId, String oldPassword, String newPassword) {
+    public void changePassword(Long userId, String oldPassword, String newPassword, String currentSessionId) {
         validatePassword(newPassword);
         User user = findUserOrThrow(userId);
 
@@ -390,6 +402,8 @@ public class UserService {
         }
 
         userMapper.updatePassword(userId, passwordEncoder.encode(newPassword), false);
+        // 漏洩した旧パスワードで確立された他端末のセッションを失効させる（操作中の本人セッションは維持）
+        sessionInvalidationService.expireSessionsExcept(user.getEmail(), currentSessionId);
         log.info("パスワードを変更しました: userId={}", userId);
     }
 
@@ -401,9 +415,10 @@ public class UserService {
      * @return 初期パスワード文字列（画面表示用）
      */
     public String resetPasswordByAdmin(Long userId, Long actorUserId) {
-        findUserOrThrow(userId);
+        User user = findUserOrThrow(userId);
         String randomPassword = generateRandomPassword();
         userMapper.updatePassword(userId, passwordEncoder.encode(randomPassword), true);
+        sessionInvalidationService.expireSessions(user.getEmail());
         log.info("管理者がパスワードを初期化しました: userId={}", userId);
 
         auditLogService.recordUserEvent(
@@ -424,7 +439,9 @@ public class UserService {
         if (userId.equals(actorUserId)) {
             throw new IllegalArgumentException("自分自身を削除することはできません。");
         }
+        User user = findUserOrThrow(userId);
         userMapper.softDeleteById(userId);
+        sessionInvalidationService.expireSessions(user.getEmail());
         log.info("ユーザーを削除しました: userId={}", userId);
 
         cleanupApproverAssignments(userId);

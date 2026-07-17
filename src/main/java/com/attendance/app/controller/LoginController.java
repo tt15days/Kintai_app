@@ -38,6 +38,7 @@ public class LoginController {
      * ログイン失敗時、エラーメッセージをモデルに追加します。
      *
      * @param error ログイン失敗時のエラーパラメータ
+     * @param expired セッション失効時のパラメータ（別端末ログイン・管理者操作等による強制失効）
      * @param logout ログアウト完了時のパラメータ
      * @param model Spring MVC のモデル
      * @return テンプレート名 (login)
@@ -45,6 +46,7 @@ public class LoginController {
     @GetMapping("/login")
     public String showLoginForm(
             @RequestParam(required = false) String error,
+            @RequestParam(required = false) String expired,
             @RequestParam(required = false) String logout,
             Model model) {
         if (error != null) {
@@ -58,6 +60,10 @@ public class LoginController {
                 model.addAttribute("error", "メールアドレスまたはパスワードが正しくありません");
                 log.warn("ログインに失敗");
             }
+        }
+        if (expired != null) {
+            model.addAttribute("message", "セッションが無効になりました。再度ログインしてください。");
+            log.info("失効セッションからのアクセスを検知しました");
         }
         if (logout != null) {
             model.addAttribute("message", "ログアウトしました");

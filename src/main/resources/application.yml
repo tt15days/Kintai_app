@@ -28,6 +28,14 @@ mybatis:
     default-statement-timeout: 30
     default-fetch-size: 100
 
+# Actuator の HTTP 公開はヘルスチェック用の health のみに限定する
+# （/actuator/health 以外は SecurityConfig で ADMIN ロールに制限）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
 server:
   port: 8080
   # 進行中のリクエスト（承認処理・CSVダウンロード等）を完了させてから停止するgraceful shutdownを有効化
