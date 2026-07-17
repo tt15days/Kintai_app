@@ -5,63 +5,63 @@
 </head>
 <body>
     <h2 layout:fragment="page-title">
-        <i class="fa-solid fa-shield-alt"></i> 管理者ダッシュボード
+        管理者ダッシュボード
     </h2>
 
     <div layout:fragment="content">
         <!-- フラッシュメッセージ -->
         <div th:if="${successMessage}" class="alert alert-success mb-6" role="status" aria-live="polite">
-            <span><i class="fa-solid fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
+            <span><span th:text="${successMessage}"></span></span>
             <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
         <div th:if="${errorMessage}" class="alert alert-danger mb-6" role="alert" aria-live="assertive">
-            <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
+            <span><span th:text="${errorMessage}"></span></span>
             <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
 
         <!-- アクションボタン -->
         <div class="card mb-8">
-            <h3 class="m-0 mb-4 text-[1.15rem] font-bold text-txt-primary"><i class="fa-solid fa-bars"></i> クイックメニュー</h3>
+            <h3 class="m-0 mb-4 text-[1.15rem] font-bold text-txt-primary">クイックメニュー</h3>
             <div class="flex flex-wrap gap-4">
                 <a th:href="@{/admin/users/create}" class="btn btn-success px-5 py-3 text-sm gap-2">
-                    <i class="fa-solid fa-user-plus"></i> 新規ユーザー追加
+                    新規ユーザー追加
                 </a>
                 <a th:href="@{/admin/users}" class="btn btn-primary px-5 py-3 text-sm gap-2">
-                    <i class="fa-solid fa-users"></i> ユーザー一覧
+                    ユーザー一覧
                 </a>
                 <a th:href="@{/admin/attendance}" class="btn btn-flat px-5 py-3 text-sm gap-2 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
-                    <i class="fa-solid fa-chart-bar"></i> 勤怠一覧・管理
+                    勤怠一覧・管理
                 </a>
                 <a th:href="@{/admin/settings} + '#holidays-section'" class="btn btn-flat px-5 py-3 text-sm gap-2 bg-warning/10 text-warning border-warning/20 hover:bg-warning/20">
-                    <i class="fa-solid fa-calendar"></i> 祝日設定
+                    祝日設定
                 </a>
                 <a th:href="@{/admin/work-schedules}" class="btn btn-flat px-5 py-3 text-sm gap-2 bg-accent/10 text-accent border-accent/20 hover:bg-accent/20">
-                    <i class="fa-solid fa-building"></i> 勤務クラス管理
+                    勤務クラス管理
                 </a>
                 <a th:href="@{/admin/article36}" class="btn btn-danger px-5 py-3 text-sm gap-2">
-                    <i class="fa-solid fa-exclamation-triangle"></i> 36協定チェック
+                    36協定チェック
                 </a>
                 <a th:href="@{/admin/announcements}" class="btn btn-flat px-5 py-3 text-sm gap-2">
-                    <i class="fa-solid fa-bullhorn"></i> お知らせ管理
+                    お知らせ管理
                 </a>
             </div>
         </div>
 
         <!-- システム設定 -->
         <div class="card mb-8">
-            <h3 class="m-0 mb-4 text-[1.15rem] font-bold text-txt-primary"><i class="fa-solid fa-cog"></i> システム設定</h3>
+            <h3 class="m-0 mb-4 text-[1.15rem] font-bold text-txt-primary">システム設定</h3>
             <p class="text-txt-secondary text-[0.95rem] mt-0 mb-4">
                 勤怠期間、バッチスケジュール、アラート閾値、年次有給付与はシステム設定画面で管理します。
             </p>
             <a th:href="@{/admin/settings}" class="btn btn-primary px-5 py-3 text-sm gap-2">
-                <i class="fa-solid fa-sliders"></i> システム設定を開く
+                システム設定を開く
             </a>
 
             <hr class="border-glass-border my-8">
 
             <!-- 手動バッチ実行 -->
             <div class="mb-8">
-                <h4 class="m-0 mb-2 text-base font-bold text-txt-primary"><i class="fa-solid fa-play-circle"></i> 手動バッチ実行</h4>
+                <h4 class="m-0 mb-2 text-base font-bold text-txt-primary">手動バッチ実行</h4>
                 <p class="text-txt-secondary text-sm mt-0 mb-4">
                     スケジュールに関係なく、各バッチ処理を今すぐ実行します。
                 </p>
@@ -76,7 +76,7 @@
                         </div>
                         <button type="submit" class="btn btn-primary px-5 py-3 text-sm h-[48px] gap-2"
                                 onclick="return confirm('指定年月の月次集計を実行します。よろしいですか？')">
-                            <i class="fa-solid fa-chart-line"></i> 月次集計を実行
+                            月次集計を実行
                         </button>
                     </form>
                     <!-- 勤怠提出リマインド -->
@@ -84,7 +84,7 @@
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                         <button type="submit" class="btn btn-warning px-5 py-3 text-sm h-[48px] gap-2"
                                 onclick="return confirm('未提出ユーザー全員にリマインドを送信します。よろしいですか？')">
-                            <i class="fa-solid fa-paper-plane"></i> リマインド送信を実行
+                            リマインド送信を実行
                         </button>
                     </form>
                     <!-- 有給一括付与 -->
@@ -92,7 +92,7 @@
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                         <button type="submit" class="btn btn-danger px-5 py-3 text-sm h-[48px] gap-2"
                                 onclick="return confirm('全従業員に年次有給休暇を一括付与します。よろしいですか？')">
-                            <i class="fa-solid fa-umbrella-beach"></i> 有給一括付与を実行
+                            有給一括付与を実行
                         </button>
                     </form>
                     <!-- 利用終了日到達ユーザーの無効化 -->
@@ -100,7 +100,7 @@
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                         <button type="submit" class="btn btn-secondary px-5 py-3 text-sm h-[48px] gap-2"
                                 onclick="return confirm('利用終了日を過ぎたユーザーを無効化します。よろしいですか？')">
-                            <i class="fa-solid fa-user-slash"></i> 利用終了日無効化を実行
+                            利用終了日無効化を実行
                         </button>
                     </form>
                     <!-- 36協定・有給消化アラート -->
@@ -113,7 +113,7 @@
                         </div>
                         <button type="submit" class="btn btn-warning px-5 py-3 text-sm h-[48px] gap-2"
                                 onclick="return confirm('指定年月を基準に36協定・有給消化アラートバッチを実行します。よろしいですか？')">
-                            <i class="fa-solid fa-triangle-exclamation"></i> アラートバッチを実行
+                            アラートバッチを実行
                         </button>
                     </form>
                 </div>
@@ -123,7 +123,7 @@
 
             <!-- バッチ処理実行履歴 -->
             <div>
-                <h4 class="m-0 mb-2 text-base font-bold text-txt-primary"><i class="fa-solid fa-history"></i> バッチ処理実行履歴</h4>
+                <h4 class="m-0 mb-2 text-base font-bold text-txt-primary">バッチ処理実行履歴</h4>
                 <p class="text-txt-secondary text-sm mt-0 mb-4">
                     各バッチ処理の最終実行日時（正常完了時のみ記録）を表示します。
                 </p>
@@ -170,16 +170,16 @@
 
         <!-- 最近登録されたユーザー -->
         <div class="card">
-            <h3 class="m-0 mb-4 text-[1.15rem] font-bold text-txt-primary"><i class="fa-solid fa-user-clock"></i> 最近登録されたユーザー</h3>
+            <h3 class="m-0 mb-4 text-[1.15rem] font-bold text-txt-primary">最近登録されたユーザー</h3>
             <div class="table-container">
                 <table class="table-custom w-full mt-4">
                     <thead>
                         <tr>
-                            <th><i class="fa-solid fa-hashtag"></i> ID</th>
-                            <th><i class="fa-solid fa-envelope"></i> メールアドレス</th>
-                            <th><i class="fa-solid fa-user"></i> 氏名</th>
-                            <th><i class="fa-solid fa-tag"></i> ロール</th>
-                            <th><i class="fa-solid fa-tools"></i> 操作</th>
+                            <th>ID</th>
+                            <th>メールアドレス</th>
+                            <th>氏名</th>
+                            <th>ロール</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -189,25 +189,25 @@
                             <td th:text="${user.fullName ?: ''}"></td>
                             <td>
                                 <span th:if="${user.userRole?.name() == 'ADMIN'}" class="badge badge-danger text-[0.75rem] px-2.5 py-1">
-                                    <i class="fa-solid fa-shield-alt"></i> 管理者
+                                    管理者
                                 </span>
                                 <span th:if="${user.userRole?.name() == 'MANAGER'}" class="badge badge-warning text-[0.75rem] px-2.5 py-1">
-                                    <i class="fa-solid fa-users"></i> 一般管理者
+                                    一般管理者
                                 </span>
                                 <span th:if="${user.userRole?.name() == 'USER'}" class="badge badge-success text-[0.75rem] px-2.5 py-1">
-                                    <i class="fa-solid fa-user"></i> 一般ユーザー
+                                    一般ユーザー
                                 </span>
                             </td>
                             <td>
                                 <a th:href="@{/admin/users/{userId}(userId=${user.userId})}" 
                                    class="btn btn-primary px-3 py-1.5 text-xs gap-1.5">
-                                    <i class="fa-solid fa-eye"></i> 詳細・設定
+                                    詳細・設定
                                 </a>
                             </td>
                         </tr>
                         <tr th:if="${users.isEmpty()}">
                             <td colspan="5" class="text-center p-8 text-txt-secondary">
-                                <i class="fa-solid fa-inbox"></i> ユーザーがありません
+                                ユーザーがありません
                             </td>
                         </tr>
                     </tbody>

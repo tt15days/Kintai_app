@@ -13,7 +13,7 @@
         <div class="card">
             <div class="flex items-center justify-between pb-4 mb-6 border-b border-glass-border/30">
                 <h4 class="text-lg font-bold text-txt-primary flex items-center gap-2">
-                    <i class="fas fa-pen text-primary"></i> 勤怠修正申請
+                    勤怠修正申請
                     <span th:if="${targetDate != null}" class="ml-2 text-sm font-normal text-txt-secondary font-mono"
                           th:text="${#temporals.format(targetDate, 'yyyy年MM月dd日')}"></span>
                 </h4>
@@ -22,7 +22,6 @@
 
                 <div class="mb-4" th:if="${error != null}">
                     <div class="alert alert-danger gap-2" role="alert">
-                        <i class="fas fa-exclamation-circle text-lg"></i>
                         <span th:text="${error}"></span>
                     </div>
                 </div>
@@ -30,7 +29,7 @@
                 <!-- 現在の勤怠記録（参照用） -->
                 <div th:if="${currentStart != null or currentEnd != null or currentRemarks != null}" class="mb-6">
                     <h6 class="text-sm font-bold text-txt-secondary mb-3 flex items-center gap-1.5">
-                        <i class="fas fa-history text-txt-secondary/80"></i> 現在の勤怠記録
+                        現在の勤怠記録
                     </h6>
                     <div class="border border-glass-border/30 rounded-xl overflow-hidden max-w-md">
                         <table class="min-w-full text-left border-collapse">
@@ -53,7 +52,7 @@
                 </div>
                 <div th:unless="${currentStart != null or currentEnd != null or currentRemarks != null}" class="mb-6">
                     <div class="alert alert-primary gap-2">
-                        <i class="fas fa-info-circle text-lg"></i> この日付の勤怠記録はまだ登録されていません。
+                        この日付の勤怠記録はまだ登録されていません。
                     </div>
                 </div>
 
@@ -65,7 +64,7 @@
                            th:value="${yearMonth != null ? yearMonth : ''}" />
 
                     <h6 class="text-sm font-bold text-txt-secondary border-b border-glass-border/20 pb-2 flex items-center gap-1.5">
-                        <i class="fas fa-arrow-right text-primary"></i> 修正後の内容
+                        修正後の内容
                     </h6>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -99,10 +98,10 @@
 
                     <div class="flex gap-3 pt-2">
                         <button type="submit" class="btn btn-primary px-6 py-3 text-sm cursor-pointer gap-2">
-                            <i class="fas fa-paper-plane"></i> 申請を提出
+                            申請を提出
                         </button>
                         <a th:href="@{/attendance(yearMonth=${yearMonth})}" class="btn btn-flat px-6 py-3 text-sm cursor-pointer gap-2">
-                            <i class="fas fa-arrow-left"></i> 戻る
+                            戻る
                         </a>
                     </div>
                 </form>

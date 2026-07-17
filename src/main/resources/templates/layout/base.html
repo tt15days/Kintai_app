@@ -37,14 +37,12 @@
             th:if="${hideSidebar != true}">
             <div class="flex flex-row items-start justify-between gap-1 min-w-0 pt-2 px-6 pb-5 border-b border-glass-border mb-4">
                 <div class="flex items-center gap-3 min-h-11 min-w-0 flex-1">
-                    <i class="fa-solid fa-clock text-primary text-2xl shrink-0"></i>
                     <span class="block min-w-0 truncate font-bold text-xl tracking-tight"
                         th:text="${systemName != null ? systemName : '勤怠管理システム'}"
                         th:title="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</span>
                 </div>
                 <button type="button" id="sidebar-close" class="md:hidden w-11 h-11 shrink-0 rounded-lg text-txt-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         aria-label="メニューを閉じる">
-                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
 
@@ -66,7 +64,6 @@
                 <div class="mt-2 flex items-center gap-2">
                     <span
                         class="text-[0.75rem] px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 inline-flex items-center gap-1 font-bold">
-                        <i class="fa-solid fa-shield-halved"></i>
                         <span th:text="${currentUser.userRole.displayName}">システム管理者</span>
                     </span>
                 </div>
@@ -79,27 +76,27 @@
 
                 <a th:href="@{/dashboard}" class="nav-link text-sm font-medium"
                     th:classappend="${activePage == 'dashboard'} ? 'active' : ''">
-                    <i class="fa-solid fa-chart-pie"></i> ダッシュボード
+                    ダッシュボード
                 </a>
                 <a th:href="@{/attendance/quick}" class="nav-link text-sm font-medium"
                     th:classappend="${activePage == 'input'} ? 'active' : ''">
-                    <i class="fa-regular fa-clock"></i> 打刻・出退勤
+                    打刻・出退勤
                 </a>
                 <a th:href="@{/attendance}" class="nav-link text-sm font-medium"
                     th:classappend="${activePage == 'attendance'} ? 'active' : ''">
-                    <i class="fa-regular fa-calendar-check"></i> 月次勤怠
+                    月次勤怠
                 </a>
                 <a th:href="@{/leave}" class="nav-link text-sm font-medium"
                     th:classappend="${activePage == 'leaves'} ? 'active' : ''">
-                    <i class="fa-solid fa-umbrella-beach"></i> 休暇申請
+                    休暇申請
                 </a>
                 <a th:href="@{/overtime}" class="nav-link text-sm font-medium"
                     th:classappend="${activePage == 'overtime'} ? 'active' : ''">
-                    <i class="fa-solid fa-business-time"></i> 残業申請
+                    残業申請
                 </a>
                 <a th:href="@{/dashboard/change-password}" class="nav-link text-sm font-medium"
                     th:classappend="${activePage == 'password'} ? 'active' : ''">
-                    <i class="fa-solid fa-key"></i> パスワード変更
+                    パスワード変更
                 </a>
 
                 <!-- 承認メニュー -->
@@ -110,7 +107,7 @@
 
                     <a th:href="@{/attendance/approval}" class="nav-link text-sm font-medium justify-between"
                         th:classappend="${activePage == 'approval'} ? 'active' : ''">
-                        <span class="inline-flex items-center gap-4"><i class="fa-regular fa-folder-open"></i>
+                        <span class="inline-flex items-center gap-4">
                             勤怠承認待ち</span>
                         <span th:if="${pendingSubmissionsCount != null && pendingSubmissionsCount > 0}"
                             class="bg-danger-action text-white px-2 py-0.5 text-[0.7rem] font-bold rounded-full font-mono"
@@ -119,7 +116,7 @@
                     <a th:href="@{/attendance/approval/corrections}"
                         class="nav-link text-sm font-medium justify-between"
                         th:classappend="${activePage == 'corrections'} ? 'active' : ''">
-                        <span class="inline-flex items-center gap-4"><i class="fa-regular fa-circle-check"></i>
+                        <span class="inline-flex items-center gap-4">
                             修正申請承認</span>
                         <span th:if="${pendingCorrectionsCount != null && pendingCorrectionsCount > 0}"
                             class="bg-danger-action text-white px-2 py-0.5 text-[0.7rem] font-bold rounded-full font-mono"
@@ -127,7 +124,7 @@
                     </a>
                     <a th:href="@{/attendance/approval/today-status}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'today-status'} ? 'active' : ''">
-                        <i class="fa-solid fa-users-viewfinder"></i> 当日状況一覧
+                        当日状況一覧
                     </a>
                 </div>
 
@@ -138,43 +135,43 @@
 
                     <a th:href="@{/admin/attendance}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'manage'} ? 'active' : ''">
-                        <i class="fa-solid fa-chart-line"></i> 管理者サマリー
+                        管理者サマリー
                     </a>
                     <a th:href="@{/admin/users}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'users'} ? 'active' : ''">
-                        <i class="fa-solid fa-users-gear"></i> 従業員管理
+                        従業員管理
                     </a>
                     <a th:href="@{/admin/approver-assignments}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'approver-assignments'} ? 'active' : ''">
-                        <i class="fa-solid fa-user-check"></i> 承認者一覧
+                        承認者一覧
                     </a>
                     <a th:href="@{/admin/work-schedules}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'schedules'} ? 'active' : ''">
-                        <i class="fa-regular fa-calendar-plus"></i> 勤務クラス設定
+                        勤務クラス設定
                     </a>
                     <a th:href="@{/admin/departments}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'departments'} ? 'active' : ''">
-                        <i class="fa-solid fa-sitemap"></i> 部署管理
+                        部署管理
                     </a>
                     <a th:href="@{/admin/article36}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'article36'} ? 'active' : ''">
-                        <i class="fa-solid fa-shield-virus"></i> 36協定監視
+                        36協定監視
                     </a>
                     <a th:href="@{/admin/announcements}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'announcements'} ? 'active' : ''">
-                        <i class="fa-regular fa-bell"></i> お知らせ管理
+                        お知らせ管理
                     </a>
                     <a th:href="@{/admin/notifications}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'notifications'} ? 'active' : ''">
-                        <i class="fa-regular fa-paper-plane"></i> 通知管理
+                        通知管理
                     </a>
                     <a th:href="@{/admin/leave-usage}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'leave-usage'} ? 'active' : ''">
-                        <i class="fa-solid fa-plane-departure"></i> 有休消化管理
+                        有休消化管理
                     </a>
                     <a th:href="@{/admin/settings}" class="nav-link text-sm font-medium"
                         th:classappend="${activePage == 'settings'} ? 'active' : ''">
-                        <i class="fa-solid fa-sliders"></i> システム設定
+                        システム設定
                     </a>
                 </div>
             </nav>
@@ -183,7 +180,7 @@
                 <form th:action="@{/logout}" method="post" class="w-full m-0 p-0 block">
                     <button type="submit"
                         class="w-full bg-transparent border-0 flex items-center gap-3 text-red-500 font-semibold cursor-pointer py-2 font-sans text-sm text-left hover:text-red-600 transition-colors">
-                        <i class="fa-solid fa-arrow-right-from-bracket"></i> ログアウト
+                        ログアウト
                     </button>
                 </form>
             </div>
@@ -195,7 +192,6 @@
             <header th:if="${hideSidebar != true}" class="flex md:hidden items-center justify-between px-4 py-3 bg-glass/70 border-b border-glass-border backdrop-blur-glass z-50">
                 <button id="menu-toggle" class="text-txt-primary w-11 h-11 shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
                         aria-label="メニューを開く" aria-expanded="false" aria-controls="sidebar">
-                    <i class="fa-solid fa-bars text-xl"></i>
                 </button>
                 <span class="min-w-0 flex-1 mx-2 truncate text-center font-bold text-lg text-txt-primary"
                       th:text="${systemName != null ? systemName : '勤怠管理システム'}"

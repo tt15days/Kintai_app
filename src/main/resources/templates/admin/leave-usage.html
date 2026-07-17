@@ -24,7 +24,7 @@
                 </div>
                 <div class="flex flex-col min-w-[100px]"><label for="leaveUsagePageSize" class="form-label">表示件数</label><select id="leaveUsagePageSize" class="form-select h-11" name="size"><option value="20" th:selected="${pageSize == 20}">20件</option><option value="50" th:selected="${pageSize == 50}">50件</option><option value="100" th:selected="${pageSize == 100}">100件</option></select></div>
                 <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
-                    <i class="fa-solid fa-filter"></i> 表示
+                    表示
                 </button>
             </form>
         </div>
@@ -53,8 +53,8 @@
                             <td class="font-mono" th:with="balance=${balanceMap[user.userId]}" th:text="${balance.usedDays} + ' 日'">2 日</td>
                             <td class="font-mono" th:text="${(remainingTotalMap[user.userId] != null ? remainingTotalMap[user.userId] : 0)} + ' 日'">8 日</td>
                             <td>
-                                <span th:if="${obligationMetMap[user.userId]}" class="badge badge-success"><i class="fa-solid fa-check"></i> 達成</span>
-                                <span th:unless="${obligationMetMap[user.userId]}" class="badge badge-danger"><i class="fa-solid fa-triangle-exclamation"></i> 未達成</span>
+                                <span th:if="${obligationMetMap[user.userId]}" class="badge badge-success">達成</span>
+                                <span th:unless="${obligationMetMap[user.userId]}" class="badge badge-danger">未達成</span>
                             </td>
                         </tr>
                         <tr th:if="${users == null or #lists.isEmpty(users)}">

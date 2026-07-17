@@ -8,24 +8,24 @@
 </head>
 <body>
     <h2 layout:fragment="page-title" class="text-2xl font-bold text-txt-primary flex items-center gap-2">
-        <i class="fas fa-sitemap text-primary"></i> 部署管理
+        部署管理
     </h2>
 
     <div layout:fragment="content">
         <!-- フラッシュメッセージ -->
         <div th:if="${successMessage}" class="alert alert-success" role="status" aria-live="polite">
-            <span><i class="fas fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
+            <span><span th:text="${successMessage}"></span></span>
             <button type="button" class="icon-button text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
         <div th:if="${errorMessage}" class="alert alert-danger" role="alert" aria-live="assertive">
-            <span><i class="fas fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
+            <span><span th:text="${errorMessage}"></span></span>
             <button type="button" class="icon-button text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
 
         <!-- 新規登録フォーム -->
         <div class="card mb-6">
             <div class="pb-4 mb-4 border-b border-glass-border/30">
-                <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5"><i class="fas fa-plus-circle text-primary"></i> 新規部署登録</h5>
+                <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5">新規部署登録</h5>
             </div>
             <div>
                 <form th:action="@{/admin/departments/create}" method="post" class="flex flex-wrap items-end gap-4">
@@ -37,7 +37,7 @@
                     </div>
                     <div>
                         <button type="submit" class="btn btn-primary gap-2 text-sm">
-                            <i class="fas fa-save"></i> 登録する
+                            登録する
                         </button>
                     </div>
                 </form>
@@ -47,7 +47,7 @@
         <!-- 部署一覧 -->
         <div class="card">
             <div class="pb-4 mb-4 border-b border-glass-border/30">
-                <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5"><i class="fas fa-sitemap text-primary"></i> 部署一覧
+                <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5">部署一覧
                     <span class="badge bg-black/5 text-txt-secondary border-glass-border ml-2" th:text="${#lists.size(departments)}">0</span>件
                 </h5>
             </div>
@@ -76,7 +76,6 @@
                                             class="btn btn-primary min-w-11 p-2 rounded-lg text-xs"
                                             th:aria-label="|${dept.name}を編集|"
                                             th:onclick="'openEditModal(' + ${dept.departmentId} + ')'">
-                                        <i class="fas fa-edit"></i>
                                     </button>
                                 </td>
                             </tr>
@@ -101,10 +100,9 @@
                 <div class="flex min-h-full items-center justify-center p-4">
                     <div class="card-heavy w-full max-w-lg" onclick="event.stopPropagation()">
                         <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
-                            <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5"><i class="fas fa-edit text-primary"></i> 部署編集</h5>
+                            <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5">部署編集</h5>
                             <button type="button" class="icon-button text-txt-primary hover:opacity-75 transition-opacity"
                                     th:onclick="'closeEditModal(' + ${dept.departmentId} + ')'" aria-label="閉じる">
-                                <i class="fa-solid fa-xmark text-xl"></i>
                             </button>
                         </div>
                         <form th:action="@{/admin/departments/{id}/update(id=${dept.departmentId})}" method="post">
@@ -126,7 +124,7 @@
                                 <button type="button" class="btn btn-flat flex-1"
                                         th:onclick="'closeEditModal(' + ${dept.departmentId} + ')'">キャンセル</button>
                                 <button type="submit" class="btn btn-primary flex-[2]">
-                                    <i class="fa-solid fa-save"></i> 保存
+                                    保存
                                 </button>
                             </div>
                         </form>

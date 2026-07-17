@@ -41,23 +41,23 @@
             <div class="grid grid-cols-2 gap-4 mb-8">
                 <form th:action="@{/attendance/quick-start}" method="post" class="w-full" id="clock-in-form">
                     <button type="submit" class="btn btn-primary p-6 text-xl rounded-2xl w-full gap-2 cursor-pointer" th:disabled="${todayRecord != null and todayRecord.startTime != null}">
-                        <i class="fa-solid fa-right-to-bracket"></i> 出勤打刻
+                        出勤打刻
                     </button>
                 </form>
                 <form th:action="@{/attendance/quick-end}" method="post" class="w-full" id="clock-out-form">
                     <input type="hidden" name="isHolidayWork" id="hidden-holiday-work" value="false">
                     <button type="submit" class="btn btn-danger p-6 text-xl rounded-2xl w-full gap-2 cursor-pointer" th:disabled="${todayRecord == null or todayRecord.startTime == null or todayRecord.endTime != null}">
-                        <i class="fa-solid fa-right-from-bracket"></i> 退勤打刻
+                        退勤打刻
                     </button>
                 </form>
             </div>
 
             <div class="flex gap-4 justify-center">
                 <button type="button" class="btn btn-flat px-5 py-3 text-sm gap-2 cursor-pointer" onclick="openModal('breakModal')">
-                    <i class="fa-solid fa-mug-hot"></i> 休憩時間の記録
+                    休憩時間の記録
                 </button>
                 <a th:href="@{/leave/create}" class="btn btn-success px-5 py-3 text-sm gap-2">
-                    <i class="fa-solid fa-plane"></i> 有給休暇申請
+                    有給休暇申請
                 </a>
             </div>
 

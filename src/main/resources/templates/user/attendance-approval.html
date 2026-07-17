@@ -93,14 +93,14 @@
                                     th:data-applicant-name="${applicantUsers[submission.userId] != null ? applicantUsers[submission.userId].fullName : '不明'}"
                                     th:data-year-month="${submission.targetYearMonth}"
                                     onclick="openApproveModal(this)">
-                                <i class="fas fa-check"></i> 承認
+                                承認
                             </button>
                             <button type="button" class="bg-danger-action text-white hover:bg-danger-action-hover inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 active:scale-95 text-xs cursor-pointer"
                                     th:data-submission-id="${submission.submissionId}"
                                     th:data-applicant-name="${applicantUsers[submission.userId] != null ? applicantUsers[submission.userId].fullName : '不明'}"
                                     th:data-year-month="${submission.targetYearMonth}"
                                     onclick="openReturnModal(this)">
-                                <i class="fas fa-undo"></i> 差し戻し
+                                差し戻し
                             </button>
                         </div>
                     </div>
@@ -143,7 +143,7 @@
                         キャンセル
                     </button>
                     <button type="button" class="btn btn-success flex-[2]" onclick="submitApproveForm()">
-                        <i class="fa-solid fa-check"></i> 承認する
+                        承認する
                     </button>
                 </div>
             </div>
@@ -182,7 +182,7 @@
                         キャンセル
                     </button>
                     <button type="button" class="btn btn-danger flex-[2]" onclick="submitReturnForm()">
-                        <i class="fa-solid fa-undo"></i> 差し戻す
+                        差し戻す
                     </button>
                 </div>
             </div>
