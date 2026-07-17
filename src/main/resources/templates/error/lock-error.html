@@ -8,12 +8,7 @@
 
 <body>
     <div layout:fragment="content" class="flex min-h-[80vh] items-center justify-center">
-        <div
-            class="bg-glass/70 backdrop-blur-glass border border-glass-border shadow-glass rounded-[24px] w-full max-w-md p-8 text-center animate-fade-in">
-            <div
-                class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-3xl mb-4">
-                <i class="fa-solid fa-lock"></i>
-            </div>
+        <div class="card-message animate-fade-in">
             <h1 class="text-xl font-bold text-txt-primary mb-2">更新が競合しました</h1>
 
             <p class="text-center text-txt-secondary text-sm leading-relaxed mb-6">
@@ -22,11 +17,11 @@
 
             <div class="flex flex-col gap-3 w-full">
                 <button type="button" data-history-back class="btn btn-primary w-full gap-2 text-sm">
-                    <i class="fa-solid fa-rotate-left"></i> 前の画面に戻る
+                    前の画面に戻る
                 </button>
                 <a th:href="@{/dashboard}"
                     class="w-full bg-black/5 hover:bg-black/10 text-txt-primary border border-glass-border inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 cursor-pointer no-underline">
-                    <i class="fa-solid fa-house"></i> ダッシュボードへ戻る
+                    ダッシュボードへ戻る
                 </a>
             </div>
         </div>

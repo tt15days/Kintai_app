@@ -15,26 +15,23 @@
         <div class="card">
             <div class="flex items-center justify-between pb-4 mb-6 border-b border-glass-border/30">
                 <h4 class="text-lg font-bold text-txt-primary flex items-center gap-2">
-                    <i class="fas fa-history text-primary"></i> 勤怠修正申請一覧
+                    勤怠修正申請一覧
                 </h4>
             </div>
             <div>
 
                 <div class="mb-4" th:if="${message != null}">
                     <div class="alert alert-success gap-2" role="alert">
-                        <i class="fas fa-check-circle text-lg"></i>
                         <span th:text="${message}"></span>
                     </div>
                 </div>
                 <div class="mb-4" th:if="${warning != null}">
                     <div class="alert alert-warning gap-2" role="alert">
-                        <i class="fas fa-exclamation-triangle text-lg"></i>
                         <span th:text="${warning}"></span>
                     </div>
                 </div>
                 <div class="mb-4" th:if="${error != null}">
                     <div class="alert alert-danger gap-2" role="alert">
-                        <i class="fas fa-exclamation-circle text-lg"></i>
                         <span th:text="${error}"></span>
                     </div>
                 </div>
@@ -75,11 +72,11 @@
                             <td class="min-w-[12rem] max-w-sm whitespace-pre-wrap break-words align-top" th:text="${req.reason}"></td>
                             <td>
                                 <span class="badge badge-warning"
-                                      th:if="${req.status == correctionStatusPending}"><i class="fas fa-hourglass-half mr-1"></i>申請中</span>
+                                      th:if="${req.status == correctionStatusPending}">申請中</span>
                                 <span class="badge badge-success"
-                                      th:if="${req.status == correctionStatusApproved}"><i class="fas fa-check mr-1"></i>承認済み</span>
+                                      th:if="${req.status == correctionStatusApproved}">承認済み</span>
                                 <span class="badge badge-danger"
-                                      th:if="${req.status == correctionStatusRejected}"><i class="fas fa-times mr-1"></i>却下</span>
+                                      th:if="${req.status == correctionStatusRejected}">却下</span>
                                 <span class="badge badge-primary"
                                       th:unless="${req.status == correctionStatusPending
                                                 or req.status == correctionStatusApproved
@@ -94,7 +91,7 @@
                                       class="m-0">
                                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                                     <button type="submit" class="btn btn-flat px-3 py-1.5 text-xs gap-1.5 cursor-pointer">
-                                        <i class="fas fa-undo"></i> 取り下げ
+                                        取り下げ
                                     </button>
                                 </form>
                                 <span th:unless="${req.status == correctionStatusPending}"
@@ -103,7 +100,6 @@
                         </tr>
                         <tr th:if="${requests == null or requests.isEmpty()}">
                             <td colspan="7" class="text-center py-12 text-txt-secondary opacity-80">
-                                <i class="fas fa-inbox fa-2x mb-2 text-txt-secondary/50"></i>
                                 <p class="text-sm font-medium">修正申請はありません</p>
                             </td>
                         </tr>

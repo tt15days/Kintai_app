@@ -8,18 +8,17 @@
 </head>
 <body>
     <h2 layout:fragment="page-title" class="text-2xl font-bold text-txt-primary flex items-center gap-2">
-        <i class="fas fa-users-viewfinder text-primary"></i> 当日状況一覧
+        当日状況一覧
     </h2>
 
     <div layout:fragment="content">
         <div th:if="${error}" class="alert alert-danger" role="alert">
-            <span><i class="fas fa-exclamation-circle"></i> <span th:text="${error}"></span></span>
+            <span><span th:text="${error}"></span></span>
         </div>
 
         <div class="card">
             <div class="pb-4 mb-4 border-b border-glass-border/30 flex flex-wrap items-center justify-between gap-3">
                 <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5">
-                    <i class="fas fa-calendar-day text-primary"></i>
                     <span th:text="${#temporals.format(today, 'yyyy/MM/dd(E)')}"></span> の勤務状況
                     <span class="badge bg-black/5 text-txt-secondary border-glass-border ml-2" th:text="${#lists.size(rows)}">0</span>名
                 </h5>
@@ -38,7 +37,7 @@
                                 th:selected="${className == wsc.name}"></option>
                     </select>
                     <button type="submit" class="btn btn-primary px-4 py-2 text-sm gap-1.5">
-                        <i class="fas fa-filter"></i> 絞り込み
+                        絞り込み
                     </button>
                 </form>
             </div>

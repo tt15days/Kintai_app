@@ -8,11 +8,7 @@
 </head>
 <body>
     <div layout:fragment="content" class="flex min-h-[80vh] items-center justify-center">
-        <div class="bg-glass/70 backdrop-blur-glass border border-glass-border shadow-glass rounded-[24px] w-full max-w-md p-8 text-center animate-fade-in">
-            <!-- 警告マーク用の赤い丸 -->
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-danger/10 border border-danger/20 text-danger text-3xl mb-4">
-                <i class="fa-solid fa-ban"></i>
-            </div>
+        <div class="card-message animate-fade-in">
             <h1 class="text-xl font-bold text-txt-primary mb-2">アクセスが拒否されました</h1>
 
             <p class="text-center text-txt-secondary text-sm leading-relaxed mb-6">
@@ -21,10 +17,10 @@
 
             <div class="flex flex-col gap-3 w-full">
                 <a th:href="@{/dashboard}" class="w-full bg-primary text-white hover:bg-primary/90 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 cursor-pointer no-underline">
-                    <i class="fa-solid fa-house"></i> ダッシュボードへ戻る
+                    ダッシュボードへ戻る
                 </a>
                 <a th:href="@{/login}" class="w-full bg-black/5 hover:bg-black/10 text-txt-primary border border-glass-border inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 cursor-pointer no-underline">
-                    <i class="fa-solid fa-right-to-bracket"></i> ログイン画面へ
+                    ログイン画面へ
                 </a>
             </div>
         </div>

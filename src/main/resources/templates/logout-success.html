@@ -9,10 +9,6 @@
 <body>
     <div layout:fragment="content" class="flex min-h-[80vh] items-center justify-center">
         <div class="card w-full max-w-md p-8 text-center animate-fade-in">
-            <div
-                class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary text-3xl mb-4">
-                <i class="fa-solid fa-arrow-right-from-bracket"></i>
-            </div>
             <h1 class="text-xl font-bold text-txt-primary mb-2">ログアウト完了</h1>
 
             <p class="text-center text-txt-secondary text-sm leading-relaxed mb-6">
@@ -22,13 +18,13 @@
             <!-- ログアウト情報 -->
             <div
                 class="bg-glass-input/60 border border-glass-border rounded-xl p-4 mb-6 text-left text-sm text-txt-secondary space-y-1.5">
-                <p class="font-bold text-txt-primary"><i class="fa-solid fa-circle-info text-primary"></i> ログアウト情報</p>
-                <p><i class="fa-solid fa-clock mr-1 text-txt-secondary/60"></i> <span id="logoutTime"></span></p>
-                <p><i class="fa-solid fa-shield-halved mr-1 text-txt-secondary/60"></i> セッションは安全に終了されました</p>
+                <p class="font-bold text-txt-primary">ログアウト情報</p>
+                <p><span id="logoutTime"></span></p>
+                <p>セッションは安全に終了されました</p>
             </div>
 
             <a th:href="@{/login}" class="btn btn-primary w-full py-3 text-sm font-bold no-underline mb-4 gap-2">
-                <i class="fa-solid fa-right-to-bracket"></i> 再度ログインする
+                再度ログインする
             </a>
 
         </div>

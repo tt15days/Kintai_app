@@ -22,7 +22,6 @@
             </div>
             <div class="w-full flex justify-center md:w-auto">
                 <a th:href="@{/attendance/quick}" class="btn btn-primary px-6 py-3.5 text-sm gap-2">
-                    <i class="fa-regular fa-clock text-[1.1rem]"></i>
                     打刻をする
                 </a>
             </div>
@@ -81,7 +80,6 @@
             <div class="card flex flex-col min-h-[300px]">
                 <div class="flex justify-between items-center mb-4">
                     <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-bell text-[1.15rem] text-primary"></i>
                         <h3 class="m-0 text-[1.1rem] font-bold text-txt-primary">通知</h3>
                         <span id="dashboard-notification-badge"
                             class="text-[0.75rem] bg-danger-action text-white px-2 py-0.5 rounded-full font-semibold"
@@ -122,7 +120,6 @@
             <!-- お知らせカード -->
             <div class="card flex flex-col min-h-[300px]">
                 <div class="flex items-center gap-2 mb-4">
-                    <i class="fa-regular fa-bell text-[1.15rem] text-warning"></i>
                     <h3 class="m-0 text-[1.1rem] font-bold text-txt-primary">お知らせ</h3>
                 </div>
 
@@ -193,10 +190,6 @@
         <div class="card md:mb-8 mb-4 animate-fade-in">
             <div class="flex justify-between items-start mb-6">
                 <div class="flex items-center gap-3">
-                    <div
-                        class="w-10.5 h-10.5 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-400 flex items-center justify-center text-white text-xl">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    </div>
                     <div class="text-left">
                         <h3 class="m-0 text-[1.15rem] font-bold text-txt-primary">AI 勤務・健康アドバイザー</h3>
                         <span class="text-[0.75rem] text-txt-secondary font-medium">今月の打刻からパーソナライズ傾向診断</span>
@@ -211,7 +204,6 @@
             <div id="analysis-content"
                 class="flex-1 flex flex-col items-center justify-center text-center text-txt-secondary py-4 px-8">
                 <div class="text-[3rem] mb-4 opacity-35">
-                    <i class="fa-regular fa-face-smile"></i>
                 </div>
                 <p class="m-0 text-[0.9rem] leading-relaxed text-txt-secondary max-w-[440px]">
                     「分析」ボタンを押すと、AIが勤務時間や残業過多のリスク、休みの効果的な取得法について個別に診断アドバイスを生成します。
@@ -281,7 +273,6 @@
                         btn.innerText = '分析中...';
                         contentArea.innerHTML = `
                             <div class="flex flex-col items-center justify-center p-8 gap-4 flex-1 w-full">
-                                <i class="fa-solid fa-circle-notch fa-spin text-[2rem] text-primary"></i>
                                 <span class="text-txt-secondary text-[0.9rem]">勤務データをセキュアに分析しています...</span>
                             </div>
                         `;

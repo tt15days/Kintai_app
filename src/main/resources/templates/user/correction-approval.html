@@ -15,20 +15,18 @@
         <div class="card">
             <div class="flex items-center justify-between pb-4 mb-6 border-b border-glass-border/30">
                 <h4 class="text-lg font-bold text-txt-primary flex items-center gap-2">
-                    <i class="fas fa-pen-to-square text-primary"></i> 勤怠修正申請の承認待ち一覧
+                    勤怠修正申請の承認待ち一覧
                 </h4>
             </div>
             <div>
 
                 <div class="mb-4" th:if="${message != null}">
                     <div class="alert alert-success gap-2" role="alert">
-                        <i class="fas fa-check-circle text-lg"></i>
                         <span th:text="${message}"></span>
                     </div>
                 </div>
                 <div class="mb-4" th:if="${error != null}">
                     <div class="alert alert-danger gap-2" role="alert">
-                        <i class="fas fa-exclamation-circle text-lg"></i>
                         <span th:text="${error}"></span>
                     </div>
                 </div>
@@ -105,7 +103,7 @@
                                         <input type="text" class="form-input px-2.5 py-1 text-base md:text-xs mb-1.5"
                                                name="comment" placeholder="承認コメント（任意）" maxlength="500">
                                         <button type="submit" class="btn btn-success w-full py-1.5 text-xs gap-1.5 cursor-pointer">
-                                            <i class="fas fa-check"></i> 承認
+                                            承認
                                         </button>
                                     </form>
                                     <!-- 却下フォーム -->
@@ -115,7 +113,7 @@
                                         <input type="text" class="form-input px-2.5 py-1 text-base md:text-xs mb-1.5"
                                                name="comment" placeholder="却下理由（任意）" maxlength="500">
                                         <button type="submit" class="btn btn-danger w-full py-1.5 text-xs gap-1.5 cursor-pointer">
-                                            <i class="fas fa-times"></i> 却下
+                                            却下
                                         </button>
                                     </form>
                                 </div>
@@ -123,7 +121,6 @@
                         </tr>
                         <tr th:if="${pendingRequests == null or pendingRequests.isEmpty()}">
                             <td colspan="8" class="text-center py-12 text-txt-secondary opacity-80">
-                                <i class="fas fa-inbox fa-2x mb-2 text-txt-secondary/50"></i>
                                 <p class="text-sm font-medium">承認待ちの修正申請はありません</p>
                             </td>
                         </tr>

@@ -8,21 +8,21 @@
 
     <div layout:fragment="content" class="w-full py-4 space-y-6 animate-fade-in">
         <div th:if="${message}" class="alert alert-success" role="status" aria-live="polite">
-            <span><i class="fa-solid fa-check-circle"></i> <span th:text="${message}"></span></span>
+            <span><span th:text="${message}"></span></span>
             <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
         <div th:if="${errorMessage}" id="settings-error" class="alert alert-danger" role="alert" aria-live="assertive" tabindex="-1">
-            <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
+            <span><span th:text="${errorMessage}"></span></span>
             <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
         <div th:if="${error}" class="alert alert-danger" role="alert" aria-live="assertive">
-            <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${error}"></span></span>
+            <span><span th:text="${error}"></span></span>
             <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
         </div>
 
         <!-- 勤怠期間設定 -->
         <div class="card">
-            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-calendar-days text-primary"></i> 勤怠期間設定</h3>
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5">勤怠期間設定</h3>
             <p class="text-sm text-txt-secondary mb-4">
                 毎月の勤怠集計期間は、設定した締め日を基準に「前月締め日の翌日〜当月締め日」として自動算出します。締め日は1〜28日の間で指定してください。
             </p>
@@ -36,7 +36,7 @@
                 </div>
                 <div class="flex justify-end pt-2">
                     <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
-                        <i class="fa-solid fa-save"></i> 保存
+                        保存
                     </button>
                 </div>
             </form>
@@ -44,7 +44,7 @@
 
         <!-- バッチ処理設定 -->
         <div class="card">
-            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-rotate text-primary"></i> バッチ処理設定</h3>
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5">バッチ処理設定</h3>
             <p class="text-sm text-txt-secondary mb-4">
                 勤怠期間終了後の自動集計を行うタイミングや、従業員への未提出・未承認リマインドメールを自動送信するスケジュールを設定します。
             </p>
@@ -68,7 +68,7 @@
                 </div>
                 <div class="md:col-span-3 flex justify-end pt-2">
                     <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
-                        <i class="fa-solid fa-save"></i> 保存
+                        保存
                     </button>
                 </div>
             </form>
@@ -76,7 +76,7 @@
 
         <!-- アラート閾値設定 -->
         <div class="card">
-            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-primary"></i> アラート閾値設定</h3>
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5">アラート閾値設定</h3>
             <p class="text-sm text-txt-secondary mb-4">
                 時間外労働（36協定）の注意・超過時間、および有給休暇の有効期限・残日数に関するアラートを表示する基準（閾値）を設定します。
             </p>
@@ -113,7 +113,7 @@
                 </div>
                 <div class="md:col-span-2 flex justify-end pt-2">
                     <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
-                        <i class="fa-solid fa-save"></i> 保存
+                        保存
                     </button>
                 </div>
             </form>
@@ -121,7 +121,7 @@
 
         <!-- 年次有給休暇の自動付与設定 -->
         <div class="card">
-            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-cogs text-primary"></i> 年次有給休暇の自動付与設定</h3>
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5">年次有給休暇の自動付与設定</h3>
             <p class="text-sm text-txt-secondary mb-4">
                 設定した日付の深夜0時に、従業員ごとに設定された有給付与日数を自動付与します。
             </p>
@@ -135,7 +135,7 @@
                 </div>
                 <div class="pt-2">
                     <button type="submit" class="btn btn-primary w-full min-h-11 gap-2 text-sm">
-                        <i class="fa-solid fa-save"></i> 設定を保存する
+                        設定を保存する
                     </button>
                 </div>
             </form>
@@ -143,7 +143,7 @@
 
         <!-- CSV出力ファイル名パターン設定 -->
         <div class="card">
-            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-file-csv text-primary"></i> CSV出力ファイル名パターン設定</h3>
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5">CSV出力ファイル名パターン設定</h3>
             <p class="text-sm text-txt-secondary mb-4">
                 CSVをダウンロードする際のファイル名パターンを指定します。<br>
                 使用可能なトークン: <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{yyyy}</code>(年), <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{MM}</code>(月), <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{userId}</code>(ユーザーID), <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{name}</code>(氏名), <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">{downloadAt}</code>(ダウンロード日時)
@@ -158,7 +158,7 @@
                 </div>
                 <div class="pt-2">
                     <button type="submit" class="btn btn-primary w-full min-h-11 gap-2 text-sm">
-                        <i class="fa-solid fa-save"></i> 設定を保存する
+                        設定を保存する
                     </button>
                 </div>
             </form>
@@ -166,7 +166,7 @@
 
         <!-- システム名設定 -->
         <div class="card">
-            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-desktop text-primary"></i> システム名表示設定</h3>
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5">システム名表示設定</h3>
             <p class="text-sm text-txt-secondary mb-4">
                 ログイン画面およびサイドバーに表示されるシステム名（初期値: 勤怠管理システム）を指定します。
             </p>
@@ -180,7 +180,7 @@
                 </div>
                 <div class="pt-2">
                     <button type="submit" class="btn btn-primary w-full min-h-11 gap-2 text-sm">
-                        <i class="fa-solid fa-save"></i> 設定を保存する
+                        設定を保存する
                     </button>
                 </div>
             </form>
@@ -188,7 +188,7 @@
 
         <!-- コピーライト設定 -->
         <div class="card">
-            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-regular fa-copyright text-primary"></i> コピーライト表示設定</h3>
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5">コピーライト表示設定</h3>
             <p class="text-sm text-txt-secondary mb-4">
                 画面下部に表示されるコピーライトの表示文言を指定します。
             </p>
@@ -201,7 +201,7 @@
                 </div>
                 <div class="pt-2">
                     <button type="submit" class="btn btn-primary w-full min-h-11 gap-2 text-sm">
-                        <i class="fa-solid fa-save"></i> 設定を保存する
+                        設定を保存する
                     </button>
                 </div>
             </form>
@@ -209,7 +209,7 @@
 
         <!-- 社員番号プレフィックス設定 -->
         <div class="card">
-            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-id-badge text-primary"></i> 社員番号プレフィックス設定</h3>
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5">社員番号プレフィックス設定</h3>
             <p class="text-sm text-txt-secondary mb-4">
                 ユーザー作成時に自動生成される社員番号の先頭文字列を指定します。空欄の場合は数値のみ（例: <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">004</code>）、<code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">EMP-</code> を設定すると <code class="bg-black/5 px-1.5 py-0.5 rounded text-xs text-primary font-mono">EMP-004</code> のように生成されます。
             </p>
@@ -222,7 +222,7 @@
                 </div>
                 <div class="pt-2">
                     <button type="submit" class="btn btn-primary w-full min-h-11 gap-2 text-sm">
-                        <i class="fa-solid fa-save"></i> 設定を保存する
+                        設定を保存する
                     </button>
                 </div>
             </form>
@@ -230,19 +230,18 @@
 
         <!-- 祝日設定 -->
         <div class="card animate-fade-in" id="holidays-section">
-            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5"><i class="fa-solid fa-calendar-alt text-primary"></i> 祝日設定</h3>
+            <h3 class="text-base font-bold text-txt-primary pb-4 mb-4 border-b border-glass-border/30 flex items-center gap-1.5">祝日設定</h3>
             
             <!-- 現在の祝日数 -->
             <div class="mb-6">
                 <p class="text-txt-primary text-sm flex items-center gap-1.5">
-                    <i class="fa-solid fa-info-circle text-primary"></i> 
                     現在登録されている祝日: <strong th:text="${holidayCount}" class="text-primary text-xl font-bold font-mono">0</strong> 件
                 </p>
             </div>
 
             <!-- CSVアップロード -->
             <div class="mb-6">
-                <h4 class="text-sm font-bold text-txt-primary mb-3 flex items-center gap-1.5"><i class="fa-solid fa-file-csv text-primary"></i> CSVファイルをアップロード</h4>
+                <h4 class="text-sm font-bold text-txt-primary mb-3 flex items-center gap-1.5">CSVファイルをアップロード</h4>
                 <form th:action="@{/admin/settings/holidays/upload}" method="post" enctype="multipart/form-data" class="space-y-4">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
                     <div class="flex flex-col">
@@ -255,7 +254,7 @@
                     </div>
                     <div class="flex gap-3 pt-2">
                         <button type="submit" class="btn btn-primary gap-2 text-sm h-11">
-                            <i class="fa-solid fa-upload"></i> アップロード
+                            アップロード
                         </button>
                     </div>
                 </form>
@@ -263,7 +262,7 @@
 
             <!-- プレビューセクション -->
             <div class="card mb-6 border-l-4 border-l-warning p-4 bg-warning/5" th:if="${previewHolidays != null and !previewHolidays.isEmpty()}">
-                <h3 class="text-base font-bold text-txt-primary mb-4 flex items-center gap-1.5"><i class="fa-solid fa-binoculars text-primary"></i> プレビュー・編集 (<span id="rowCount" class="font-mono">[[${#lists.size(previewHolidays)}]]</span>件)</h3>
+                <h3 class="text-base font-bold text-txt-primary mb-4 flex items-center gap-1.5">プレビュー・編集 (<span id="rowCount" class="font-mono">[[${#lists.size(previewHolidays)}]]</span>件)</h3>
                 
                 <div class="table-container max-h-[400px] border border-glass-border/30 rounded-xl mb-4 overflow-y-auto">
                     <table class="table-custom" id="previewTable">
@@ -279,9 +278,7 @@
                                 <td class="p-2"><input type="date" class="form-input text-base md:text-sm font-mono holiday-date" th:value="${holiday.holidayDate}" th:attr="aria-label=|${holiday.holidayDate}の祝日日付|"></td>
                                 <td class="p-2"><input type="text" class="form-input text-base md:text-sm holiday-name" th:value="${holiday.name}" th:attr="aria-label=|${holiday.holidayDate}の祝日名|"></td>
                                 <td class="p-2 text-center">
-                                    <button type="button" class="btn btn-danger min-w-11 p-2 rounded-lg text-xs delete-row" title="この行を削除" aria-label="この行を削除">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
+                                    <button type="button" class="btn btn-danger min-w-11 p-2 rounded-lg text-xs delete-row" title="この行を削除" aria-label="この行を削除">削除</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -290,13 +287,12 @@
                 
                 <div class="mb-4">
                     <button type="button" id="addRowBtn" class="btn bg-primary/10 hover:bg-primary/20 text-primary border-0 gap-2 text-sm h-11">
-                        <i class="fa-solid fa-plus"></i> 行を追加
+                        行を追加
                     </button>
                 </div>
                 
                 <div class="alert bg-blue-500/10 border border-blue-500/20 text-blue-500 mb-6">
                     <p class="m-0">
-                        <i class="fa-solid fa-lightbulb"></i> 
                         データを編集・追加・削除できます。完了したら「設定を確認して保存」ボタンをクリックしてください。
                     </p>
                 </div>
@@ -306,18 +302,18 @@
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
                         <input type="hidden" id="holidaysData" name="holidaysData">
                         <button type="submit" class="btn btn-success gap-2 text-sm h-11" id="submitBtn">
-                            <i class="fa-solid fa-check"></i> 設定を確認して保存
+                            設定を確認して保存
                         </button>
                     </form>
                     <a th:href="@{/admin/settings/holidays/cancel}" class="btn btn-flat gap-2 text-sm h-11 flex items-center justify-center">
-                        <i class="fa-solid fa-times"></i> キャンセル
+                        キャンセル
                     </a>
                 </div>
             </div>
 
             <!-- 保存済み祝日リスト表示セクション -->
             <div class="card mb-6 border-l-4 border-l-success p-4 bg-success/5" th:if="${savedHolidays != null and !savedHolidays.isEmpty()}">
-                <h3 class="text-base font-bold text-txt-primary mb-4 flex items-center gap-1.5"><i class="fa-solid fa-check-circle text-success"></i> 保存済み祝日リスト (<span th:text="${#lists.size(savedHolidays)}">0</span>件)</h3>
+                <h3 class="text-base font-bold text-txt-primary mb-4 flex items-center gap-1.5">保存済み祝日リスト (<span th:text="${#lists.size(savedHolidays)}">0</span>件)</h3>
                 
                 <div class="table-container max-h-[300px] border border-glass-border/30 rounded-xl mb-4 overflow-y-auto">
                     <table class="table-custom">
@@ -338,14 +334,14 @@
                 
                 <div class="flex gap-3">
                     <a th:href="@{/admin/settings}" class="btn btn-flat gap-2 text-sm h-11 flex items-center justify-center">
-                        <i class="fa-solid fa-sync"></i> リストを閉じる
+                        リストを閉じる
                     </a>
                 </div>
             </div>
 
             <!-- 初期表示時の登録済み祝日リスト -->
             <div th:if="${existingHolidays != null and !existingHolidays.isEmpty() and savedHolidays == null and (previewHolidays == null or previewHolidays.isEmpty())}">
-                <h4 class="text-sm font-bold text-txt-primary mb-3 flex items-center gap-1.5"><i class="fa-solid fa-database text-primary"></i> 登録済み祝日 (<span th:text="${#lists.size(existingHolidays)}">0</span>件)</h4>
+                <h4 class="text-sm font-bold text-txt-primary mb-3 flex items-center gap-1.5">登録済み祝日 (<span th:text="${#lists.size(existingHolidays)}">0</span>件)</h4>
                 
                 <div class="table-container max-h-[400px] border border-glass-border/30 rounded-xl mb-4 overflow-y-auto">
                     <table class="table-custom">
@@ -365,7 +361,6 @@
                 </div>
                 
                 <p class="text-xs text-txt-secondary opacity-70 mt-2">
-                    <i class="fa-solid fa-info-circle"></i> 
                     現在データベースに登録されている祝日一覧です。新しいCSVファイルをアップロードするとすべての祝日が置き換わります。
                 </p>
             </div>
@@ -391,9 +386,7 @@
                             <td class="p-2"><input type="date" class="form-input text-base md:text-sm font-mono holiday-date" aria-label="追加行の祝日日付"></td>
                             <td class="p-2"><input type="text" class="form-input text-base md:text-sm holiday-name" placeholder="祝日名を入力" aria-label="追加行の祝日名"></td>
                             <td class="p-2 text-center">
-                                <button type="button" class="btn btn-danger min-w-11 p-2 rounded-lg text-xs delete-row" title="この行を削除" aria-label="この行を削除">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
+                                <button type="button" class="btn btn-danger min-w-11 p-2 rounded-lg text-xs delete-row" title="この行を削除" aria-label="この行を削除">削除</button>
                             </td>
                         `;
                         tableBody.appendChild(newRow);

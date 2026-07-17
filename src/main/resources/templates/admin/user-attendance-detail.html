@@ -15,13 +15,13 @@
                 <div>
                     <div class="mb-4" th:if="${successMessage != null}">
                         <div class="alert alert-success" role="status" aria-live="polite">
-                            <span><i class="fa-solid fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
+                            <span><span th:text="${successMessage}"></span></span>
                             <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
                         </div>
                     </div>
                     <div class="mb-4" th:if="${errorMessage != null}">
                         <div class="alert alert-danger" role="alert" aria-live="assertive">
-                            <span><i class="fa-solid fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
+                            <span><span th:text="${errorMessage}"></span></span>
                             <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.remove()" aria-label="閉じる">×</button>
                         </div>
                     </div>
@@ -62,10 +62,8 @@
                                 <label for="yearMonth" class="form-label">表示月</label>
                                 <div class="flex">
                                     <input type="month" class="form-input rounded-l-xl text-base md:text-sm font-mono h-11 flex-1" id="yearMonth" name="yearMonth" th:value="${yearMonth}">
-                                    <button type="submit" class="btn btn-primary p-3 rounded-r-xl h-11 w-11 text-sm border-0"
-                                            aria-label="表示月を検索">
-                                        <i class="fas fa-search"></i>
-                                    </button>
+                                    <button type="submit" class="btn btn-primary p-3 rounded-r-xl h-11 w-11 text-lg leading-none border-0"
+                                            aria-label="表示月を検索">→</button>
                                 </div>
                             </div>
                             <!-- CSVダウンロード -->
@@ -99,7 +97,6 @@
                     <!-- 36協定警告バナー -->
                     <div class="alert alert-danger mb-6" role="alert"
                          th:if="${article36Status != null and article36Status == 'ALERT'}">
-                        <i class="fas fa-exclamation-triangle text-lg"></i>
                         <span>
                             <strong>【36協定 超過】</strong>
                             今月の残業時間が法定上限（<span th:text="${article36MonthlyLimit}"></span>時間）を超えています。
@@ -108,7 +105,6 @@
                     </div>
                     <div class="alert alert-warning mb-6" role="alert"
                          th:if="${article36Status != null and article36Status == 'WARNING'}">
-                        <i class="fas fa-exclamation-circle text-lg"></i>
                         <span>
                             <strong>【36協定 注意】</strong>
                             今月の残業時間が注意ライン（<span th:text="${article36MonthlyWarning}"></span>時間）を超えています。
@@ -168,7 +164,6 @@
                                     </tr>
                                     <tr th:if="${records == null or records.isEmpty()}">
                                         <td colspan="8" class="text-center py-12 text-txt-secondary opacity-80">
-                                            <i class="fas fa-inbox fa-2x mb-2 text-txt-secondary/50"></i>
                                             <p class="text-sm font-medium">記録がありません</p>
                                         </td>
                                     </tr>
@@ -204,7 +199,6 @@
                                 </tr>
                                 <tr th:if="${records == null or records.isEmpty()}">
                                     <td colspan="8" class="text-center py-12 text-txt-secondary opacity-80">
-                                        <i class="fas fa-inbox fa-2x mb-2 text-txt-secondary/50"></i>
                                         <p class="text-sm font-medium">記録がありません</p>
                                     </td>
                                 </tr>
@@ -304,7 +298,7 @@
 
                     <div class="mt-4">
                         <a th:href="${backUrl}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> 戻る
+                            戻る
                         </a>
                     </div>
                 </div>

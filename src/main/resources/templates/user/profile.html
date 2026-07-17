@@ -13,11 +13,11 @@
             <div class="content mt-4">
 
                 <div th:if="${successMessage}" class="alert alert-success" role="alert">
-                    <span><i class="fas fa-check-circle"></i> <span th:text="${successMessage}"></span></span>
+                    <span><span th:text="${successMessage}"></span></span>
                     <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.closest('[role=alert], .bg-success\/15, .bg-danger\/12').remove()" aria-label="閉じる">×</button>
                 </div>
                 <div th:if="${errorMessage}" class="alert alert-danger" role="alert">
-                    <span><i class="fas fa-exclamation-circle"></i> <span th:text="${errorMessage}"></span></span>
+                    <span><span th:text="${errorMessage}"></span></span>
                     <button type="button" class="icon-button shrink-0 text-txt-primary hover:opacity-100 opacity-70 transition-opacity bg-transparent border-0 text-xl leading-none cursor-pointer" onclick="this.parentElement.parentElement.remove()" aria-label="閉じる">×</button>
                 </div>
                 <div th:if="${error}" class="alert alert-danger justify-center text-center" role="alert">
@@ -27,7 +27,7 @@
                 <!-- プロフィール情報 -->
                 <div class="card mb-6">
                     <div class="border-b border-glass-border pb-4 mb-4">
-                        <h4 class="m-0 text-lg font-bold text-txt-primary"><i class="fas fa-user"></i> プロフィール</h4>
+                        <h4 class="m-0 text-lg font-bold text-txt-primary">プロフィール</h4>
                     </div>
                     <div th:if="${currentUser != null}">
                         <dl class="grid grid-cols-1 sm:grid-cols-[1fr_2fr] gap-x-4 gap-y-3 mb-0 text-sm">
@@ -80,7 +80,7 @@
                 <!-- 所属クラス -->
                 <div class="card mb-6">
                     <div class="border-b border-glass-border pb-4 mb-4">
-                        <h5 class="m-0 text-lg font-bold text-txt-primary"><i class="fas fa-clock"></i> 所属クラス（勤務時間帯）</h5>
+                        <h5 class="m-0 text-lg font-bold text-txt-primary">所属クラス（勤務時間帯）</h5>
                     </div>
                     <div>
                         <p class="text-txt-secondary text-sm mb-3">
@@ -91,7 +91,6 @@
                         <div th:with="currentClassName=${currentUser != null ? currentUser.className : null}">
                             <div th:if="${currentClassName != null and currentWorkScheduleClass != null}"
                                 class="bg-primary/10 border border-primary/20 text-primary p-4 rounded-xl mb-4 text-sm">
-                                <i class="fas fa-info-circle"></i>
                                 現在の所属クラス:
                                 <strong th:with="wsc=${currentWorkScheduleClass}">
                                     <span th:text="${wsc.name}"></span>
@@ -105,7 +104,6 @@
                                 </strong>
                             </div>
                             <div th:if="${currentClassName == null}" class="bg-black/5 border border-glass-border text-txt-primary p-4 rounded-xl mb-4 text-sm">
-                                <i class="fas fa-info-circle"></i>
                                 所属クラスは未設定です。デフォルトの勤務時間（09:00〜18:00）が適用されます。
                             </div>
                         </div>
@@ -124,7 +122,7 @@
                             <button type="submit" class="btn btn-primary h-11 px-5">変更する</button>
                         </form>
                         <a th:href="@{/dashboard}" class="btn btn-flat px-5 py-3 text-sm cursor-pointer gap-2">
-                            <i class="fas fa-arrow-left"></i> ダッシュボードへ戻る
+                            ダッシュボードへ戻る
                         </a>
                     </div>
                 </div>
@@ -132,13 +130,13 @@
                 <!-- 有給休暇残高カード -->
                 <div class="card mt-6">
                     <div class="border-b border-glass-border pb-4 mb-4 flex justify-between items-center">
-                        <h5 class="m-0 text-lg font-bold text-txt-primary"><i class="fas fa-umbrella-beach text-success"></i> 有給休暇残高</h5>
+                        <h5 class="m-0 text-lg font-bold text-txt-primary">有給休暇残高</h5>
                         <span class="badge badge-success"
                             th:text="'残 ' + ${totalRemainingPaidLeaveDays != null ? totalRemainingPaidLeaveDays : 0} + ' 日'"></span>
                     </div>
                     <div>
                         <div th:if="${paidLeaveBalances == null or paidLeaveBalances.isEmpty()}" class="p-3 text-txt-secondary">
-                            <i class="fas fa-info-circle mr-1"></i> 有給残高データがありません。管理者にお問い合わせください。
+                            有給残高データがありません。管理者にお問い合わせください。
                         </div>
                         <div th:if="${paidLeaveBalances != null and !paidLeaveBalances.isEmpty()}"
                             class="table-container">
