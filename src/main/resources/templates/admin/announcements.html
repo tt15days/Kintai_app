@@ -88,8 +88,7 @@
                                                 th:data-active="${ann.isActive}"
                                                 th:data-start-date="${ann.displayStartDate != null ? #temporals.format(ann.displayStartDate.atZone(jstZoneId), 'yyyy-MM-dd') : ''}"
                                                 th:data-end-date="${ann.displayEndDate != null ? #temporals.format(ann.displayEndDate.atZone(jstZoneId), 'yyyy-MM-dd') : ''}"
-                                                onclick="openAnnouncementEdit(this)">
-                                        </button>
+                                                onclick="openAnnouncementEdit(this)">編集</button>
                                         <!-- 削除ボタン -->
                                         <form th:action="@{/admin/announcements/{id}/delete(id=${ann.announcementId})}"
                                               method="post" class="inline m-0"
@@ -98,8 +97,7 @@
                                             <input type="hidden" name="page" th:value="${currentPage}"/>
                                             <input type="hidden" name="size" th:value="${pageSize}"/>
                                             <button type="submit" class="btn btn-danger min-w-11 p-2 rounded-lg text-xs"
-                                                    th:aria-label="|${ann.title}を削除|">
-                                            </button>
+                                                    th:aria-label="|${ann.title}を削除|">削除</button>
                                         </form>
                             </div>
                         </div>
@@ -143,9 +141,8 @@
                         <h5 id="announcementEditTitle" class="text-base font-bold text-txt-primary flex items-center gap-1.5">
                             お知らせ編集
                         </h5>
-                        <button type="button" class="icon-button text-txt-primary hover:opacity-75 transition-opacity"
-                                onclick="closeModal('announcementEditModal')" aria-label="閉じる">
-                        </button>
+                        <button type="button" class="icon-button text-txt-primary hover:opacity-75 transition-opacity text-xl leading-none"
+                                onclick="closeModal('announcementEditModal')" aria-label="閉じる">×</button>
                     </div>
                     <form id="announcementEditForm" method="post">
                         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>

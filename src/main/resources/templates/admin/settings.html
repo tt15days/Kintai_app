@@ -278,8 +278,7 @@
                                 <td class="p-2"><input type="date" class="form-input text-base md:text-sm font-mono holiday-date" th:value="${holiday.holidayDate}" th:attr="aria-label=|${holiday.holidayDate}の祝日日付|"></td>
                                 <td class="p-2"><input type="text" class="form-input text-base md:text-sm holiday-name" th:value="${holiday.name}" th:attr="aria-label=|${holiday.holidayDate}の祝日名|"></td>
                                 <td class="p-2 text-center">
-                                    <button type="button" class="btn btn-danger min-w-11 p-2 rounded-lg text-xs delete-row" title="この行を削除" aria-label="この行を削除">
-                                    </button>
+                                    <button type="button" class="btn btn-danger min-w-11 p-2 rounded-lg text-xs delete-row" title="この行を削除" aria-label="この行を削除">削除</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -387,8 +386,7 @@
                             <td class="p-2"><input type="date" class="form-input text-base md:text-sm font-mono holiday-date" aria-label="追加行の祝日日付"></td>
                             <td class="p-2"><input type="text" class="form-input text-base md:text-sm holiday-name" placeholder="祝日名を入力" aria-label="追加行の祝日名"></td>
                             <td class="p-2 text-center">
-                                <button type="button" class="btn btn-danger min-w-11 p-2 rounded-lg text-xs delete-row" title="この行を削除" aria-label="この行を削除">
-                                </button>
+                                <button type="button" class="btn btn-danger min-w-11 p-2 rounded-lg text-xs delete-row" title="この行を削除" aria-label="この行を削除">削除</button>
                             </td>
                         `;
                         tableBody.appendChild(newRow);

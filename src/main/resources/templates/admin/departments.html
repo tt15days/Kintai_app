@@ -75,8 +75,7 @@
                                     <button type="button"
                                             class="btn btn-primary min-w-11 p-2 rounded-lg text-xs"
                                             th:aria-label="|${dept.name}を編集|"
-                                            th:onclick="'openEditModal(' + ${dept.departmentId} + ')'">
-                                    </button>
+                                            th:onclick="'openEditModal(' + ${dept.departmentId} + ')'">編集</button>
                                 </td>
                             </tr>
                         </tbody>
@@ -101,9 +100,8 @@
                     <div class="card-heavy w-full max-w-lg" onclick="event.stopPropagation()">
                         <div class="flex items-center justify-between pb-4 border-b border-glass-border/30 mb-4">
                             <h5 class="text-base font-bold text-txt-primary flex items-center gap-1.5">部署編集</h5>
-                            <button type="button" class="icon-button text-txt-primary hover:opacity-75 transition-opacity"
-                                    th:onclick="'closeEditModal(' + ${dept.departmentId} + ')'" aria-label="閉じる">
-                            </button>
+                            <button type="button" class="icon-button text-txt-primary hover:opacity-75 transition-opacity text-xl leading-none"
+                                    th:onclick="'closeEditModal(' + ${dept.departmentId} + ')'" aria-label="閉じる">×</button>
                         </div>
                         <form th:action="@{/admin/departments/{id}/update(id=${dept.departmentId})}" method="post">
                             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>

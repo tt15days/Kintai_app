@@ -41,9 +41,8 @@
                         th:text="${systemName != null ? systemName : '勤怠管理システム'}"
                         th:title="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</span>
                 </div>
-                <button type="button" id="sidebar-close" class="md:hidden w-11 h-11 shrink-0 rounded-lg text-txt-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        aria-label="メニューを閉じる">
-                </button>
+                <button type="button" id="sidebar-close" class="md:hidden w-11 h-11 shrink-0 rounded-lg text-txt-primary text-xl leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        aria-label="メニューを閉じる">×</button>
             </div>
 
             <!-- Sidebar Profile -->
@@ -190,9 +189,8 @@
         <div class="min-w-0 flex-1 flex flex-col overflow-hidden h-full box-border">
             <!-- Mobile Header -->
             <header th:if="${hideSidebar != true}" class="flex md:hidden items-center justify-between px-4 py-3 bg-glass/70 border-b border-glass-border backdrop-blur-glass z-50">
-                <button id="menu-toggle" class="text-txt-primary w-11 h-11 shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
-                        aria-label="メニューを開く" aria-expanded="false" aria-controls="sidebar">
-                </button>
+                <button id="menu-toggle" class="text-txt-primary w-11 h-11 shrink-0 rounded-lg text-xl leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
+                        aria-label="メニューを開く" aria-expanded="false" aria-controls="sidebar">☰</button>
                 <span class="min-w-0 flex-1 mx-2 truncate text-center font-bold text-lg text-txt-primary"
                       th:text="${systemName != null ? systemName : '勤怠管理システム'}"
                       th:title="${systemName != null ? systemName : '勤怠管理システム'}">勤怠管理システム</span>

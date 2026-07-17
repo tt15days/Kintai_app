@@ -10,24 +10,18 @@
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div class="card flex items-center gap-4 border-l-[4px] border-l-danger">
-                <div class="text-danger bg-danger/10 w-[60px] h-[60px] rounded-xl flex items-center justify-center text-xl">
-                </div>
                 <div class="flex-1">
                     <p class="m-0 text-txt-secondary text-xs opacity-80 mb-1">超過警告（45時間超）</p>
                     <h3 class="m-0 text-2xl font-bold text-txt-primary"><span class="font-mono" th:text="${alertCount}">3</span> 名</h3>
                 </div>
             </div>
             <div class="card flex items-center gap-4 border-l-[4px] border-l-warning">
-                <div class="text-warning bg-warning/10 w-[60px] h-[60px] rounded-xl flex items-center justify-center text-xl">
-                </div>
                 <div class="flex-1">
                     <p class="m-0 text-txt-secondary text-xs opacity-80 mb-1">超過注意（40時間超）</p>
                     <h3 class="m-0 text-2xl font-bold text-txt-primary"><span class="font-mono" th:text="${warningCount}">12</span> 名</h3>
                 </div>
             </div>
             <div class="card flex items-center gap-4 border-l-[4px] border-l-success">
-                <div class="text-success bg-success/10 w-[60px] h-[60px] rounded-xl flex items-center justify-center text-xl">
-                </div>
                 <div class="flex-1">
                     <p class="m-0 text-txt-secondary text-xs opacity-80 mb-1">安全ゾーン</p>
                     <h3 class="m-0 text-2xl font-bold text-txt-primary"><span class="font-mono" th:text="${normalCount}">145</span> 名</h3>
