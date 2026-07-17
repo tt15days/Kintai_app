@@ -151,6 +151,15 @@
         @apply bg-glass/90 backdrop-blur-glass-heavy border border-glass-border shadow-glass-heavy md:rounded-[12px] rounded-[8px] md:p-5 p-3 transition-all duration-300;
     }
 
+    /* モーダルは画面中央に配置し、内容が画面高を超える場合はオーバーレイ内でスクロールする */
+    .modal {
+        @apply items-start justify-center overflow-y-auto p-4 sm:p-8;
+    }
+
+    .modal > .flex {
+        @apply w-full min-h-full shrink-0;
+    }
+
     /* --- ボタン基本 --- */
     .btn {
         @apply inline-flex min-h-11 items-center justify-center px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
