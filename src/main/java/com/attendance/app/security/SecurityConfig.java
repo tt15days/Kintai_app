@@ -179,7 +179,25 @@ public class SecurityConfig {
                 )
                 .exceptionHandling(exception -> exception
                     .accessDeniedPage("/access-denied")
-                );
+                )
+                // CSP: script-src は既存テンプレートの onclick/onchange/onsubmit 属性ハンドラ（多数）が
+                // 動作するため 'unsafe-inline' を許容する。インラインスクリプト注入そのものは防げないが、
+                // object-src/base-uri/form-action/frame-ancestors の制限と、img-src/connect-src を self に
+                // 限定することで XSS 成立後の外部データ持ち出し・フォーム乗っ取り・クリックジャッキングを防ぐ。
+                // 'unsafe-inline' を外すには全テンプレートの onclick 属性を addEventListener へ移行する
+                // 別途のフロントエンド改修が必要（issue化して追跡）。
+                .headers(headers -> headers.contentSecurityPolicy(csp -> csp.policyDirectives(
+                        "default-src 'self'; "
+                                + "script-src 'self' 'unsafe-inline'; "
+                                + "style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+                                + "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
+                                + "img-src 'self'; "
+                                + "connect-src 'self'; "
+                                + "object-src 'none'; "
+                                + "base-uri 'self'; "
+                                + "form-action 'self'; "
+                                + "frame-ancestors 'none'"
+                )));
                 // CSRF 保護はデフォルトで有効化（Spring Security 6.4以降）
                 // Thymeleaf テンプレートで自動的に _csrf トークンが処理されます
 
