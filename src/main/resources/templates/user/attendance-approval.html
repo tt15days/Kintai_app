@@ -112,7 +112,7 @@
 
 <th:block layout:fragment="modals">
     <!-- 承認確認モーダル -->
-    <div class="modal fixed inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" id="approveModal" onclick="closeApproveModal()"
+    <div class="modal hidden" id="approveModal" onclick="closeApproveModal()"
          role="dialog" aria-modal="true" aria-labelledby="approveModalLabel" aria-hidden="true" tabindex="-1">
         <div class="flex min-h-full items-center justify-center p-4">
             <div id="approveModalContent" class="card-heavy w-full max-w-[500px]" onclick="event.stopPropagation()">
@@ -151,7 +151,7 @@
     </div>
 
     <!-- 差し戻し確認モーダル -->
-    <div class="modal fixed inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300" id="returnModal" onclick="closeReturnModal()"
+    <div class="modal hidden" id="returnModal" onclick="closeReturnModal()"
          role="dialog" aria-modal="true" aria-labelledby="returnModalLabel" aria-hidden="true" tabindex="-1">
         <div class="flex min-h-full items-center justify-center p-4">
             <div id="returnModalContent" class="card-heavy w-full max-w-[500px]" onclick="event.stopPropagation()">

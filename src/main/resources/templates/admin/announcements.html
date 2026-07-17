@@ -132,7 +132,7 @@
     <th:block layout:fragment="modals">
         <!-- 一覧で共用する編集モーダル -->
         <div id="announcementEditModal"
-             class="modal announcement-modal fixed inset-0 z-[2000] overflow-y-auto bg-black/60 backdrop-blur-sm hidden transition-all duration-300"
+             class="modal announcement-modal hidden"
              tabindex="-1" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="announcementEditTitle">
             <div class="flex min-h-full items-center justify-center p-4"
                  onclick="if (event.target === this) closeModal('announcementEditModal')">

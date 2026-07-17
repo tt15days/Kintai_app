@@ -437,25 +437,27 @@ class FrontendUiContractTest {
     @Test
     @DisplayName("モーダルがスクロール位置によらず画面全体を覆うこと")
     void modalOverlays_areFixedToViewport() throws IOException {
+        // fixed/inset-0等の配置指定は .modal コンポーネント定義(input.css)に集約されており、
+        // 各テンプレートは class="modal" のみを付与する（重複ユーティリティの排除）。
         for (String template : new String[]{
                 resource("/templates/admin/work-schedules.html"),
                 resource("/templates/admin/departments.html"),
                 resource("/templates/user/attendance-approval.html"),
                 resource("/templates/attendance/input.html")}) {
             assertThat(template)
-                    .contains("modal fixed inset-0")
+                    .contains("class=\"modal hidden\"")
                     .doesNotContain("modal absolute inset-0");
         }
 
         String announcements = resource("/templates/admin/announcements.html");
         assertThat(announcements)
-                .contains("modal announcement-modal fixed inset-0")
+                .contains("class=\"modal announcement-modal hidden\"")
                 .doesNotContain("modal announcement-modal absolute inset-0");
 
         String styles = resource("/static/css/input.css");
         assertThat(styles)
                 .contains(".modal {")
-                .contains("@apply items-start justify-center overflow-y-auto p-4 sm:p-8;")
+                .contains("@apply fixed inset-0 z-[2000] items-start justify-center overflow-y-auto bg-black/60 backdrop-blur-sm p-4 sm:p-8 transition-all duration-300;")
                 .contains(".modal > .flex {")
                 .contains("@apply w-full min-h-full shrink-0;");
     }
