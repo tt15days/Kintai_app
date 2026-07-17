@@ -125,6 +125,7 @@ class FrontendUiContractTest {
                 .contains("name=\"displayStartDate\"")
                 .contains("name=\"displayEndDate\"")
                 .contains("name=\"isActive\"")
+                .contains("grid grid-cols-[auto_minmax(0,1fr)]")
                 .doesNotContain("th:each=\"ann : ${announcements}\">\n            <div class=\"modal")
                 .doesNotContain("name=\"expiryDate\"", "name=\"active\"");
     }
@@ -204,7 +205,10 @@ class FrontendUiContractTest {
                 .contains("for=\"leaveUsageKeyword\"").contains("id=\"leaveUsageKeyword\"");
         assertThat(today)
                 .contains("for=\"todayDepartment\"").contains("id=\"todayDepartment\"")
-                .contains("for=\"todayClassName\"").contains("id=\"todayClassName\"");
+                .contains("for=\"todayClassName\"").contains("id=\"todayClassName\"")
+                .contains("(empNoPrefix != null ? empNoPrefix : '') + #numbers.formatInteger(row.user.userId, 3)")
+                .contains("grid grid-cols-[minmax(0,1fr)_auto]")
+                .doesNotContain("row.user.empNo");
         assertThat(notifications)
                 .contains("for=\"notificationMessage\"").contains("id=\"notificationMessage\"")
                 .contains("<fieldset class=\"space-y-3\">")
@@ -442,6 +446,18 @@ class FrontendUiContractTest {
                     .contains("modal fixed inset-0")
                     .doesNotContain("modal absolute inset-0");
         }
+
+        String announcements = resource("/templates/admin/announcements.html");
+        assertThat(announcements)
+                .contains("modal announcement-modal fixed inset-0")
+                .doesNotContain("modal announcement-modal absolute inset-0");
+
+        String styles = resource("/static/css/input.css");
+        assertThat(styles)
+                .contains(".modal {")
+                .contains("@apply items-start justify-center overflow-y-auto p-4 sm:p-8;")
+                .contains(".modal > .flex {")
+                .contains("@apply w-full min-h-full shrink-0;");
     }
 
     @Test

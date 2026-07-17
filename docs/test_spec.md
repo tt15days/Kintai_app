@@ -190,6 +190,7 @@
 
 #### `AttendanceRecordServiceTest` (勤怠記録サービス)
 - 勤務時間・残業・深夜労働・休日労働の計算ロジック、月度期間範囲（締め日）の算出、36協定超過ステータス判定（正常/超過など）、打刻順序（二重打刻防止など）のバリデーションを検証。
+- `saveRecordsBatch`（月次勤怠画面の一括保存 `/attendance/saveAll` の中核ロジック）について、新規行のinsert、既存行の更新、開始・終了ともにnullの行の削除、内容に変化がない行のスキップ、休日出勤フラグのみが変化した場合の保存判定を検証。
 
 #### `PaidLeaveBalanceServiceTest` (有給休暇残高サービス)
 - 有給残高の取得、期限切れ（2年経過）の自動消滅判定、使用時の残高からの順次差し引き（古い付与分からの消化優先）などを検証。
@@ -242,6 +243,9 @@
 
 #### `WorkSchedulesIntegrationTest` / `WorkSchedulesTransitionIntegrationTest`
 - 勤務スケジュール設定の適用から、カレンダー表示や日の勤務シフト登録までの結合動作を検証。
+
+#### `DepartmentsTransitionIntegrationTest` (部署管理画面遷移結合テスト)
+- 部署管理画面（`/admin/departments`）が、登録済み部署を含めて編集モーダル付きで正しく描画されることを検証。
 
 #### `LoginAttemptServiceIntegrationTest` (ログイン試行結合テスト)
 - データベースを用いた実際のログイン失敗回数のカウントとアカウントロック、アンロック挙動を検証。

@@ -175,6 +175,7 @@ public class DashboardController {
      * @param oldPassword     現在のパスワード
      * @param newPassword     新しいパスワード
      * @param confirmPassword パスワード確認用入力
+     * @param session         現在の HTTP セッション（本人セッションを維持し他端末セッションを失効させるために使用）
      * @param model           Spring MVC のモデル
      * @return 成功時はリダイレクト、失敗時はフォーム再表示
      */
@@ -183,6 +184,7 @@ public class DashboardController {
             @RequestParam String oldPassword,
             @RequestParam String newPassword,
             @RequestParam String confirmPassword,
+            jakarta.servlet.http.HttpSession session,
             Model model) {
         if (!newPassword.equals(confirmPassword)) {
             model.addAttribute("error", "新しいパスワードと確認用パスワードが一致しません");
@@ -191,7 +193,7 @@ public class DashboardController {
 
         try {
             Long userId = securityUtil.getCurrentUserId();
-            userService.changePassword(userId, oldPassword, newPassword);
+            userService.changePassword(userId, oldPassword, newPassword, session.getId());
             log.info("パスワードを変更: userId={}", userId);
             return DASHBOARD_PASSWORD_CHANGED_REDIRECT;
         } catch (IllegalArgumentException e) {

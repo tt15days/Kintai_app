@@ -62,6 +62,8 @@ class UserServiceTest {
     private AttendanceApproverAssignmentMapper approverAssignmentMapper;
     @Mock
     private LeaveApplicationService leaveApplicationService;
+    @Mock
+    private com.attendance.app.security.SessionInvalidationService sessionInvalidationService;
 
     @InjectMocks
     private UserService service;
@@ -314,9 +316,10 @@ class UserServiceTest {
             when(passwordEncoder.matches("oldpass", "$stored$")).thenReturn(true);
             when(passwordEncoder.encode("Newpass12")).thenReturn("$newEncoded$");
 
-            service.changePassword(2L, "oldpass", "Newpass12");
+            service.changePassword(2L, "oldpass", "Newpass12", "current-session");
 
             verify(userMapper).updatePassword(eq(2L), eq("$newEncoded$"), eq(false));
+            verify(sessionInvalidationService).expireSessionsExcept(user.getEmail(), "current-session");
         }
 
         @Test
@@ -326,7 +329,7 @@ class UserServiceTest {
             when(userMapper.selectById(2L)).thenReturn(Optional.of(user));
             when(passwordEncoder.matches("wrongpass", "$stored$")).thenReturn(false);
 
-            assertThatThrownBy(() -> service.changePassword(2L, "wrongpass", "Newpass12"))
+            assertThatThrownBy(() -> service.changePassword(2L, "wrongpass", "Newpass12", "current-session"))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("現在のパスワードが正しくありません");
 
@@ -367,13 +370,16 @@ class UserServiceTest {
         @Test
         @DisplayName("softDeleteById を呼び出す（ソフトデリート）")
         void callsSoftDelete() {
+            when(userMapper.selectById(3L)).thenReturn(Optional.of(activeUser(3L, "$stored$")));
             service.deleteUser(3L, 1L);
             verify(userMapper).softDeleteById(3L);
+            verify(sessionInvalidationService).expireSessions(anyString());
         }
 
         @Test
         @DisplayName("削除時は承認者割り当て（個人・部署）が解除される")
         void cleansUpApproverAssignments() {
+            when(userMapper.selectById(3L)).thenReturn(Optional.of(activeUser(3L, "$stored$")));
             service.deleteUser(3L, 1L);
             verify(approverAssignmentMapper).deleteUserApproverByApprover(3L);
             verify(approverAssignmentMapper).deleteDepartmentApproverByApprover(3L);

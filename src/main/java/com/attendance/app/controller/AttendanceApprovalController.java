@@ -156,11 +156,6 @@ public class AttendanceApprovalController {
                     leaveByUser.putIfAbsent(la.getUserId(), la);
                 }
             }
-            YearMonth payrollMonth = attendanceSubmissionService.resolvePayrollMonth(today);
-            Map<Long, String> submissionStatusByUser = new HashMap<>();
-            for (AttendanceSubmission s : attendanceSubmissionService.getSubmissionsByTargetYearMonth(payrollMonth)) {
-                submissionStatusByUser.put(s.getUserId(), s.getStatus());
-            }
             Map<Integer, String> eventNameById = new HashMap<>();
             for (com.attendance.app.entity.EventType et : eventTypeService.getAllActiveEventTypes()) {
                 eventNameById.put(et.getEventTypeId(), et.getDisplayName());
@@ -192,17 +187,12 @@ public class AttendanceApprovalController {
                         : (record != null && record.getEventTypeId() != null
                                 ? eventNameById.get(record.getEventTypeId())
                                 : null);
-                rows.add(new TodayStatusRow(u, status, start, end, eventName,
-                        submissionStatusByUser.get(u.getUserId())));
+                rows.add(new TodayStatusRow(u, status, start, end, eventName));
             }
 
             model.addAttribute("rows", rows);
-            model.addAttribute("payrollMonth", payrollMonth);
             model.addAttribute("departments", departmentService.getActiveDepartments());
             model.addAttribute("workScheduleClasses", workScheduleClassService.getAllActiveClasses());
-            model.addAttribute("submissionStatusPending", AttendanceSubmissionService.STATUS_PENDING);
-            model.addAttribute("submissionStatusApproved", AttendanceSubmissionService.STATUS_APPROVED);
-            model.addAttribute("submissionStatusReturned", AttendanceSubmissionService.STATUS_RETURNED);
         } catch (IllegalArgumentException e) {
             log.warn("当日状況一覧の表示に失敗", e);
             model.addAttribute("error", e.getMessage());
@@ -221,10 +211,9 @@ public class AttendanceApprovalController {
      * @param startTime        出勤時刻（HH:mm、未打刻はnull）
      * @param endTime          退勤時刻（HH:mm、未打刻はnull）
      * @param eventName        当日イベント名（休暇種別または勤怠事由。なければnull）
-     * @param submissionStatus 当月提出状況（未提出はnull）
      */
     public record TodayStatusRow(User user, String status, String startTime, String endTime,
-            String eventName, String submissionStatus) {
+            String eventName) {
     }
 
     /**

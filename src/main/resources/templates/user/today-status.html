@@ -46,47 +46,24 @@
                 <div th:if="${#lists.isEmpty(rows)}" class="py-6 text-txt-secondary opacity-80 text-center">
                     表示対象のメンバーがいません。
                 </div>
-                <div th:unless="${#lists.isEmpty(rows)}" class="table-container">
-                    <table class="table-custom">
-                        <thead class="bg-black/10 text-txt-primary">
-                            <tr>
-                                <th class="w-28">社員番号</th>
-                                <th>氏名</th>
-                                <th class="w-32">部署</th>
-                                <th class="w-36">勤務地</th>
-                                <th class="w-24">状態</th>
-                                <th class="w-20">出勤</th>
-                                <th class="w-20">退勤</th>
-                                <th class="w-28">事由</th>
-                                <th class="w-28">当月提出</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-glass-border/10">
-                            <tr th:each="row : ${rows}">
-                                <td class="font-mono text-sm" th:text="${row.user.empNo}"></td>
-                                <td class="font-semibold" th:text="${row.user.fullName}"></td>
-                                <td th:text="${row.user.department != null ? row.user.department : '-'}"></td>
-                                <td th:text="${row.user.className != null ? row.user.className : '-'}"></td>
-                                <td>
-                                    <span th:if="${row.status == '勤務中'}" class="badge badge-success">勤務中</span>
-                                    <span th:if="${row.status == '退勤済'}" class="badge bg-black/5 text-txt-secondary border-glass-border">退勤済</span>
-                                    <span th:if="${row.status == '休暇'}" class="badge bg-success/15 text-success border-success/20">休暇</span>
-                                    <span th:if="${row.status == '未出勤'}" class="badge badge-warning">未出勤</span>
-                                </td>
-                                <td class="font-mono" th:text="${row.startTime != null ? row.startTime : '-'}"></td>
-                                <td class="font-mono" th:text="${row.endTime != null ? row.endTime : '-'}"></td>
-                                <td th:text="${row.eventName != null ? row.eventName : '-'}"></td>
-                                <td>
-                                    <span th:if="${row.submissionStatus == null}" class="text-txt-secondary text-sm">未提出</span>
-                                    <span th:if="${row.submissionStatus == submissionStatusPending}" class="badge badge-warning">承認待ち</span>
-                                    <span th:if="${row.submissionStatus == submissionStatusApproved}" class="badge badge-success">承認済</span>
-                                    <span th:if="${row.submissionStatus == submissionStatusReturned}" class="badge badge-danger">差戻し</span>
-                                    <span th:if="${row.submissionStatus != null and row.submissionStatus != submissionStatusPending and row.submissionStatus != submissionStatusApproved and row.submissionStatus != submissionStatusReturned}"
-                                          class="text-txt-secondary text-sm" th:text="${row.submissionStatus}"></span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div th:unless="${#lists.isEmpty(rows)}" class="divide-y divide-glass-border/10">
+                    <div th:each="row : ${rows}" class="py-3">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="font-mono text-sm text-txt-secondary shrink-0"
+                                  th:text="${(empNoPrefix != null ? empNoPrefix : '') + #numbers.formatInteger(row.user.userId, 3)}">EMP-001</span>
+                            <span class="font-semibold truncate" th:text="${row.user.fullName}">氏名</span>
+                            <span th:if="${row.status == '勤務中'}" class="badge badge-success shrink-0">勤務中</span>
+                            <span th:if="${row.status == '退勤済'}" class="badge bg-black/5 text-txt-secondary border-glass-border shrink-0">退勤済</span>
+                            <span th:if="${row.status == '休暇'}" class="badge bg-success/15 text-success border-success/20 shrink-0">休暇</span>
+                            <span th:if="${row.status == '未出勤'}" class="badge badge-warning shrink-0">未出勤</span>
+                        </div>
+                        <div class="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm text-txt-secondary">
+                            <span class="truncate"
+                                  th:text="${(row.user.department != null ? row.user.department : '-') + ' / ' + (row.user.className != null ? row.user.className : '-') + (row.eventName != null ? ' / ' + row.eventName : '')}">部署 / 勤務クラス / 事由</span>
+                            <span class="font-mono whitespace-nowrap"
+                                  th:text="${'出 ' + (row.startTime != null ? row.startTime : '--:--') + '　退 ' + (row.endTime != null ? row.endTime : '--:--')}">出 09:00　退 18:00</span>
+                        </div>
+                    </div>
                 </div>
                 <p class="text-xs text-txt-secondary mt-3">
                     ※ 状態は当日の打刻と承認済み休暇から判定しています。最新の状況はページを再読み込みして確認してください。

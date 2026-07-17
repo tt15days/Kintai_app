@@ -15,6 +15,17 @@ spring:
   thymeleaf:
     cache: true
 
+server:
+  servlet:
+    session:
+      # アイドルタイムアウトを明示（既定値への暗黙依存を避ける）
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: lax
+        # HTTPS 前提で既定 true。TLS 終端がない環境のみ SESSION_COOKIE_SECURE=false で上書きする
+        secure: ${SESSION_COOKIE_SECURE:true}
+
 logging:
   file:
     path: ${LOG_PATH:logs}

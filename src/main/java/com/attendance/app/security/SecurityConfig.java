@@ -16,8 +16,11 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -53,14 +56,26 @@ public class SecurityConfig {
      * @throws Exception セキュリティ設定時の例外
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, UserService userService, LoginAttemptService loginAttemptService, AuditLogService auditLogService) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, UserService userService, LoginAttemptService loginAttemptService, AuditLogService auditLogService, SessionRegistry sessionRegistry) throws Exception {
         http
                 .addFilterAfter(new MdcFilter(), SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(authorize -> authorize
                         // ログインページ、ログアウト、ログアウト完了ページとリソースはアクセス許可
-                    .requestMatchers("/login", "/logout", "/logout-success", "/access-denied", "/tailwind.css", "/css/**", "/js/**", "/images/**").permitAll()
+                        // /error は Spring Security 6 で ERROR ディスパッチも認可対象となるため明示的に許可（未認証時の認証リダイレクト防止）
+                    .requestMatchers("/login", "/logout", "/logout-success", "/access-denied", "/error", "/tailwind.css", "/css/**", "/js/**", "/images/**").permitAll()
+                        // ヘルスチェックはコンテナ/監視から未認証で到達可能にする。その他の actuator は管理者限定
+                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         // 上記以外はすべて認証が必要
                         .anyRequest().authenticated()
+                )
+                // アカウント無効化・削除・ロール変更・パスワード変更時に既存セッションを失効させるため
+                // SessionRegistry へセッションを登録する。同時セッションは1つに制限（新ログイン優先）
+                .sessionManagement(session -> session
+                        .maximumSessions(1)
+                        .maxSessionsPreventsLogin(false)
+                        .sessionRegistry(sessionRegistry)
+                        .expiredUrl("/login?expired=true")
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
@@ -195,6 +210,30 @@ public class SecurityConfig {
      *
      * @return PasswordEncoder パスワードエンコーダ
      */
+    /**
+     * SessionRegistry Bean - アクティブセッションの追跡
+     *
+     * ユーザー無効化・削除・ロール変更・パスワード変更時のセッション失効
+     * （SessionInvalidationService）と同時セッション制御に使用する。
+     * インメモリ実装のため単一インスタンス構成が前提。
+     *
+     * @return SessionRegistry
+     */
+    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    /**
+     * セッションの生成・破棄イベントを SessionRegistry へ伝搬させる。
+     *
+     * @return HttpSessionEventPublisher
+     */
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
+    }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         log.debug("PasswordEncoder Bean を初期化しています");

@@ -1,5 +1,9 @@
 name: Java CI with Maven and PostgreSQL
 
+# GITHUB_TOKEN の権限を最小化（チェックアウトとキャッシュ読み取りのみ）
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ "main", "dev" ]

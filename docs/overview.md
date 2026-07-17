@@ -3,7 +3,7 @@
 ## 1. このSpringBootプロジェクトについて
 本プロジェクトは、Java 25 および Spring Boot 4.1.0 をベースに構築された「勤怠管理システム (Attendance Management System)」です。
 従業員の出退勤打刻、有給休暇申請、残業申請、および月次勤怠の承認ワークフローなど、勤怠管理に関わる一連の業務をシステム化することを目的としています。
-現在のバージョンは `0.0.10` です。
+現在のバージョンは `0.0.11` です。
 
 ### 主な採用技術とアーキテクチャ
 - **バックエンド**: Java 25, Spring Boot 4.1.0
@@ -31,7 +31,7 @@ mvn spring-boot:run
 ```bash
 mvn clean package -P local
 ```
-上記コマンドを実行すると、ソースコードのコンパイルとテストが行われ、`target/` ディレクトリ配下に実行可能なJARファイル（`attendance-app-0.0.10.jar`）が生成されます。
+上記コマンドを実行すると、ソースコードのコンパイルとテストが行われ、`target/` ディレクトリ配下に実行可能なJARファイル（`attendance-app-0.0.11.jar`）が生成されます。
 このJARは `application-local.yml` を含むローカル開発用です。リリース環境へは配備しないでください。
 
 テストをスキップしてビルドする場合:
@@ -54,7 +54,7 @@ export DB_URL='jdbc:postgresql://db-host:5432/attendance_db'
 export DB_USERNAME='app_user'
 export DB_PASSWORD='set-a-secure-password'
 export LOG_PATH='logs'
-java -jar target/attendance-app-0.0.10.jar
+java -jar target/attendance-app-0.0.11.jar
 ```
 
 `release` JARは `application-release.yml` のみを含み、起動時に `DB_URL`、`DB_USERNAME`、`DB_PASSWORD` が必須です。`LOG_PATH` は任意で、未指定時は `logs` を使用します。接続先には専用の PostgreSQL データベースと必要権限を持つユーザーを事前に用意し、認証情報はリポジトリに保存しないでください。

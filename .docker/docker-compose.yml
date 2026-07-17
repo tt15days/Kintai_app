@@ -1,0 +1,58 @@
+version: '3.8'
+
+# シークレットは同ディレクトリの .env（gitignore 対象）で注入する。
+# 雛形は .env.example を参照。パスワード等を本ファイルに直接書かないこと。
+#
+# 注意: 現構成はアプリを HTTP(80) で直公開している。本番運用では前段に
+# TLS 終端リバースプロキシ（nginx/ALB 等）を配置し、SESSION_COOKIE_SECURE=true にすること（issue #243）。
+
+services:
+  # 1. PostgreSQL データベース
+  postgres:
+    image: postgres:18
+    restart: always
+    environment:
+      POSTGRES_DB: attendance_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD を .docker/.env で設定してください}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d attendance_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql
+    # 外部（インターネット）には公開せず、内部ネットワークだけで接続させるため ports は記述しない（安全対策）
+
+  # 2. Java アプリケーション
+  java-app:
+    image: eclipse-temurin:25-jre
+    restart: always
+    # root 実行を避けるため非特権 UID/GID で実行する
+    user: "1000:1000"
+    volumes:
+      - ./app.jar:/app/app.jar:ro # 転送したJARファイルをコンテナ内にマウント（読み取り専用）
+    working_dir: /app
+    command: java -jar app.jar --spring.profiles.active=release
+    ports:
+      - "80:8080" # ブラウザからHTTP(80ポート)でアクセスできるようにマッピング
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/attendance_db
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD を .docker/.env で設定してください}
+      - SPRING_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/sample # テスト環境用のサンプルデータ投入
+      # TLS 終端がないため Secure フラグを無効化。TLS 導入後は true に戻すこと
+      - SESSION_COOKIE_SECURE=false
+    healthcheck:
+      # temurin イメージには curl/wget がないため bash の /dev/tcp で actuator health を確認する
+      test: ["CMD-SHELL", "timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080; printf \"GET /actuator/health HTTP/1.0\\r\\n\\r\\n\" >&3; grep -q UP <&3'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy # 修正：正常起動を待つ
+
+volumes:
+  pgdata:
